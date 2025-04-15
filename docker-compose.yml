@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  event-service:
+    build: ./services/event-service
+    ports:
+      - "3001:3001"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/event-service
+      - NODE_ENV=development
+    depends_on:
+      - mongodb
+
+  receipt-service:
+    build: ./services/receipt-service
+    ports:
+      - "3002:3002"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/receipt-service
+      - NODE_ENV=development
+    depends_on:
+      - mongodb
+
+  church-service:
+    build: ./services/church-service
+    ports:
+      - "3003:3003"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/church-service
+      - NODE_ENV=development
+    depends_on:
+      - mongodb
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - EVENT_SERVICE_URL=http://event-service:3001
+      - RECEIPT_SERVICE_URL=http://receipt-service:3002
+      - CHURCH_SERVICE_URL=http://church-service:3003
+    depends_on:
+      - event-service
+      - receipt-service
+      - church-service
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data: 
