@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import express from 'express';
 import { body, param, query } from 'express-validator';
 import * as receiptController from '../controllers/receiptController';
 import { validateRequest } from '../middleware/validateRequest';
 
-const router = Router();
+const router = express.Router();
 
 // Validation middleware
 const receiptIdValidation = [
@@ -45,5 +45,14 @@ router.delete('/:id', receiptIdValidation, receiptController.deleteReceipt);
 // Church and Event specific routes
 router.get('/church/:mainId/:subId', churchIdValidation, receiptController.getChurchReceipts);
 router.get('/event/:eventId', param('eventId').notEmpty(), receiptController.getEventReceipts);
+
+// GET /api/receipts
+router.get('/', async (req, res) => {
+  try {
+    res.json({ message: 'Receipts list endpoint' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch receipts' });
+  }
+});
 
 export { router as receiptRoutes }; 

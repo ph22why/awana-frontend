@@ -30,6 +30,13 @@ services:
       - NODE_ENV=development
     depends_on:
       - mongodb
+    command: >
+      sh -c "npm run build &&
+             if [ ! -f /tmp/init-done ]; then
+               npm run import-churches &&
+               touch /tmp/init-done;
+             fi &&
+             npm start"
 
   api-gateway:
     build: ./api-gateway

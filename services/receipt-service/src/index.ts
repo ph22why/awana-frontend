@@ -1,12 +1,12 @@
 import express from 'express';
+import cors from 'cors';
 import mongoose from 'mongoose';
 import { receiptRoutes } from './routes/receiptRoutes';
 
 const app = express();
 const port = process.env.PORT || 3002;
-const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/receipt-service';
 
-// Middleware
+app.use(cors());
 app.use(express.json());
 
 // Routes
@@ -18,14 +18,16 @@ app.get('/health', (req, res) => {
 });
 
 // MongoDB 연결
-mongoose.connect(mongoUri)
-  .then(() => {
-    console.log('Connected to MongoDB');
-    app.listen(port, () => {
-      console.log(`Receipt service is running on port ${port}`);
-    });
-  })
-  .catch((error) => {
-    console.error('Error connecting to MongoDB:', error);
-    process.exit(1);
-  }); 
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongodb:27017/receipt-service';
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('MongoDB에 연결되었습니다.'))
+  .catch((error) => console.error('MongoDB 연결 실패:', error));
+
+// 기본 라우트
+app.get('/', (req, res) => {
+  res.json({ message: 'Receipt Service is running' });
+});
+
+app.listen(port, () => {
+  console.log(`Receipt Service가 포트 ${port}에서 실행 중입니다.`);
+}); 

@@ -1,75 +1,141 @@
-# AWANA Project v1.0
+# AWANA Church Management System v1.1
 
-교회 관리 시스템 프로젝트입니다.
+교회 정보를 관리하기 위한 웹 기반 관리 시스템입니다.
 
 ## 주요 기능
 
-- Material-UI를 활용한 모던한 사용자 인터페이스
-- React Router를 이용한 페이지 라우팅
-- TypeScript를 활용한 타입 안정성
-- Docker를 통한 컨테이너화된 환경
+### 1. 교회 관리 (ChurchManagePage)
+- 교회 목록 조회
+  - 페이지네이션 지원 (페이지당 항목 수 조절 가능: 10, 15, 20, 30, 50개)
+  - 실시간 검색 기능
+    - 교회명
+    - 위치
+    - 교회 ID (mainId-subId)
+    - 대소문자 구분 없는 부분 검색 지원
 
-## 기술 스택
+- 교회 정보 관리
+  - 새 교회 등록
+  - 기존 교회 정보 수정
+  - 교회 정보 삭제
 
-- Frontend: React 18.2.0
-- UI Library: Material-UI (MUI) 5.17.1
-- Language: TypeScript 4.9.5
-- Routing: React Router 6.30.0
-- HTTP Client: Axios 1.8.4
-- Database: MySQL (Docker)
+## 시스템 요구사항
 
-## 설치 방법
+- Node.js 16.x 이상
+- MongoDB 4.x 이상
+- Docker 및 Docker Compose
+
+## 설치 및 실행 방법
 
 1. 저장소 클론
 ```bash
 git clone [repository-url]
-cd awana-frontend
+cd AWANA
 ```
 
-2. 의존성 설치
+2. 환경 변수 설정
 ```bash
-npm install
+# .env 파일 생성
+cp .env.example .env
+
+# 필요한 환경 변수 설정
+REACT_APP_API_URL=http://localhost:3000
 ```
 
-3. 환경 변수 설정
-- `.env` 파일을 프로젝트 루트에 생성하고 필요한 환경 변수를 설정합니다.
-
-4. 데이터베이스 설정
+3. Docker Compose로 서비스 실행
 ```bash
 docker-compose up -d
 ```
 
-5. 개발 서버 실행
+## 교회 데이터베이스 설정
+
+### 1. 초기 데이터 추가
+
+MongoDB에 교회 데이터를 추가하는 방법은 다음과 같습니다:
+
+1. MongoDB 컨테이너에 접속
 ```bash
-npm start
+docker exec -it awana-mongodb-1 mongosh
 ```
 
-## 빌드 방법
-
-프로덕션 빌드를 생성하려면:
-```bash
-npm run build
+2. 데이터베이스 선택
+```javascript
+use church-service
 ```
 
-## 테스트 실행
-
-```bash
-npm test
+3. 교회 컬렉션 생성 및 인덱스 설정
+```javascript
+db.createCollection("churches")
+db.churches.createIndex({ mainId: 1, subId: 1 }, { unique: true })
 ```
 
-## 프로젝트 구조
+4. 샘플 데이터 추가
+```javascript
+db.churches.insertMany([
+  {
+    mainId: "0001",
+    subId: "a",
+    name: "샘플교회1",
+    location: "서울시 강남구"
+  },
+  // 추가 데이터...
+])
+```
 
+### 2. 데이터 포맷
+
+교회 데이터는 다음 형식을 따릅니다:
+```javascript
+{
+  mainId: string,    // 4자리 숫자
+  subId: string,     // 1자리 알파벳
+  name: string,      // 교회명
+  location: string   // 교회 위치
+}
 ```
-src/
-  ├── components/     # 재사용 가능한 컴포넌트
-  ├── hooks/         # 커스텀 훅
-  ├── pages/         # 페이지 컴포넌트
-  ├── types/         # TypeScript 타입 정의
-  ├── utils/         # 유틸리티 함수
-  ├── App.tsx        # 앱 루트 컴포넌트
-  └── index.tsx      # 앱 진입점
-```
+
+## API 엔드포인트
+
+### Church Service API (기본 포트: 3003)
+
+1. 교회 목록 조회
+- GET `/api/churches?page={page}&search={search}&pageSize={pageSize}`
+  - page: 페이지 번호 (기본값: 1)
+  - search: 검색어
+  - pageSize: 페이지당 항목 수 (기본값: 15)
+
+2. 교회 추가
+- POST `/api/churches`
+  - Body: { mainId, subId, name, location }
+
+3. 교회 수정
+- PUT `/api/churches/{mainId}/{subId}`
+  - Body: { name, location }
+
+4. 교회 삭제
+- DELETE `/api/churches/{mainId}/{subId}`
+
+## 버전 기록
+
+### v1.1
+- 교회 관리 페이지 구현
+- 페이지네이션 기능 추가
+- 실시간 검색 기능 구현
+- 교회 정보 CRUD 기능 구현
+- Docker 기반 배포 환경 구성
+
+## 문제 해결
+
+1. MongoDB 중복 키 에러
+- 에러 메시지: `E11000 duplicate key error collection`
+- 해결 방법: 
+  ```javascript
+  // 기존 데이터 확인
+  db.churches.find({ mainId: "중복된_ID", subId: "중복된_서브ID" })
+  
+  // 필요한 경우 기존 데이터 삭제
+  db.churches.deleteOne({ mainId: "중복된_ID", subId: "중복된_서브ID" })
+  ```
 
 ## 라이선스
 
-Private 
+이 프로젝트는 MIT 라이선스를 따릅니다. 

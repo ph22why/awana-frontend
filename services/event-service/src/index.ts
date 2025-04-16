@@ -23,14 +23,16 @@ app.use('/api/events', eventRoutes);
 app.use(errorHandler);
 
 // Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/event-service')
-  .then(() => {
-    console.log('Connected to MongoDB');
-    app.listen(port, () => {
-      console.log(`Event Service listening at http://localhost:${port}`);
-    });
-  })
-  .catch((error) => {
-    console.error('Error connecting to MongoDB:', error);
-    process.exit(1);
-  }); 
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongodb:27017/event-service';
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('MongoDB에 연결되었습니다.'))
+  .catch((error) => console.error('MongoDB 연결 실패:', error));
+
+// 기본 라우트
+app.get('/', (req, res) => {
+  res.json({ message: 'Event Service is running' });
+});
+
+app.listen(port, () => {
+  console.log(`Event Service가 포트 ${port}에서 실행 중입니다.`);
+}); 
