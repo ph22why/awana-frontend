@@ -1,63 +1,65 @@
 version: '3.8'
 
 services:
-  event-service:
-    build: ./services/event-service
-    ports:
-      - "3001:3001"
-    environment:
-      - MONGODB_URI=mongodb://mongodb:27017/event-service
-      - NODE_ENV=development
-    depends_on:
-      - mongodb
-
-  receipt-service:
-    build: ./services/receipt-service
-    ports:
-      - "3002:3002"
-    environment:
-      - MONGODB_URI=mongodb://mongodb:27017/receipt-service
-      - NODE_ENV=development
-    depends_on:
-      - mongodb
-
-  church-service:
-    build: ./services/church-service
-    ports:
-      - "3003:3003"
-    environment:
-      - MONGODB_URI=mongodb://mongodb:27017/church-service
-      - NODE_ENV=development
-    depends_on:
-      - mongodb
-    command: >
-      sh -c "npm run build &&
-             if [ ! -f /tmp/init-done ]; then
-               npm run import-churches &&
-               touch /tmp/init-done;
-             fi &&
-             npm start"
-
-  api-gateway:
-    build: ./api-gateway
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=development
-      - EVENT_SERVICE_URL=http://event-service:3001
-      - RECEIPT_SERVICE_URL=http://receipt-service:3002
-      - CHURCH_SERVICE_URL=http://church-service:3003
-    depends_on:
-      - event-service
-      - receipt-service
-      - church-service
-
+  # MongoDB 서비스
   mongodb:
     image: mongo:latest
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+      - ./services/church-service/src/scripts/importChurchData.ts:/docker-entrypoint-initdb.d/importChurchData.ts:ro
+    networks:
+      - awana_network
+
+  # 교회 서비스
+  church-service:
+    build:
+      context: ./services/church-service
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/church-service
+      - PORT=3002
+    depends_on:
+      - mongodb
+    networks:
+      - awana_network
+
+  # 이벤트 서비스
+  event-service:
+    build:
+      context: ./services/event-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/event-service
+      - PORT=3001
+    depends_on:
+      - mongodb
+    networks:
+      - awana_network
+
+  # 영수증 서비스
+  receipt-service:
+    build:
+      context: ./services/receipt-service
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/receipt-service
+      - PORT=3003
+    depends_on:
+      - mongodb
+    networks:
+      - awana_network
+
+networks:
+  awana_network:
+    driver: bridge
 
 volumes:
   mongodb_data: 

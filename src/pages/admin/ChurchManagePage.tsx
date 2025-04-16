@@ -23,7 +23,8 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel
+  InputLabel,
+  SelectChangeEvent
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -44,6 +45,13 @@ interface Church {
   updatedAt: string;
 }
 
+interface ChurchApiResponse {
+  success: boolean;
+  data: Church[];
+  count: number;
+  error?: string;
+}
+
 interface ChurchFormData {
   mainId: string;
   subId: string;
@@ -51,7 +59,7 @@ interface ChurchFormData {
   location: string;
 }
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3003';
+const API_BASE_URL = process.env.REACT_APP_CHURCH_API_URL || 'http://localhost:3002';
 
 // Axios 인스턴스 생성
 const axiosInstance = axios.create({
@@ -75,6 +83,7 @@ const ChurchManagePage: React.FC = () => {
     location: ''
   });
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [pageSize, setPageSize] = useState<number>(15);
 
   // 검색어 디바운싱 처리
@@ -89,54 +98,36 @@ const ChurchManagePage: React.FC = () => {
   // 검색어가 변경될 때마다 첫 페이지로 이동
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearchTerm]);
+  }, [debouncedSearchTerm, pageSize]);
 
   const fetchChurches = async () => {
     try {
+      setLoading(true);
       setError(null);
-      const response = await axiosInstance.get(`/api/churches?page=${page}&search=${debouncedSearchTerm}&pageSize=${pageSize}`);
-      console.log('API Response:', response.data);
-
-      if (response.data && response.data.data) {
-        const { churches = [], pagination = { totalPages: 1 } } = response.data.data;
-        setChurches(churches);
-        setTotalPages(pagination.totalPages);
-      } else if (response.data && Array.isArray(response.data)) {
-        // 클라이언트 사이드 검색 및 페이지네이션
-        const filteredChurches = response.data.filter((church: Church) => {
-          const searchLower = debouncedSearchTerm.toLowerCase();
-          return (
-            church.name.toLowerCase().includes(searchLower) ||
-            church.location.toLowerCase().includes(searchLower) ||
-            church.mainId.toLowerCase().includes(searchLower) ||
-            church.subId.toLowerCase().includes(searchLower)
-          );
-        });
-
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        setChurches(filteredChurches.slice(startIndex, endIndex));
-        setTotalPages(Math.ceil(filteredChurches.length / pageSize));
-      } else {
-        setError('서버 응답 형식이 올바르지 않습니다.');
-        setChurches([]);
-        setTotalPages(1);
-      }
-    } catch (error) {
-      console.error('Error fetching churches:', error);
-      if (axios.isAxiosError(error)) {
-        if (error.code === 'ECONNABORTED') {
-          setError('서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
-        } else if (error.response?.status === 504) {
-          setError('서버가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해주세요.');
-        } else {
-          setError(`데이터를 불러오는 중 오류가 발생했습니다: ${error.response?.status ? `(${error.response.status})` : ''} ${error.message}`);
+      const response = await axiosInstance.get<ChurchApiResponse>('/api/churches', {
+        params: {
+          page: page,
+          limit: pageSize,  // pageSize를 limit으로 변경
+          search: debouncedSearchTerm || undefined  // 빈 문자열일 경우 undefined로 설정
         }
+      });
+      
+      console.log('API Response:', response.data);
+      
+      if (response.data && response.data.success) {
+        const totalItems = response.data.count || 0;
+        setChurches(response.data.data || []);
+        setTotalPages(Math.max(1, Math.ceil(totalItems / pageSize)));
       } else {
-        setError('데이터를 불러오는 중 알 수 없는 오류가 발생했습니다.');
+        throw new Error('데이터를 불러오는데 실패했습니다.');
       }
+    } catch (err) {
+      console.error('Error fetching churches:', err);
+      setError('교회 목록을 불러오는데 실패했습니다.');
       setChurches([]);
       setTotalPages(1);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -204,9 +195,9 @@ const ChurchManagePage: React.FC = () => {
     }
   };
 
-  const handlePageSizeChange = (event: any) => {
-    setPageSize(event.target.value);
-    setPage(1); // 페이지 크기가 변경되면 첫 페이지로 이동
+  const handlePageSizeChange = (event: SelectChangeEvent<number>) => {
+    const newSize = Number(event.target.value);
+    setPageSize(newSize);
   };
 
   return (
@@ -295,9 +286,10 @@ const ChurchManagePage: React.FC = () => {
           page={page}
           onChange={(_, value) => setPage(value)}
           color="primary"
+          disabled={loading}
         />
         <Typography variant="body2" color="text.secondary">
-          총 {churches.length}개 항목 중 {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, churches.length)}
+          총 {churches.length}개 항목 (페이지당 {pageSize}개)
         </Typography>
       </Box>
 

@@ -1,6 +1,6 @@
-# AWANA Church Management System v1.1
+# AWANA Church Management System v1.2
 
-교회 정보를 관리하기 위한 웹 기반 관리 시스템입니다.
+교회 정보와 이벤트를 관리하기 위한 웹 기반 관리 시스템입니다.
 
 ## 주요 기능
 
@@ -17,6 +17,23 @@
   - 새 교회 등록
   - 기존 교회 정보 수정
   - 교회 정보 삭제
+
+### 2. 이벤트 관리 (EventManagePage)
+- 이벤트 목록 조회
+  - 이벤트 상태 표시 (예정/진행중/완료)
+  - 이벤트 기본 정보 표시
+    - 이벤트명
+    - 시작일/종료일
+    - 등록 기간
+    - 장소
+    - 공개 여부
+
+- 이벤트 관리
+  - 새 이벤트 생성
+    - 샘플 이벤트 목록에서 선택
+    - 날짜, 장소, 공개 여부 등 설정
+  - 이벤트 수정
+  - 이벤트 삭제
 
 ## 시스템 요구사항
 
@@ -114,7 +131,64 @@ db.churches.insertMany([
 4. 교회 삭제
 - DELETE `/api/churches/{mainId}/{subId}`
 
+### Event Service API (기본 포트: 3001)
+
+1. 이벤트 목록 조회
+- GET `/api/events`
+
+2. 샘플 이벤트 목록 조회
+- GET `/api/events/samples`
+
+3. 이벤트 생성
+- POST `/api/events`
+  - Body: EventFormData
+
+4. 이벤트 수정
+- PUT `/api/events/{id}`
+  - Body: Partial<EventFormData>
+
+5. 이벤트 삭제
+- DELETE `/api/events/{id}`
+
+## 데이터 포맷
+
+### 교회 데이터
+```javascript
+{
+  mainId: string,    // 4자리 숫자
+  subId: string,     // 1자리 알파벳
+  name: string,      // 교회명
+  location: string   // 교회 위치
+}
+```
+
+### 이벤트 데이터
+```javascript
+{
+  event_Name: string,           // 이벤트명
+  event_Description?: string,   // 이벤트 설명
+  event_Location: string,       // 상세 위치
+  event_Year: number,          // 년도
+  event_Month: number,         // 월
+  event_Start_Date: string,    // 시작일 (YYYY-MM-DD)
+  event_End_Date: string,      // 종료일 (YYYY-MM-DD)
+  event_Registration_Start_Date: string,  // 등록 시작일
+  event_Registration_End_Date: string,    // 등록 종료일
+  event_Open_Available: '공개' | '비공개',  // 공개 여부
+  event_Place: string          // 장소
+}
+```
+
 ## 버전 기록
+
+### v1.2
+- 이벤트 관리 기능 추가
+  - 이벤트 목록 조회 및 상태 표시
+  - 샘플 이벤트 기반 새 이벤트 생성
+  - 이벤트 수정/삭제 기능
+- API 응답 처리 개선
+  - 다양한 응답 형식 지원
+  - 에러 처리 강화
 
 ### v1.1
 - 교회 관리 페이지 구현

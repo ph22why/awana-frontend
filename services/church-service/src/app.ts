@@ -11,40 +11,15 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors());  // 모든 도메인에서의 요청 허용
 app.use(express.json());
 
 // Routes
 app.use('/api/churches', churchRoutes);
 
-// Church routes
-app.get('/api/churches', async (req: Request, res: Response) => {
-  try {
-    if (!mongoose.connection || !mongoose.connection.db) {
-      throw new Error('Database connection not initialized');
-    }
-
-    const { search = '' } = req.query;
-    const searchQuery = search ? {
-      $or: [
-        { name: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } }
-      ]
-    } : {};
-
-    const churches = await mongoose.connection.db.collection('churches')
-      .find(searchQuery)
-      .toArray();
-
-    res.json(churches);
-  } catch (error) {
-    console.error('Error in /api/churches:', error);
-    res.status(500).json({ error: 'Failed to fetch churches' });
-  }
+// 기본 라우트
+app.get('/', (req, res) => {
+  res.json({ message: 'Church Service is running' });
 });
 
 // MongoDB connection

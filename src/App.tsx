@@ -12,6 +12,8 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import EventManagePage from './pages/admin/EventManagePage';
 import ChurchManagePage from './pages/admin/ChurchManagePage';
 import ReceiptManagePage from './pages/admin/ReceiptManagePage';
+import EventCreatePage from './pages/admin/EventCreatePage';
+import EventEditPage from './pages/admin/EventEditPage';
 
 const App: React.FC = () => {
   return (
@@ -30,7 +32,9 @@ const App: React.FC = () => {
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
-            <Route path="events/*" element={<EventManagePage />} />
+            <Route path="events" element={<EventManagePage />} />
+            <Route path="events/create" element={<EventCreatePage />} />
+            <Route path="events/edit/:id" element={<EventEditPage />} />
             <Route path="churches/*" element={<ChurchManagePage />} />
             <Route path="receipts/*" element={<ReceiptManagePage />} />
           </Route>

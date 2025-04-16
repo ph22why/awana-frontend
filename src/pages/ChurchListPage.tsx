@@ -30,7 +30,23 @@ interface PaginationInfo {
   totalPages: number;
 }
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3003';
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+interface ChurchListResponse {
+  success: boolean;
+  data: {
+    churches: Church[];
+    pagination: Pagination;
+  };
+  error?: string;
+}
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';
 
 const ChurchListPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,21 +59,29 @@ const ChurchListPage: React.FC = () => {
   useEffect(() => {
     const fetchChurches = async () => {
       try {
-        setLoading(true);
-        setError(null);
-        const response = await axios.get(`${API_BASE_URL}/api/churches`, {
-          params: {
-            page,
-            limit: 12,
-            search: searchTerm
+        if (!loading) {
+          setLoading(true);
+          setError(null);
+          const response = await axios.get<ChurchListResponse>(`${API_BASE_URL}/api/churches`, {
+            params: {
+              page,
+              limit: 12,
+              search: searchTerm
+            }
+          });
+          
+          const data = response.data;
+          
+          if (data.success) {
+            setChurches(data.data.churches);
+            const paginationData = {
+              ...data.data.pagination,
+              totalPages: Math.ceil(data.data.pagination.total / data.data.pagination.limit)
+            };
+            setPagination(paginationData);
+          } else {
+            throw new Error(data.error || '데이터를 불러오는데 실패했습니다.');
           }
-        });
-        
-        if (response.data.success) {
-          setChurches(response.data.data.churches);
-          setPagination(response.data.data.pagination);
-        } else {
-          throw new Error(response.data.error || '데이터를 불러오는데 실패했습니다.');
         }
       } catch (err) {
         console.error('Error fetching churches:', err);

@@ -1,64 +1,121 @@
 import { Request, Response } from 'express';
-import { Church, IChurch } from '../models/Church';
-import { ChurchEventParticipation, IChurchEventParticipation } from '../models/ChurchEventParticipation';
+import { Church } from '../models/Church';
+import { ChurchEventParticipation } from '../models/ChurchEventParticipation';
 
-// 교회 목록 조회
-export const getAllChurches = async (req: Request, res: Response) => {
-  try {
-    const { search } = req.query;
-    let query = {};
-    
-    if (search) {
-      query = { $text: { $search: search as string } };
-    }
-
-    const churches = await Church.find(query).sort({ mainId: 1, subId: 1 });
-    res.json(churches);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching churches', error });
-  }
-};
-
-// 교회 상세 정보 조회
-export const getChurchById = async (req: Request, res: Response) => {
-  try {
-    const { mainId, subId } = req.params;
-    
-    if (!Church.validateChurchId(mainId, subId)) {
-      return res.status(400).json({ message: 'Invalid church ID format' });
-    }
-
-    const church = await Church.findOne({ mainId, subId });
-    if (!church) {
-      return res.status(404).json({ message: 'Church not found' });
-    }
-
-    res.json(church);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching church', error });
-  }
-};
-
-// 교회 등록
+// 교회 생성
 export const createChurch = async (req: Request, res: Response) => {
   try {
     const { mainId, subId, name, location } = req.body;
 
+    // 교회 ID 유효성 검사
     if (!Church.validateChurchId(mainId, subId)) {
-      return res.status(400).json({ message: 'Invalid church ID format' });
+      return res.status(400).json({
+        success: false,
+        message: '잘못된 교회 ID 형식입니다. mainId는 4자리 숫자, subId는 1자리 알파벳이어야 합니다.'
+      });
     }
 
-    const existingChurch = await Church.findOne({ mainId, subId });
-    if (existingChurch) {
-      return res.status(400).json({ message: 'Church with this ID already exists' });
+    const church = new Church({
+      mainId,
+      subId,
+      name,
+      location
+    });
+
+    await church.save();
+
+    res.status(201).json({
+      success: true,
+      data: church
+    });
+  } catch (error: any) {
+    if (error.code === 11000) {
+      res.status(400).json({
+        success: false,
+        message: '이미 존재하는 교회 ID입니다.'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: '교회 생성 중 오류가 발생했습니다.',
+        error: error.message
+      });
+    }
+  }
+};
+
+// 모든 교회 조회
+export const getAllChurches = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 15;
+    const search = req.query.search as string;
+
+    const skip = (page - 1) * limit;
+
+    let query = {};
+    if (search) {
+      query = {
+        $or: [
+          { name: new RegExp(search, 'i') },
+          { location: new RegExp(search, 'i') },
+          { mainId: new RegExp(search, 'i') }
+        ]
+      };
     }
 
-    const church = new Church({ mainId, subId, name, location });
-    const savedChurch = await church.save();
-    
-    res.status(201).json(savedChurch);
-  } catch (error) {
-    res.status(500).json({ message: 'Error creating church', error });
+    const total = await Church.countDocuments(query);
+    const churches = await Church.find(query)
+      .sort({ mainId: 1, subId: 1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.status(200).json({
+      success: true,
+      count: total,
+      data: churches
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: '교회 목록 조회 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+};
+
+// 특정 교회 조회
+export const getChurch = async (req: Request, res: Response) => {
+  try {
+    const { mainId, subId } = req.params;
+
+    // 교회 ID 유효성 검사
+    if (!Church.validateChurchId(mainId, subId)) {
+      return res.status(400).json({
+        success: false,
+        message: '잘못된 교회 ID 형식입니다.'
+      });
+    }
+
+    const church = await Church.findOne({ mainId, subId });
+
+    if (!church) {
+      return res.status(404).json({
+        success: false,
+        message: '해당 교회를 찾을 수 없습니다.'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: church
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: '교회 조회 중 오류가 발생했습니다.',
+      error: error.message
+    });
   }
 };
 
@@ -68,8 +125,12 @@ export const updateChurch = async (req: Request, res: Response) => {
     const { mainId, subId } = req.params;
     const { name, location } = req.body;
 
+    // 교회 ID 유효성 검사
     if (!Church.validateChurchId(mainId, subId)) {
-      return res.status(400).json({ message: 'Invalid church ID format' });
+      return res.status(400).json({
+        success: false,
+        message: '잘못된 교회 ID 형식입니다.'
+      });
     }
 
     const church = await Church.findOneAndUpdate(
@@ -79,12 +140,22 @@ export const updateChurch = async (req: Request, res: Response) => {
     );
 
     if (!church) {
-      return res.status(404).json({ message: 'Church not found' });
+      return res.status(404).json({
+        success: false,
+        message: '해당 교회를 찾을 수 없습니다.'
+      });
     }
 
-    res.json(church);
-  } catch (error) {
-    res.status(500).json({ message: 'Error updating church', error });
+    res.status(200).json({
+      success: true,
+      data: church
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: '교회 정보 수정 중 오류가 발생했습니다.',
+      error: error.message
+    });
   }
 };
 
@@ -93,21 +164,61 @@ export const deleteChurch = async (req: Request, res: Response) => {
   try {
     const { mainId, subId } = req.params;
 
+    // 교회 ID 유효성 검사
     if (!Church.validateChurchId(mainId, subId)) {
-      return res.status(400).json({ message: 'Invalid church ID format' });
+      return res.status(400).json({
+        success: false,
+        message: '잘못된 교회 ID 형식입니다.'
+      });
     }
 
     const church = await Church.findOneAndDelete({ mainId, subId });
+
     if (!church) {
-      return res.status(404).json({ message: 'Church not found' });
+      return res.status(404).json({
+        success: false,
+        message: '해당 교회를 찾을 수 없습니다.'
+      });
     }
 
-    // 관련된 이벤트 참가 이력도 삭제
-    await ChurchEventParticipation.deleteMany({ 'churchId.mainId': mainId, 'churchId.subId': subId });
+    res.status(200).json({
+      success: true,
+      message: '교회가 성공적으로 삭제되었습니다.'
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: '교회 삭제 중 오류가 발생했습니다.',
+      error: error.message
+    });
+  }
+};
 
-    res.json({ message: 'Church deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error deleting church', error });
+// 교회 검색
+export const searchChurches = async (req: Request, res: Response) => {
+  try {
+    const { query } = req.query;
+    const searchRegex = new RegExp(String(query), 'i');
+
+    const churches = await Church.find({
+      $or: [
+        { name: searchRegex },
+        { location: searchRegex },
+        { mainId: searchRegex }
+      ]
+    }).sort({ mainId: 1, subId: 1 });
+
+    res.status(200).json({
+      success: true,
+      count: churches.length,
+      data: churches
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: '교회 검색 중 오류가 발생했습니다.',
+      error: error.message
+    });
   }
 };
 
