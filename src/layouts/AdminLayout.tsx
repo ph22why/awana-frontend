@@ -70,16 +70,16 @@ const AdminLayout: React.FC = () => {
         ))}
       </List>
       <Divider />
-      <List>
+      {/* <List>
         <ListItem disablePadding>
           <ListItemButton component={RouterLink} to="/">
             <ListItemIcon>
               <ArrowBackIcon />
             </ListItemIcon>
-            <ListItemText primary="메인으로 돌아가기" />
+            <ListItemText primary="" />
           </ListItemButton>
         </ListItem>
-      </List>
+      </List> */}
     </div>
   );
 
