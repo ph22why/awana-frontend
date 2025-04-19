@@ -1,4 +1,8 @@
 import React from 'react';
+
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
+
 import {
   Container,
   Typography,
@@ -77,6 +81,71 @@ const ReceiptManagePage: React.FC = () => {
     console.log('Download receipt:', id);
   };
 
+  const downloadSampleExcel = () => {
+    const headers = [
+      '등록번호','등록번호 중복시 아이디','년도', '이벤트명',
+      '참가인원-전체', '참가인원-학생', '참가인원-선생', '참가인원-ym', '비용'
+    ];
+  
+    const sampleData = [headers]; // 헤더만 있는 빈 데이터 생성
+  
+    const worksheet = XLSX.utils.aoa_to_sheet(sampleData);
+    const workbook = XLSX.utils.book_new();
+  
+    XLSX.utils.book_append_sheet(workbook, worksheet, '샘플');
+  
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
+  
+    saveAs(data, '영수증업로드양식.xlsx');
+  };
+
+
+  const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+  
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target?.result as ArrayBuffer);
+      const workbook = XLSX.read(data, { type: 'array' });
+  
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      
+      // ✅ 여기에서 타입을 명확히 지정
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as Array<Array<any>>;
+  
+      const [header, ...rows] = jsonData;
+  
+      const expectedHeaders = [
+           '등록번호','등록번호 중복시 아이디','년도', '이벤트명',
+          '참가인원-전체', '참가인원-학생', '참가인원-선생', '참가인원-ym', '비용'
+      ];
+  
+      if (JSON.stringify(header) !== JSON.stringify(expectedHeaders)) {
+        alert('엑셀 양식이 올바르지 않습니다. 샘플 파일을 확인하세요.');
+        return;
+      }
+  
+      const parsedData = rows.map((row) => ({
+        church_reg_ID: row[0],
+        church_sub_ID: row[1],
+        event_Year: row[2],
+        event_Name: row[3],
+        part_total: row[4],
+        part_student: row[5],
+        part_teacher: row[6],
+        part_ym: row[7],
+        costs: row[8],
+      }));
+  
+      console.log(parsedData);
+    };
+  
+    reader.readAsArrayBuffer(file);
+  };
+  
+
   return (
     <Container maxWidth="lg">
       <Typography variant="h4" component="h1" gutterBottom>
@@ -93,6 +162,15 @@ const ReceiptManagePage: React.FC = () => {
             startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
           }}
         />
+        <Button variant="contained" onClick={downloadSampleExcel}>
+          샘플 엑셀 다운로드
+        </Button>
+        <Button variant="outlined" component="label">
+      엑셀 파일 업로드
+      <input type="file" hidden accept=".xlsx,.xls" onChange={handleExcelUpload} />
+    </Button>
+
+
         <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel>영수증 종류</InputLabel>
           <Select label="영수증 종류" defaultValue="all">
