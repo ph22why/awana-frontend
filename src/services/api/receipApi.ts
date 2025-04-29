@@ -24,8 +24,21 @@ export const receipApi = {
   createReceipt: async (receiptData: ReceiptFormData) => {
     try {
       console.log('보내는 영수증 데이터:', receiptData);
-      // const res = await axiosInstance.post(`${API_PATHS.RECEIPT}/create`, receiptData);
-      // return res.data;
+      
+      const response = await axios({
+        method: 'post',
+        url: `${BASE_URL}${API_PATHS.RECEIPT}`,
+        data: receiptData,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        withCredentials: false
+      });
+      
+      console.log('Response:', response.data);
+      return response;
+
     } catch (error: any) {
       console.error('❌ Error creating receipt:', {
         message: error.message,

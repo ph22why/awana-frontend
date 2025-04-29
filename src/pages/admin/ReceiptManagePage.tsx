@@ -273,6 +273,8 @@ const [snackbar, setSnackbar] = useState<{
     console.log('Download receipt:', id);
   };
   const [sampleEvents, setSampleEvents] = useState<SampleEvent[]>([]);
+  const [matchedChurches, setMatchedChurches] = useState<Church[]>([]);
+
   const [formData, setFormData] = useState<Partial<EventFormData>>({
       event_Open_Available: '비공개'
     });
@@ -338,6 +340,21 @@ const [snackbar, setSnackbar] = useState<{
   
     reader.readAsArrayBuffer(file);
   };
+  
+
+  const handleChurchIdInputChange = (input: string) => {
+    setChurchIdInput(input);
+  
+    const matches = churches.filter((church) => church.mainId === input);
+    setMatchedChurches(matches);
+  
+    if (matches.length === 1) {
+      setSelectedChurchId(matches[0]._id);
+    } else {
+      setSelectedChurchId('');
+    }
+  };
+  
   
     const handleEventNameSelect = (event: SelectChangeEvent<string>) => {
       const eventId = parseInt(event.target.value, 10);
@@ -415,91 +432,81 @@ const [snackbar, setSnackbar] = useState<{
   <Box sx={{ p: 2, border: '1px solid #ccc', borderRadius: 2,mb: 2 }}>
   {/* 1줄: 연도 / 이벤트명 / 교회명 / 등록번호 */}
   <Grid container spacing={2}>
-    <Grid item xs={3}>
-      <FormControl size="small" fullWidth>
-        <InputLabel>연도</InputLabel>
-        <Select label="연도" defaultValue="2024">
-          <MenuItem value="2024">2024년</MenuItem>
-          <MenuItem value="2023">2023년</MenuItem>
-          <MenuItem value="2022">2022년</MenuItem>
-          <MenuItem value="2021">2021년</MenuItem>
-        </Select>
-      </FormControl>
-    </Grid>
 
-    <Grid item xs={3}>
-      <FormControl size="small" fullWidth>
-        <InputLabel>이벤트명</InputLabel>
-        <Select
-          value={sampleEvents.find(event =>
-            `${event.sampleEvent_Name} ${new Date().getFullYear()}` === formData.event_Name
-          )?.sampleEvent_ID.toString() || ''}
-          onChange={handleEventNameSelect}
-          label="이벤트명"
-          required
-        >
-          {sampleEvents.map(event => (
-            <MenuItem
-              key={`event-${event.sampleEvent_ID}`}
-              value={event.sampleEvent_ID.toString()}
-            >
-              {`${event.sampleEvent_Name} ${new Date().getFullYear()}`}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-    </Grid>
+  {/* 연도 선택 */}
+  <Grid item xs={3}>
+    <FormControl size="small" fullWidth>
+      <InputLabel id="year-select-label">연도</InputLabel>
+      <Select
+        labelId="year-select-label"
+        label="연도"
+        defaultValue="2024"
+      >
+        <MenuItem value="2024">2024년</MenuItem>
+        <MenuItem value="2023">2023년</MenuItem>
+        <MenuItem value="2022">2022년</MenuItem>
+        <MenuItem value="2021">2021년</MenuItem>
+      </Select>
+    </FormControl>
+  </Grid>
 
-          <Grid item xs={3}>
-            <Autocomplete
-              freeSolo
-              size="small"
-              fullWidth
-              options={churches.map((church) => ({
-                label: church.name,
-                value: church._id,
-                mainId: church.mainId,
-                subId: church.subId,
-              }))}
-              getOptionLabel={(option) =>
-                typeof option === 'string' ? option : option.label
-              }
-              value={
-                churches
-                  .map((church) => ({
-                    label: church.name,
-                    value: church._id,
-                    mainId: church.mainId,
-                    subId: church.subId,
-                  }))
-                  .find((c) => c.value === selectedChurchId) || null
-              }
-              onChange={(event, newValue) => {
-                if (typeof newValue === 'string') {
-                  setSelectedChurchId('');
-                  setChurchIdInput(newValue);
-                } else if (newValue) {
-                  setSelectedChurchId(newValue.value);
-                  setChurchIdInput(newValue.mainId);
-                } else {
-                  setSelectedChurchId('');
-                  setChurchIdInput('');
-                }
-              }}
-              renderInput={(params) => <TextField {...params} label="교회명" />}
-            />
-          </Grid>
+  {/* 이벤트명 선택 */}
+  <Grid item xs={3}>
+    <FormControl size="small" fullWidth>
+      <InputLabel id="event-select-label">이벤트명</InputLabel>
+      <Select
+        labelId="event-select-label"
+        label="이벤트명"
+        value={sampleEvents.find(event =>
+          `${event.sampleEvent_Name} ${new Date().getFullYear()}` === formData.event_Name
+        )?.sampleEvent_ID.toString() || ''}
+        onChange={handleEventNameSelect}
+      >
+        {sampleEvents.map(event => (
+          <MenuItem
+            key={`event-${event.sampleEvent_ID}`}
+            value={event.sampleEvent_ID.toString()}
+          >
+            {`${event.sampleEvent_Name} ${new Date().getFullYear()}`}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </Grid>
 
-          <Grid item xs={3}>
-            <TextField
-              label="등록번호"
-              size="small"
-              value={churchIdInput}
-              fullWidth
-              InputProps={{ readOnly: true }}
-            />
-          </Grid>
-        </Grid>
+  {/* 등록번호 입력 */}
+  <Grid item xs={3}>
+    <TextField
+      label="등록번호"
+      size="small"
+      value={churchIdInput}
+      onChange={(e) => handleChurchIdInputChange(e.target.value)}
+      fullWidth
+    />
+  </Grid>
+
+  {/* 교회 선택 */}
+  <Grid item xs={3}>
+    <FormControl size="small" fullWidth>
+      <InputLabel id="church-select-label">교회 선택</InputLabel>
+      <Select
+        labelId="church-select-label"
+        label="교회 선택"
+        value={selectedChurchId}
+        onChange={(e) => setSelectedChurchId(e.target.value)}
+        disabled={matchedChurches.length === 0}
+      >
+        {matchedChurches.map((church) => (
+          <MenuItem key={church._id} value={church._id}>
+            {church.name}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </Grid>
+
+</Grid>
+
 
         {/* 2줄: 나머지 입력 항목들 */}
         <Grid container spacing={2} sx={{ mt: 2 }}>
