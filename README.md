@@ -150,6 +150,10 @@ db.churches.insertMany([
 5. 이벤트 삭제
 - DELETE `/api/events/{id}`
 
+### Event Service API (기본 포트: 3003)
+- POST `/api/receipt`
+- Body: ReceiptFormData
+
 ## 데이터 포맷
 
 ### 교회 데이터
