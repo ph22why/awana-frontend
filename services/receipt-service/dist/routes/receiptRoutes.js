@@ -54,7 +54,7 @@ const receiptDataValidation = [
     (0, express_validator_1.body)('churchId.mainId').matches(/^\d{4}$/).withMessage('Main ID must be a 4-digit number'),
     (0, express_validator_1.body)('churchId.subId').matches(/^[a-z]$/).withMessage('Sub ID must be a single lowercase letter'),
     (0, express_validator_1.body)('eventId').notEmpty().isString().withMessage('Event ID is required'),
-    (0, express_validator_1.body)('amount').isFloat({ min: 0 }).withMessage('Amount must be non-negative'),
+    (0, express_validator_1.body)('costs').isFloat({ min: 0 }).withMessage('Costs must be non-negative'),
     (0, express_validator_1.body)('paymentMethod').isIn(['card', 'bank', 'cash']).withMessage('Invalid payment method'),
     (0, express_validator_1.body)('paymentStatus').optional().isIn(['pending', 'completed', 'cancelled']).withMessage('Invalid payment status'),
     validateRequest_1.validateRequest

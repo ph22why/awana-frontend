@@ -42,8 +42,8 @@ const EventEditPage: React.FC = () => {
     const fetchEvent = async () => {
       try {
         if (!id) return;
-        const response = await eventApi.getEvents();
-        const event = response.find(event => event._id === id);
+        const events = await eventApi.getEvents();
+        const event = events.find(event => event._id === id);
         if (event) {
           setFormData({
             event_Name: event.event_Name,
@@ -60,6 +60,7 @@ const EventEditPage: React.FC = () => {
         }
       } catch (error) {
         console.error('Error fetching event:', error);
+        // Handle error appropriately
       }
     };
 

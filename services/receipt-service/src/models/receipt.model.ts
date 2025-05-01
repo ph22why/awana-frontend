@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IEvent extends Document {
+export interface IReceipt extends Document {
   churchId: string;
   churchName: string;
   managerPhone: string;
@@ -21,9 +21,19 @@ const ReceiptSchema: Schema = new Schema({
   partStudent: { type: Number, required: true },
   partTeacher: { type: Number, required: true },
   partYM: { type: Number, required: true },
-  costs: { type: Number, required: true }
+  costs: { 
+    type: Number, 
+    required: true,
+    min: 0,
+    validate: {
+      validator: function(v: number) {
+        return v >= 0;
+      },
+      message: '금액은 0 이상이어야 합니다.'
+    }
+  }
 }, {
   timestamps: true
 });
 
-export default mongoose.model<IEvent>('Event', ReceiptSchema); 
+export default mongoose.model<IReceipt>('Receipt', ReceiptSchema); 

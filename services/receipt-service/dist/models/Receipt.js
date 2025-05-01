@@ -19,7 +19,7 @@ const receiptSchema = new mongoose_1.Schema({
         type: String,
         required: true
     },
-    amount: {
+    costs: {
         type: Number,
         required: true,
         min: 0

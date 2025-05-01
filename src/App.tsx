@@ -12,6 +12,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import EventManagePage from './pages/admin/EventManagePage';
 import ChurchManagePage from './pages/admin/ChurchManagePage';
 import ReceiptManagePage from './pages/admin/ReceiptManagePage';
+import EventReceiptManagePage from './pages/admin/EventReceiptManagePage';
 import EventCreatePage from './pages/admin/EventCreatePage';
 import EventEditPage from './pages/admin/EventEditPage';
 
@@ -40,7 +41,8 @@ const ThemedApp: React.FC = () => {
           <Route path="events/create" element={<EventCreatePage />} />
           <Route path="events/edit/:id" element={<EventEditPage />} />
           <Route path="churches/*" element={<ChurchManagePage />} />
-          <Route path="receipts/*" element={<ReceiptManagePage />} />
+          <Route path="receipts" element={<ReceiptManagePage />} />
+          <Route path="receipts/events" element={<EventReceiptManagePage />} />
         </Route>
 
         {/* Fallback */}

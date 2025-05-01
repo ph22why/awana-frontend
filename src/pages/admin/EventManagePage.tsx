@@ -57,23 +57,47 @@ const EventManagePage: React.FC = () => {
     eventName: ''
   });
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
   const fetchEvents = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await eventApi.getEvents();
-      setEvents(data);
+      console.log('Fetching events...');
+      
+      const fetchedEvents = await eventApi.getEvents();
+      console.log('Fetched events:', fetchedEvents);
+      
+      if (!fetchedEvents || fetchedEvents.length === 0) {
+        console.log('No events found');
+        setEvents([]);
+        return;
+      }
+
+      // 날짜 기준으로 내림차순 정렬 (최신순)
+      const sortedEvents = [...fetchedEvents].sort((a, b) => {
+        const dateA = new Date(b.createdAt || b.event_Start_Date).getTime();
+        const dateB = new Date(a.createdAt || a.event_Start_Date).getTime();
+        return dateA - dateB;
+      });
+      
+      console.log('Sorted events to display:', sortedEvents);
+      setEvents(sortedEvents);
     } catch (err: any) {
-      setError(err.message || '이벤트 목록을 불러오는데 실패했습니다.');
-      console.error('Error fetching events:', err);
+      const errorMessage = err.message || '이벤트 목록을 불러오는데 실패했습니다.';
+      console.error('Error fetching events:', {
+        error: err,
+        message: errorMessage
+      });
+      setError(errorMessage);
+      setEvents([]);
     } finally {
       setLoading(false);
     }
   };
+
+  // 컴포넌트 마운트 시와 이벤트 생성/수정/삭제 후에 목록 새로고침
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
   const handleEdit = (id: string) => {
     navigate(`/admin/events/edit/${id}`);

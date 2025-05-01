@@ -118,20 +118,41 @@ const EventCreatePage: React.FC = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    
+    // 필수 필드 검증
+    if (!formData.event_Name || !formData.event_Place || 
+        !formData.event_Start_Date || !formData.event_End_Date ||
+        !formData.event_Registration_Start_Date || !formData.event_Registration_End_Date) {
+      setSnackbar({
+        open: true,
+        message: '모든 필수 항목을 입력해주세요.',
+        severity: 'error'
+      });
+      return;
+    }
+
     try {
       setLoading(true);
-      await eventApi.createEvent(formData as EventFormData);
+      console.log('Submitting event data:', formData);
+      
+      const createdEvent = await eventApi.createEvent(formData as EventFormData);
+      console.log('Created event:', createdEvent);
+      
       setSnackbar({
         open: true,
         message: '이벤트가 성공적으로 생성되었습니다.',
         severity: 'success'
       });
-      navigate('/admin');
-    } catch (error) {
+
+      // 성공 메시지를 보여주고 1초 후에 목록 페이지로 이동
+      setTimeout(() => {
+        navigate('/admin/events');
+      }, 1000);
+    } catch (error: any) {
       console.error('Error creating event:', error);
       setSnackbar({
         open: true,
-        message: '이벤트 생성에 실패했습니다.',
+        message: error.message || '이벤트 생성에 실패했습니다.',
         severity: 'error'
       });
     } finally {

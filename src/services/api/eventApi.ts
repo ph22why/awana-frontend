@@ -40,9 +40,15 @@ export interface IEvent extends IEventCreate {
   updatedAt: string;
 }
 
-interface EventApiResponse {
+export interface EventApiResponse {
   success: boolean;
   data: IEvent[];
+  error?: string;
+}
+
+export interface SingleEventApiResponse {
+  success: boolean;
+  data: IEvent;
   error?: string;
 }
 
@@ -58,34 +64,23 @@ interface SampleEventApiResponse {
 
 export const eventApi = {
   // 이벤트 목록 조회
-  getEvents: async (): Promise<IEvent[]> => {
+  getEvents: async (params?: { year?: number; page?: number; limit?: number }): Promise<IEvent[]> => {
     try {
-      console.log('Fetching events...');
-      console.log('Request URL:', `${BASE_URL}${API_PATHS.EVENTS}`);
+      console.log('Fetching events with params:', params);
+      const response = await axiosInstance.get<IEvent[] | EventApiResponse>(`${API_PATHS.EVENTS}`, { params });
+      console.log('Events response:', response.data);
       
-      const response = await axios.get<EventsResponse>(`${BASE_URL}${API_PATHS.EVENTS}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        withCredentials: false
-      });
-      
-      console.log('Response:', response.data);
-      
-      // 응답이 배열인 경우 (기존 API 형식)
+      // 응답이 배열인 경우 직접 반환
       if (Array.isArray(response.data)) {
-        return response.data as IEvent[];
+        return response.data;
       }
       
-      // 응답이 객체인 경우 (새로운 API 형식)
-      const apiResponse = response.data as EventApiResponse;
-      if (apiResponse.success) {
-        return apiResponse.data || [];
-      } else if (apiResponse.data) {
-        return apiResponse.data;
+      // 응답이 EventApiResponse 형태인 경우 data 필드 반환
+      if ('data' in response.data) {
+        return response.data.data;
       }
       
+      // 기본값으로 빈 배열 반환
       return [];
     } catch (error: any) {
       console.error('Error fetching events:', {
@@ -99,25 +94,31 @@ export const eventApi = {
   },
 
   // 이벤트 생성
-  createEvent: async (eventData: EventFormData) => {
+  createEvent: async (eventData: EventFormData): Promise<IEvent> => {
     try {
-      console.log('Creating event...');
+      console.log('Creating event with data:', eventData);
+      
+      // 날짜 데이터 변환
+      const formattedData = {
+        ...eventData,
+        event_Start_Date: eventData.event_Start_Date ? new Date(eventData.event_Start_Date).toISOString() : undefined,
+        event_End_Date: eventData.event_End_Date ? new Date(eventData.event_End_Date).toISOString() : undefined,
+        event_Registration_Start_Date: eventData.event_Registration_Start_Date ? new Date(eventData.event_Registration_Start_Date).toISOString() : undefined,
+        event_Registration_End_Date: eventData.event_Registration_End_Date ? new Date(eventData.event_Registration_End_Date).toISOString() : undefined
+      };
+      
+      console.log('Formatted event data:', formattedData);
       console.log('Request URL:', `${BASE_URL}${API_PATHS.EVENTS}`);
-      console.log('Event Data:', eventData);
       
-      const response = await axios({
-        method: 'post',
-        url: `${BASE_URL}${API_PATHS.EVENTS}`,
-        data: eventData,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        withCredentials: false
-      });
+      const response = await axiosInstance.post<SingleEventApiResponse>(`${API_PATHS.EVENTS}`, formattedData);
       
-      console.log('Response:', response.data);
-      return response;
+      console.log('Create event response:', response.data);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.error || '이벤트 생성에 실패했습니다.');
+      }
+      
+      return response.data.data;
     } catch (error: any) {
       console.error('Error creating event:', {
         message: error.message,
@@ -125,7 +126,7 @@ export const eventApi = {
         data: error.response?.data,
         config: error.config
       });
-      throw error;
+      throw new Error(error.response?.data?.error || error.message || '이벤트 생성에 실패했습니다.');
     }
   },
 
@@ -230,6 +231,16 @@ export const eventApi = {
         data: error.response?.data,
         config: error.config
       });
+      throw error;
+    }
+  },
+
+  getEventById: async (id: number) => {
+    try {
+      const response = await axiosInstance.get<{ success: boolean; data: IEvent }>(`${API_PATHS.EVENTS}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting event:', error);
       throw error;
     }
   }

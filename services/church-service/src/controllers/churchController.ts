@@ -197,21 +197,52 @@ export const deleteChurch = async (req: Request, res: Response) => {
 // 교회 검색
 export const searchChurches = async (req: Request, res: Response) => {
   try {
-    const { query } = req.query;
-    const searchRegex = new RegExp(String(query), 'i');
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
 
-    const churches = await Church.find({
-      $or: [
+    const searchQuery: any = {};
+    
+    // Handle different search parameters
+    if (req.query.mainId) {
+      searchQuery.mainId = req.query.mainId;
+    } else if (req.query.name) {
+      searchQuery.name = new RegExp(String(req.query.name), 'i');
+    } else if (req.query.location) {
+      searchQuery.location = new RegExp(String(req.query.location), 'i');
+    } else if (req.query.query) {
+      // General search across multiple fields
+      const searchRegex = new RegExp(String(req.query.query), 'i');
+      searchQuery.$or = [
         { name: searchRegex },
         { location: searchRegex },
         { mainId: searchRegex }
-      ]
-    }).sort({ mainId: 1, subId: 1 });
+      ];
+    }
+
+    // Get total count for pagination
+    const total = await Church.countDocuments(searchQuery);
+    
+    // Get results - either paginated or all
+    const query = Church.find(searchQuery).sort({ mainId: 1, subId: 1 });
+    
+    // Apply pagination only if limit is less than total (to support getting all results)
+    if (limit < total) {
+      query.skip(skip).limit(limit);
+    }
+    
+    const churches = await query;
+    const totalPages = Math.ceil(total / limit);
 
     res.status(200).json({
       success: true,
-      count: churches.length,
-      data: churches
+      data: churches,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages
+      }
     });
   } catch (error: any) {
     res.status(500).json({
