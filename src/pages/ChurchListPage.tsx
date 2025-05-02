@@ -1,99 +1,74 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { churchApi, Church, PaginationInfo } from '../services/api/churchApi';
 import {
   Container,
   Typography,
-  Grid,
-  Card,
-  CardContent,
   TextField,
   InputAdornment,
   Box,
   CircularProgress,
   Pagination,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableContainer,
+  Paper,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
 
-interface Church {
-  id: string;
-  mainId: string;
-  subId: string;
-  name: string;
-  location: string;
-  contact: string;
-}
-
-interface PaginationInfo {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-interface Pagination {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-interface ChurchListResponse {
-  success: boolean;
-  data: {
-    churches: Church[];
-    pagination: Pagination;
-  };
-  error?: string;
-}
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';
-
 const ChurchListPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [allChurches, setAllChurches] = useState<Church[]>([]);
   const [churches, setChurches] = useState<Church[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     const fetchChurches = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        if (!loading) {
-          setLoading(true);
-          setError(null);
-          const response = await axios.get<ChurchListResponse>(`${API_BASE_URL}/api/churches`, {
-            params: {
-              page,
-              limit: 12,
-              search: searchTerm
-            }
-          });
-          
-          const data = response.data;
-          
-          if (data.success) {
-            setChurches(data.data.churches);
-            const paginationData = {
-              ...data.data.pagination,
-              totalPages: Math.ceil(data.data.pagination.total / data.data.pagination.limit)
-            };
-            setPagination(paginationData);
-          } else {
-            throw new Error(data.error || '데이터를 불러오는데 실패했습니다.');
-          }
-        }
+        const response = await churchApi.searchChurches({
+          getAllResults: true,
+          name: searchTerm || undefined,
+        });
+        setAllChurches(response.data);
       } catch (err) {
-        console.error('Error fetching churches:', err);
         setError('교회 목록을 불러오는데 실패했습니다.');
+        setAllChurches([]);
       } finally {
         setLoading(false);
       }
     };
-
     const debounceTimer = setTimeout(fetchChurches, 300);
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, page]);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    // 검색어가 있으면 프론트에서 필터링 (이름, mainId 부분 일치)
+    let filtered = allChurches;
+    if (searchTerm.trim() !== '') {
+      const term = searchTerm.trim().toLowerCase();
+      filtered = allChurches.filter(church =>
+        (church.name && church.name.toLowerCase().includes(term)) ||
+        (church.mainId && church.mainId.toLowerCase().includes(term))
+      );
+    }
+    // 페이지네이션 처리
+    const startIdx = (page - 1) * pageSize;
+    const endIdx = startIdx + pageSize;
+    setChurches(filtered.slice(startIdx, endIdx));
+  }, [allChurches, searchTerm, page, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(allChurches.length / pageSize));
 
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
@@ -125,6 +100,32 @@ const ChurchListPage: React.FC = () => {
         />
       </Box>
 
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, width: '100%' }}>
+        <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+          />
+        </Box>
+        <FormControl size="small" sx={{ minWidth: 120, marginLeft: 'auto' }}>
+          <InputLabel>페이지당 개수</InputLabel>
+          <Select
+            value={pageSize}
+            label="페이지당 개수"
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+          >
+            <MenuItem value={10}>10개</MenuItem>
+            <MenuItem value={30}>30개</MenuItem>
+            <MenuItem value={50}>50개</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
           <CircularProgress />
@@ -137,47 +138,36 @@ const ChurchListPage: React.FC = () => {
         </Box>
       ) : (
         <>
-          <Grid container spacing={3}>
-            {churches.map((church) => (
-              <Grid item key={church.id} xs={12} sm={6} md={4}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      {church.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                      교회 ID: {church.mainId}-{church.subId}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                      위치: {church.location}
-                    </Typography>
-                    {church.contact && (
-                      <Typography variant="body2" color="text.secondary">
-                        연락처: {church.contact}
-                      </Typography>
-                    )}
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-
-          {churches.length === 0 ? (
-            <Box sx={{ mt: 4, textAlign: 'center' }}>
-              <Typography variant="body1" color="text.secondary">
-                검색 결과가 없습니다.
-              </Typography>
-            </Box>
-          ) : pagination && (
-            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-              <Pagination
-                count={pagination.totalPages}
-                page={page}
-                onChange={handlePageChange}
-                color="primary"
-              />
-            </Box>
-          )}
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>교회명</TableCell>
+                  <TableCell>교회 ID</TableCell>
+                  <TableCell>위치</TableCell>
+                  <TableCell>연락처</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {churches.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} align="center">
+                      검색 결과가 없습니다.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  churches.map((church) => (
+                    <TableRow key={church._id}>
+                      <TableCell>{church.name}</TableCell>
+                      <TableCell>{church.mainId}-{church.subId}</TableCell>
+                      <TableCell>{church.location}</TableCell>
+                      <TableCell>{church.phone || '-'}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </>
       )}
     </Container>

@@ -18,125 +18,73 @@ import {
   School,
   Receipt,
 } from '@mui/icons-material';
-
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  imageUrl: string;
-}
-
-const featuredEvents: Event[] = [
-  {
-    id: '1',
-    title: '성경퀴즈대회',
-    description: '새해를 시작하며 진행되는 AWANA 성경퀴즈대회',
-    date: '2024-01',
-    imageUrl: '/images/bible-quiz.jpg',
-  },
-  {
-    id: '2',
-    title: 'YM Summit',
-    description: '청소년 사역자들을 위한 리더십 훈련 프로그램',
-    date: '2024-01',
-    imageUrl: '/images/summit.jpg',
-  },
-  {
-    id: '3',
-    title: '상반기 연합 BT',
-    description: '상반기 AWANA 연합 지도자 훈련',
-    date: '2024-02',
-    imageUrl: '/images/training.jpg',
-  },
-  {
-    id: '4',
-    title: '컨퍼런스',
-    description: 'AWANA 사역자들을 위한 전국 컨퍼런스',
-    date: '2024-03',
-    imageUrl: '/images/conference.jpg',
-  },
-  {
-    id: '5',
-    title: '올림픽 설명회',
-    description: '2024 AWANA 올림픽 준비를 위한 설명회',
-    date: '2024-04',
-    imageUrl: '/images/olympic-info.jpg',
-  },
-  {
-    id: '6',
-    title: '올림픽',
-    description: '전국 AWANA 클럽이 함께하는 체육대회',
-    date: '2024-05',
-    imageUrl: '/images/olympic.jpg',
-  },
-  {
-    id: '7',
-    title: '조정관 학교 101',
-    description: 'AWANA 조정관 기초 과정 교육',
-    date: '2024-06',
-    imageUrl: '/images/commander101.jpg',
-  },
-  {
-    id: '8',
-    title: '조정관 학교 201',
-    description: 'AWANA 조정관 심화 과정 교육',
-    date: '2024-06',
-    imageUrl: '/images/commander201.jpg',
-  },
-  {
-    id: '9',
-    title: 'T&T Camp',
-    description: 'Truth & Training 여름 캠프',
-    date: '2024-07',
-    imageUrl: '/images/tt-camp.jpg',
-  },
-  {
-    id: '10',
-    title: '감독관 학교 101',
-    description: 'AWANA 감독관 양성 과정',
-    date: '2024-08',
-    imageUrl: '/images/director101.jpg',
-  },
-  {
-    id: '11',
-    title: 'YM MIT',
-    description: '청소년 사역자 훈련 프로그램',
-    date: '2024-08',
-    imageUrl: '/images/ym-mit.jpg',
-  },
-  {
-    id: '12',
-    title: '하반기 연합 BT',
-    description: '하반기 AWANA 연합 지도자 훈련',
-    date: '2024-09',
-    imageUrl: '/images/bt-training.jpg',
-  },
-  {
-    id: '13',
-    title: '영성수련회',
-    description: 'AWANA 지도자를 위한 영성 수련회',
-    date: '2024-10',
-    imageUrl: '/images/retreat.jpg',
-  },
-  {
-    id: '14',
-    title: '성경퀴즈대회 설명회',
-    description: '2025년 성경퀴즈대회 준비를 위한 설명회',
-    date: '2024-11',
-    imageUrl: '/images/quiz-info.jpg',
-  },
-  {
-    id: '15',
-    title: '비전캠프',
-    description: '연말 AWANA 비전 캠프',
-    date: '2024-12',
-    imageUrl: '/images/vision-camp.jpg',
-  }
-];
+import { eventApi, IEvent } from '../services/api/eventApi';
+import { SampleEvent } from '../types/event';
+import { useEffect, useState } from 'react';
 
 const MainPage: React.FC = () => {
   const navigate = useNavigate();
+  const [mergedEvents, setMergedEvents] = useState<Array<{
+    id: string;
+    title: string;
+    description: string;
+    date: string;
+    imageUrl: string;
+    isSample: boolean;
+  }>>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // 1. DB에서 공개된 이벤트 불러오기
+        const dbEvents: IEvent[] = await eventApi.getEvents();
+        // 2. 샘플 이벤트 불러오기
+        const sampleRes = await eventApi.getSampleEvents();
+        const sampleEvents: SampleEvent[] = sampleRes.data || [];
+
+        // 1. DB에서 공개된 이벤트만 필터링
+        const publicEvents = dbEvents.filter(e => e.event_Open_Available === '공개');
+        // 3. 샘플이벤트 기준으로 병합
+        const merged = sampleEvents.map((sample) => {
+          const normalize = (name: string) => name.replace(/\d{4}/g, '').replace(/\s/g, '').toLowerCase();
+          const matched = publicEvents.find(
+            (db) => normalize(db.event_Name) === normalize(sample.sampleEvent_Name)
+          );
+          if (matched) {
+            // DB 이벤트 정보 사용
+            return {
+              id: matched._id,
+              title: matched.event_Name,
+              description: matched.event_Description || sample.sampleEvent_Name,
+              date: matched.event_Start_Date || matched.event_Year?.toString() || '미정',
+              imageUrl: `/images/${sample.sampleEvent_Name.replace(/\s/g, '-').toLowerCase()}.jpg`,
+              isSample: false,
+            };
+          } else {
+            // 샘플 정보 + 기간 미정
+            return {
+              id: `sample-${sample.sampleEvent_ID}`,
+              title: sample.sampleEvent_Name,
+              description: sample.sampleEvent_Name,
+              date: '미정',
+              imageUrl: `/images/${sample.sampleEvent_Name.replace(/\s/g, '-').toLowerCase()}.jpg`,
+              isSample: true,
+            };
+          }
+        });
+        setMergedEvents(merged);
+      } catch (err: any) {
+        setError(err.message || '이벤트 목록을 불러오는데 실패했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   return (
     <Box>
@@ -351,6 +299,11 @@ const MainPage: React.FC = () => {
           >
             이벤트 목록
         </Typography>
+        {loading ? (
+          <Typography align="center">불러오는 중...</Typography>
+        ) : error ? (
+          <Typography color="error" align="center">{error}</Typography>
+        ) : (
           <Box sx={{ 
             maxHeight: '600px', 
             overflowY: 'auto',
@@ -370,7 +323,7 @@ const MainPage: React.FC = () => {
             },
           }}>
         <Grid container spacing={4}>
-          {featuredEvents.map((event) => (
+          {mergedEvents.map((event) => (
             <Grid item key={event.id} xs={12} sm={6} md={4}>
               <Card
                 sx={{
@@ -410,10 +363,12 @@ const MainPage: React.FC = () => {
                         }}
                   >
                         <CalendarMonth fontSize="small" />
-                        {new Date(event.date).toLocaleDateString('ko-KR', {
-                          year: 'numeric',
-                          month: 'long'
-                        })}
+                        {event.date === '미정'
+                          ? '미정'
+                          : new Date(event.date).toLocaleDateString('ko-KR', {
+                              year: 'numeric',
+                              month: 'long',
+                            })}
                   </Typography>
                 </CardContent>
                     <Divider sx={{ mx: 2 }} />
@@ -438,6 +393,7 @@ const MainPage: React.FC = () => {
           ))}
         </Grid>
           </Box>
+        )}
       </Container>
       </Box>
     </Box>
