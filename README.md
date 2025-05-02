@@ -1,4 +1,4 @@
-# AWANA Church Management System v1.2
+# AWANA Church Management System v2.0
 
 > **핵심 기능 요약**
 >
@@ -196,7 +196,7 @@ db.churches.insertMany([
 
 ## 버전 기록
 
-### deploy v1.0
+### deploy v2.0
 
 #### Client
 - 교회 목록 조회 기능 구현
