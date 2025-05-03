@@ -33,6 +33,12 @@ const MainPage: React.FC = () => {
     isSample: boolean;
     startTime?: string;
     endTime?: string;
+    url?: string;
+    eventEndDate?: string;
+    registrationStartDate?: string;
+    registrationEndDate?: string;
+    eventStartTime?: string;
+    eventEndTime?: string;
   }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +60,6 @@ const MainPage: React.FC = () => {
         const nowTime = Date.now();
         const activeEvents = publicEvents.filter(e => {
           if (!e.event_Registration_Start_Date || !e.event_Registration_End_Date) return false;
-          // 시간 문자열이 있으면 날짜와 합쳐서 비교
           const startDate = e.event_Registration_Start_Date.split('T')[0];
           const endDate = e.event_Registration_End_Date.split('T')[0];
           const startTime = e.event_Registration_Start_Time || '00:00';
@@ -66,7 +71,7 @@ const MainPage: React.FC = () => {
         // 3. 샘플이벤트 기준으로 병합
         const merged = sampleEvents.map((sample) => {
           const normalize = (name: string) => name.replace(/\d{4}/g, '').replace(/\s/g, '').toLowerCase();
-          const matched = activeEvents.find(
+          const matched = publicEvents.find(
             (db) => normalize(db.event_Name) === normalize(sample.sampleEvent_Name)
           );
           if (matched) {
@@ -80,6 +85,11 @@ const MainPage: React.FC = () => {
               isSample: false,
               startTime: matched.event_Registration_Start_Time,
               endTime: matched.event_Registration_End_Time,
+              url: matched.event_Link,
+              eventEndDate: matched.event_End_Date,
+              registrationStartDate: matched.event_Registration_Start_Date,
+              registrationEndDate: matched.event_Registration_End_Date,
+              // 이벤트 시작/종료 시간 필드는 없음 (시간 미정으로 표시)
             };
           } else {
             // 샘플 정보 + 기간 미정
@@ -307,7 +317,7 @@ const MainPage: React.FC = () => {
               }
             }}
           >
-            접수 활성화 이벤트
+            접수 중 이벤트
         </Typography>
         {loading ? (
           <Typography align="center">불러오는 중...</Typography>
@@ -363,6 +373,24 @@ const MainPage: React.FC = () => {
                       <CardContent sx={{ flexGrow: 1 }}>
                         <Typography gutterBottom variant="h5" component="h2" sx={{ fontWeight: 600 }}>
                           {event.title}
+                          {(() => {
+                            // 마감 상태면 [마감] 표시
+                            const now = Date.now();
+                            let regEnd = null;
+                            let eventEnd = null;
+                            if (event.endTime && event.date) {
+                              regEnd = Date.parse(`${event.date.split('T')[0]}T${event.endTime}:59`);
+                            }
+                            if (event.eventEndDate) {
+                              eventEnd = Date.parse(event.eventEndDate);
+                              const eventEndWithTime = new Date(eventEnd);
+                              eventEndWithTime.setHours(23, 59, 59, 999);
+                              if (regEnd && now > regEnd && now <= eventEndWithTime.getTime()) {
+                                return <span style={{ color: '#F87171', marginLeft: 8, fontSize: 18 }}>[마감]</span>;
+                              }
+                            }
+                            return null;
+                          })()}
                         </Typography>
                         <Typography color="text.secondary" sx={{ mb: 2 }}>
                           {event.description}
@@ -375,29 +403,64 @@ const MainPage: React.FC = () => {
                           <CalendarMonth fontSize="small" />
                           {event.date === '미정'
                             ? '미정'
-                            : new Date(event.date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-                          {/* 시간 표시 */}
-                          {event.startTime && event.endTime
-                            ? ` (${event.startTime}~${event.endTime})`
-                            : ' (시간 미정)'}
+                            : event.eventEndDate
+                              ? `${new Date(event.date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} ~ ${new Date(event.eventEndDate).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}`
+                              : new Date(event.date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
                         </Typography>
                       </CardContent>
                       <Divider sx={{ mx: 2 }} />
                       <CardActions sx={{ p: 2 }}>
-                        <Button
-                          fullWidth
-                          variant="contained"
-                          onClick={() => navigate(`/events/${event.id}`)}
-                          sx={{
-                            bgcolor: 'primary.main',
-                            color: 'white',
-                            '&:hover': {
-                              bgcolor: 'primary.dark',
+                        {(() => {
+                          // 접수기간 계산
+                          const now = Date.now();
+                          let regStart = null;
+                          let regEnd = null;
+                          if (event.startTime && event.registrationStartDate) {
+                            regStart = Date.parse(`${event.registrationStartDate.split('T')[0]}T${event.startTime}:00`);
+                          }
+                          if (event.endTime && event.registrationEndDate) {
+                            regEnd = Date.parse(`${event.registrationEndDate.split('T')[0]}T${event.endTime}:59`);
+                          }
+                          if (regStart && regEnd && now >= regStart && now <= regEnd) {
+                            // 접수기간 중
+                            return (
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                onClick={() => {
+                                  if (event.url) {
+                                    window.open(event.url, '_blank');
+                                  } else {
+                                    alert('접수폼이 준비되지 않았습니다.');
+                                  }
+                                }}
+                                sx={{
+                                  bgcolor: 'primary.main',
+                                  color: 'white',
+                                  '&:hover': {
+                                    bgcolor: 'primary.dark',
+                                  }
+                                }}
+                              >
+                                접수신청
+                              </Button>
+                            );
+                          } else if (regEnd && event.eventEndDate) {
+                            // 마감~이벤트종료까지
+                            const eventEnd = Date.parse(event.eventEndDate);
+                            const eventEndWithTime = new Date(eventEnd);
+                            eventEndWithTime.setHours(23, 59, 59, 999);
+                            if (now > regEnd && now <= eventEndWithTime.getTime()) {
+                              return (
+                                <Button fullWidth variant="contained" disabled sx={{ bgcolor: 'grey.400', color: 'white' }}>
+                                  접수마감
+                                </Button>
+                              );
                             }
-                          }}
-                        >
-                          자세히 보기
-                        </Button>
+                          }
+                          // 그 외(접수 전/이벤트 종료 후)
+                          return null;
+                        })()}
                       </CardActions>
                     </Card>
                   </Grid>

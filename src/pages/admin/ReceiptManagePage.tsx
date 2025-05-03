@@ -37,7 +37,7 @@ import {
   Delete as DeleteIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import type { EventFormData, SampleEvent } from '../../types/event';
 import type { ReceiptFormData } from '../../types/receipt';
 import { eventApi, IEvent } from '../../services/api/eventApi';
@@ -69,6 +69,7 @@ const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 const ReceiptManagePage: React.FC = () => {
   const navigate = useNavigate();
+  const { role } = useOutletContext<{ role: string }>();
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | ''>('');
   const [selectedEvent, setSelectedEvent] = useState<string>('');
@@ -926,6 +927,14 @@ const ReceiptManagePage: React.FC = () => {
     setSelectedReceipt(null);
     setDetailDialogOpen(false);
   };
+
+  if (role === 'mini') {
+    return (
+      <Container maxWidth="lg">
+        <Alert severity="error" sx={{ mb: 2 }}>접근 권한이 없습니다.</Alert>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="lg">

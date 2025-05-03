@@ -23,12 +23,7 @@ import {
 import { receiptApi, Receipt } from '../services/api/receiptApi';
 import { eventApi } from '../services/api/eventApi';
 import type { IEvent } from '../services/api/eventApi';
-
-interface Church {
-  church_reg_ID: string;
-  church_Name: string;
-  church_Phone?: string;
-}
+import { churchApi, Church } from '../services/api/churchApi';
 
 const ReceiptPage: React.FC = () => {
   const navigate = useNavigate();
@@ -88,26 +83,6 @@ const ReceiptPage: React.FC = () => {
     if (formatted.length <= 13) {
       setPhoneNumber(formatted);
       setShowNoChurchMessage(formatted.length === 13);
-      
-      if (formatted.length === 13) {
-        setIsLoading(true);
-        try {
-          // TODO: Replace with actual API call
-          const mockChurches = [
-            { church_reg_ID: '0001', church_Name: '서울중앙교회', church_Phone: '01012345678' },
-            { church_reg_ID: '0002', church_Name: '부산성도교회', church_Phone: '01087654321' },
-          ];
-          const filteredChurches = mockChurches.filter(church => 
-            church.church_Phone?.includes(formatted.replace(/-/g, ''))
-          );
-          setChurches(filteredChurches);
-        } catch (err) {
-          console.error('Error fetching church by phone:', err);
-          setChurches([]);
-        } finally {
-          setIsLoading(false);
-        }
-      }
     }
   };
 
@@ -120,23 +95,39 @@ const ReceiptPage: React.FC = () => {
         setHasSearched(true);
         setIsLoading(true);
         try {
-          // TODO: Replace with actual API call
-          const mockChurches = [
-            { church_reg_ID: '0001', church_Name: '서울중앙교회', church_Phone: '01012345678' },
-            { church_reg_ID: '0002', church_Name: '부산성도교회', church_Phone: '01087654321' },
-          ];
-          const filteredChurches = mockChurches.filter(church => 
-            church.church_reg_ID?.includes(value)
-          );
-          setChurches(filteredChurches);
+          // 실제 API 호출로 mainId(등록번호)로 교회 조회
+          const res = await churchApi.searchChurches({ mainId: value, getAllResults: true });
+          const churches = (res.data || []).filter(church => church.mainId === value);
+          // subId 종류별로 그룹화
+          const subIdMap: { [subId: string]: Church[] } = {};
+          churches.forEach(church => {
+            if (!subIdMap[church.subId]) subIdMap[church.subId] = [];
+            subIdMap[church.subId].push(church);
+          });
+          const subIds = Object.keys(subIdMap);
+          if (subIds.length === 1) {
+            // subId가 1개면 해당 교회만 선택
+            setChurches(subIdMap[subIds[0]]);
+            setSelectedChurch(subIdMap[subIds[0]][0]._id);
+          } else if (subIds.length > 1) {
+            // subId가 여러개면 교회명 리스트로 표시
+            setChurches(churches);
+            setSelectedChurch('');
+          } else {
+            setChurches([]);
+            setSelectedChurch('');
+          }
         } catch (err) {
           console.error('Error fetching church by regId:', err);
           setChurches([]);
+          setSelectedChurch('');
         } finally {
           setIsLoading(false);
         }
       } else {
         setHasSearched(false);
+        setChurches([]);
+        setSelectedChurch('');
       }
     }
   };
@@ -187,11 +178,19 @@ const ReceiptPage: React.FC = () => {
     if (registrationNumber.length === 4) {
       filtered = filtered.filter(r => r.churchId.mainId.endsWith(registrationNumber));
     }
+    // 교회가 선택된 경우 해당 교회만 필터링
+    if (selectedChurch) {
+      const selected = churches.find(c => c._id === selectedChurch);
+      if (selected) {
+        filtered = filtered.filter(r => r.churchId && r.churchId.mainId === selected.mainId && r.churchId.subId === selected.subId);
+      }
+    }
+    // 전화번호 필터는 교회까지 필터된 후 적용
     if (phoneNumber.replace(/-/g, '').length >= 10) {
       filtered = filtered.filter(r => r.managerPhone.replace(/-/g, '').includes(phoneNumber.replace(/-/g, '')));
     }
     setFilteredReceipts(filtered);
-  }, [selectedYear, selectedEvent, registrationNumber, phoneNumber, receipts]);
+  }, [selectedYear, selectedEvent, registrationNumber, phoneNumber, receipts, selectedChurch, churches]);
 
   if (error) {
     return (
@@ -287,8 +286,8 @@ const ReceiptPage: React.FC = () => {
                     onChange={(e: SelectChangeEvent) => setSelectedChurch(e.target.value)}
                   >
                     {churches.map((church) => (
-                      <MenuItem key={church.church_reg_ID} value={church.church_reg_ID}>
-                        {church.church_Name}
+                      <MenuItem key={church._id} value={church._id}>
+                        {church.name}
                       </MenuItem>
                     ))}
                   </Select>
@@ -317,51 +316,57 @@ const ReceiptPage: React.FC = () => {
       </Paper>
 
       {/* Display filtered receipts only after search */}
-      {hasSearched && filteredReceipts.length > 0 && (
-        <Paper elevation={2} sx={{ p: 3, mt: 4 }}>
-          <Typography variant="h6" gutterBottom>조회된 영수증</Typography>
-          <Box sx={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th>담당자</th>
-                  <th>전화번호</th>
-                  <th>금액</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredReceipts.map(r => (
-                  <tr key={r._id}>
-                    <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>{r.managerName}</td>
-                    <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>{r.managerPhone}</td>
-                    <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>{r.costs.toLocaleString()}</td>
-                    <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        size="small"
-                        style={{
-                          minWidth: 100,
-                          padding: '8px 0',
-                          margin: 0,
-                          verticalAlign: 'middle',
-                          display: 'inline-block',
-                        }}
-                        onClick={() => {
-                          setSelectedReceipt(r);
-                          setReceiptDialogOpen(true);
-                        }}
-                      >
-                        저장하기
-                      </Button>
-                    </td>
+      {hasSearched && (
+        filteredReceipts.length > 0 && selectedChurch ? (
+          <Paper elevation={2} sx={{ p: 3, mt: 4 }}>
+            <Typography variant="h6" gutterBottom>조회된 영수증</Typography>
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th>담당자</th>
+                    <th>전화번호</th>
+                    <th>금액</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredReceipts.map(r => (
+                    <tr key={r._id}>
+                      <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>{r.managerName}</td>
+                      <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>{r.managerPhone}</td>
+                      <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>{r.costs.toLocaleString()}</td>
+                      <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          style={{
+                            minWidth: 100,
+                            padding: '8px 0',
+                            margin: 0,
+                            verticalAlign: 'middle',
+                            display: 'inline-block',
+                          }}
+                          onClick={() => {
+                            setSelectedReceipt(r);
+                            setReceiptDialogOpen(true);
+                          }}
+                        >
+                          저장하기
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+          </Paper>
+        ) : (
+          <Box sx={{ mt: 4, textAlign: 'center' }}>
+            <Alert severity="info">조회된 영수증이 없습니다.</Alert>
           </Box>
-        </Paper>
+        )
       )}
 
       <Dialog open={receiptDialogOpen} onClose={() => setReceiptDialogOpen(false)} maxWidth="md" fullWidth>
@@ -409,17 +414,10 @@ const ReceiptPage: React.FC = () => {
               <div style={{ padding: 32, paddingBottom: 16 }}>
                 <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 28, letterSpacing: 2, marginBottom: 16, color: '#111' }}>영 수 증 (RECEIPT)</div>
                 <div style={{ fontSize: 16, color: '#111', marginBottom: 8, padding: '0 32px' }}>
-                  {/* No. */}
-                  <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 32 }}>
-                    <span style={{ minWidth: 220, fontWeight: 500, flexShrink: 0, fontSize: 16 }}>No.</span>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
-                      <div style={{ display: 'inline-block', minWidth: 350 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4 }}>{'129-82-73149'}</span>
-                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
-                        </div>
-                      </div>
-                    </div>
+                  {/* No. + 영수증ID, 사업자등록번호 한 줄 */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 16 }}>
+                    <span style={{ minWidth: 80, fontWeight: 500, flexShrink: 0, fontSize: 16 }}>No. {selectedReceipt._id}</span>
+                    <span style={{ minWidth: 120, fontWeight: 500, flexShrink: 0, fontSize: 16, marginLeft: 32 }}>사업자등록번호 {'129-82-73149'}</span>
                   </div>
                   {/* 영수지정인 */}
                   <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 32 }}>
@@ -428,7 +426,7 @@ const ReceiptPage: React.FC = () => {
                       <div style={{ display: 'inline-block', minWidth: 350 }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4 }}>{selectedReceipt.churchName}</span>
-                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
+                          <div style={{ borderBottom: '1.5px solid #222', width: '50%', marginTop: 4 }} />
                         </div>
                       </div>
                     </div>
@@ -440,7 +438,7 @@ const ReceiptPage: React.FC = () => {
                       <div style={{ display: 'inline-block', minWidth: 350 }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4 }}>{events.find(e => e._id === selectedReceipt.eventId)?.event_Name || ''}</span>
-                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
+                          <div style={{ borderBottom: '1.5px solid #222', width: '50%', marginTop: 4 }} />
                         </div>
                       </div>
                     </div>
@@ -452,22 +450,22 @@ const ReceiptPage: React.FC = () => {
                       <div style={{ display: 'inline-block', minWidth: 180 }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4 }}>{selectedReceipt.costs.toLocaleString()}<span style={{ marginLeft: 16 }}>원(₩)</span></span>
-                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
+                          <div style={{ borderBottom: '1.5px solid #222', width: '50%', marginTop: 4 }} />
                         </div>
                       </div>
                     </div>
                   </div>
                   <div style={{ fontSize: 15, color: '#111', margin: '28px 0 28px 0', textAlign: 'left', fontWeight: 400 }}>
-                    상기 금액을 영수 / 청구 합니다.
+                    상기 금액을 영수합니다.
                   </div>
-                  {/* 날짜, 담당자 한 줄 */}
+                  {/* 날짜만 한 줄로 (담당자 제거) */}
                   <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 32 }}>
                     <span style={{ minWidth: 140, fontWeight: 500, flexShrink: 0, fontSize: 16 }}>날짜 (Date)</span>
                     <div style={{ flex: 1, maxWidth: 220, display: 'flex', alignItems: 'flex-end', marginRight: 32 }}>
                       <div style={{ display: 'inline-block', minWidth: 120, maxWidth: 220 }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedReceipt.paymentDate ? new Date(selectedReceipt.paymentDate).toLocaleDateString() : ''}</span>
-                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
+                          <div style={{ borderBottom: '1.5px solid #222', width: '50%', marginTop: 4 }} />
                         </div>
                       </div>
                     </div>
@@ -475,19 +473,22 @@ const ReceiptPage: React.FC = () => {
                     <div style={{ flex: 1, maxWidth: 220, display: 'flex', alignItems: 'flex-end' }}>
                       <div style={{ display: 'inline-block', minWidth: 120, maxWidth: 220 }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedReceipt.managerName}<img src="/sign.png" alt="sign" style={{ height: 32, marginLeft: 8, marginBottom: -8, display: 'inline-block', verticalAlign: 'middle' }} /></span>
-                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
+                          <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><img src="/sign.png" alt="sign" style={{ height: 50, marginLeft: 0, marginBottom: -20, display: 'inline-block', verticalAlign: 'middle' }} /></span>
+                          <div style={{ borderBottom: '1.5px solid #222', width: '80%', marginTop: 4 }} />
                         </div>
                       </div>
                     </div>
+
                   </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 24 }}>
-                  <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: 10, color: '#111' }}>
-                    <img src="/logo.png" alt="logo" style={{ height: 32, marginRight: 8, verticalAlign: 'middle' }} />
-                  AWANA KOREA
+                {/* 하단 로고/도장 */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 24, position: 'relative' }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: 10, color: '#111', display: 'flex', alignItems: 'center' }}>
+                    <img src="/logo.png" alt="logo" style={{ height: 20, marginRight: 100, verticalAlign: 'middle' }} />
+                    AWANA KOREA
+                    {/* 도장: 오른쪽 끝에 겹치게 */}
+                    <img src="/stamp.png" alt="stamp" style={{ height: 60, opacity: 0.8, marginLeft: 400, position: 'absolute', bottom: -10, zIndex: 2 }} />
                   </div>
-                  <img src="/stamp.png" alt="stamp" style={{ height: 60, opacity: 0.8, marginLeft: 8 }} />
                 </div>
               </div>
             </div>

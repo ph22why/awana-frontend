@@ -24,7 +24,7 @@ import {
   Delete as DeleteIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { eventApi, IEvent } from '../../services/api/eventApi';
 import moment from 'moment';
 
@@ -44,6 +44,7 @@ const getEventStatus = (event: IEvent) => {
 
 const EventManagePage: React.FC = () => {
   const navigate = useNavigate();
+  const { role } = useOutletContext<{ role: string }>();
   const [events, setEvents] = useState<IEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +131,14 @@ const EventManagePage: React.FC = () => {
   const handleDeleteCancel = () => {
     setDeleteDialog({ open: false, eventId: null, eventName: '' });
   };
+
+  if (role === 'mini') {
+    return (
+      <Container maxWidth="lg">
+        <Alert severity="error" sx={{ mb: 2 }}>접근 권한이 없습니다.</Alert>
+      </Container>
+    );
+  }
 
   if (loading) {
     return (

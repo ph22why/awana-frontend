@@ -15,6 +15,8 @@ import ReceiptManagePage from './pages/admin/ReceiptManagePage';
 import EventReceiptManagePage from './pages/admin/EventReceiptManagePage';
 import EventCreatePage from './pages/admin/EventCreatePage';
 import EventEditPage from './pages/admin/EventEditPage';
+import OnsiteRegisterPage from './pages/admin/OnsiteRegisterPage';
+import ReceiptStatusPage from './pages/admin/ReceiptStatusPage';
 
 // Theme wrapper component to handle theme switching
 const ThemedApp: React.FC = () => {
@@ -43,6 +45,8 @@ const ThemedApp: React.FC = () => {
           <Route path="churches/*" element={<ChurchManagePage />} />
           <Route path="receipts" element={<ReceiptManagePage />} />
           <Route path="receipts/events" element={<EventReceiptManagePage />} />
+          <Route path="onsite" element={<OnsiteRegisterPage />} />
+          <Route path="receipt-status" element={<ReceiptStatusPage />} />
         </Route>
 
         {/* Fallback */}

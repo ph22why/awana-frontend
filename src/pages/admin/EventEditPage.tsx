@@ -263,7 +263,7 @@ const EventEditPage: React.FC = () => {
             <Grid item xs={6}>
               <TextField
                 fullWidth
-                label="접수 등록 시간 (예: 09:00)"
+                label="접수 시작 시간 (예: 09:00)"
                 name="event_Registration_Start_Time"
                 value={formData.event_Registration_Start_Time || ''}
                 onChange={handleInputChange}

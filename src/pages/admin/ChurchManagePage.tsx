@@ -32,7 +32,7 @@ import {
   Add as AddIcon,
   Search as SearchIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import axios from 'axios';
 
 interface Church {
@@ -69,6 +69,7 @@ const axiosInstance = axios.create({
 
 const ChurchManagePage: React.FC = () => {
   const navigate = useNavigate();
+  const { role } = useOutletContext<{ role: string }>();
   const [churches, setChurches] = useState<Church[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -199,6 +200,14 @@ const ChurchManagePage: React.FC = () => {
     const newSize = Number(event.target.value);
     setPageSize(newSize);
   };
+
+  if (role === 'mini') {
+    return (
+      <Container maxWidth="lg">
+        <Alert severity="error" sx={{ mb: 2 }}>접근 권한이 없습니다.</Alert>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="lg">

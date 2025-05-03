@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom';
 import {
   AppBar,
@@ -14,6 +14,12 @@ import {
   ListItemText,
   Toolbar,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -37,11 +43,35 @@ const menuItems: MenuItem[] = [
   { text: '이벤트 관리', path: '/admin/events', icon: <EventIcon /> },
   { text: '교회 관리', path: '/admin/churches', icon: <ChurchIcon /> },
   { text: '영수증 관리', path: '/admin/receipts', icon: <ReceiptIcon /> },
+  { text: '현장등록', path: '/admin/onsite', icon: <ReceiptIcon /> },
+  { text: '접수 현황', path: '/admin/receipt-status', icon: <ReceiptIcon /> },
 ];
 
 const AdminLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const [authOpen, setAuthOpen] = useState(true);
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'admin' | 'mini' | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (role) setAuthOpen(false);
+  }, [role]);
+
+  const handleAuth = () => {
+    if (password === '1983') {
+      setRole('admin');
+      setError('');
+    } else if (password === '0000') {
+      setRole('mini');
+      setError('');
+    } else {
+      setError('암호가 올바르지 않습니다.');
+    }
+  };
+
+  const isMenuDisabled = (path: string) => false;
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -62,6 +92,7 @@ const AdminLayout: React.FC = () => {
               component={RouterLink}
               to={item.path}
               selected={location.pathname === item.path}
+              disabled={isMenuDisabled(item.path)}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
@@ -152,7 +183,26 @@ const AdminLayout: React.FC = () => {
         }}
       >
         <Toolbar />
-        <Outlet />
+        <Outlet context={{ role }} />
+        <Dialog open={authOpen} disableEscapeKeyDown>
+          <DialogTitle>관리자 인증</DialogTitle>
+          <DialogContent>
+            <TextField
+              label="암호 입력"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              fullWidth
+              autoFocus
+              onKeyDown={e => { if (e.key === 'Enter') handleAuth(); }}
+              error={!!error}
+              helperText={error}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleAuth} variant="contained">확인</Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </Box>
   );
