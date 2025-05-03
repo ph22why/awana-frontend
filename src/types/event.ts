@@ -10,6 +10,9 @@ export interface EventFormData {
   event_Open_Available: '공개' | '비공개';
   event_Place: string;
   event_Month: number;
+  event_Link?: string;
+  event_Registration_Start_Time?: string;
+  event_Registration_End_Time?: string;
   created_At?: Date;
   updated_At?: Date;
 }

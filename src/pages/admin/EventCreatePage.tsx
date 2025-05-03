@@ -27,7 +27,8 @@ import type { EventFormData, SampleEvent } from '../../types/event';
 const EventCreatePage: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<Partial<EventFormData>>({
-    event_Open_Available: '비공개'
+    event_Open_Available: '비공개',
+    event_Link: ''
   });
   const [sampleEvents, setSampleEvents] = useState<SampleEvent[]>([]);
   const [loading, setLoading] = useState(false);
@@ -216,14 +217,13 @@ const EventCreatePage: React.FC = () => {
                 label="월"
                 name="event_Month"
                 value={formData.event_Month || ''}
-                disabled
               />
             </Grid>
 
             <Grid item xs={6}>
               <TextField
                 fullWidth
-                label="장소"
+                label="지역"
                 name="event_Place"
                 value={formData.event_Place || ''}
                 onChange={handleInputChange}
@@ -233,10 +233,21 @@ const EventCreatePage: React.FC = () => {
             <Grid item xs={6}>
               <TextField
                 fullWidth
-                label="상세 위치"
+                label="상세 주소"
                 name="event_Location"
                 value={formData.event_Location || ''}
                 onChange={handleInputChange}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="이벤트 관련 링크 (선택)"
+                name="event_Link"
+                value={formData.event_Link || ''}
+                onChange={handleInputChange}
+                placeholder="https://example.com"
               />
             </Grid>
 
@@ -274,7 +285,7 @@ const EventCreatePage: React.FC = () => {
             <Grid item xs={6}>
               <LocalizationProvider dateAdapter={AdapterMoment}>
                 <DatePicker
-                  label="등록 시작일"
+                  label="접수 시작일"
                   value={formData.event_Registration_Start_Date ? moment(formData.event_Registration_Start_Date) : null}
                   onChange={(date) => handleDateChange(date, 'event_Registration_Start_Date')}
                   slotProps={{
@@ -289,7 +300,7 @@ const EventCreatePage: React.FC = () => {
             <Grid item xs={6}>
               <LocalizationProvider dateAdapter={AdapterMoment}>
                 <DatePicker
-                  label="등록 종료일"
+                  label="접수 종료일"
                   value={formData.event_Registration_End_Date ? moment(formData.event_Registration_End_Date) : null}
                   onChange={(date) => handleDateChange(date, 'event_Registration_End_Date')}
                   slotProps={{
@@ -300,6 +311,27 @@ const EventCreatePage: React.FC = () => {
                   }}
                 />
               </LocalizationProvider>
+            </Grid>
+
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="접수 등록 시간 (예: 09:00)"
+                name="event_Registration_Start_Time"
+                value={formData.event_Registration_Start_Time || ''}
+                onChange={handleInputChange}
+                placeholder="09:00"
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="접수 마감 시간 (예: 18:00)"
+                name="event_Registration_End_Time"
+                value={formData.event_Registration_End_Time || ''}
+                onChange={handleInputChange}
+                placeholder="18:00"
+              />
             </Grid>
 
             <Grid item xs={12}>

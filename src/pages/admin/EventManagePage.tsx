@@ -168,10 +168,10 @@ const EventManagePage: React.FC = () => {
               <TableCell>이벤트명</TableCell>
               <TableCell>시작일</TableCell>
               <TableCell>종료일</TableCell>
-              <TableCell>등록기간</TableCell>
-              <TableCell>장소</TableCell>
+              <TableCell>접수</TableCell>
+              <TableCell>지역</TableCell>
               <TableCell>상태</TableCell>
-              <TableCell>공개여부</TableCell>
+              <TableCell>공개여부</TableCell> 
               <TableCell align="right">작업</TableCell>
             </TableRow>
           </TableHead>

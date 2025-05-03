@@ -208,7 +208,7 @@ const ChurchManagePage: React.FC = () => {
 
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
         <TextField
-          placeholder="교회명, 위치, ID로 검색"
+          placeholder="교회명, 주소, ID로 검색"
           variant="outlined"
           size="small"
           sx={{ flexGrow: 1 }}
@@ -248,7 +248,7 @@ const ChurchManagePage: React.FC = () => {
             <TableRow>
               <TableCell>교회 ID</TableCell>
               <TableCell>교회명</TableCell>
-              <TableCell>위치</TableCell>
+              <TableCell>주소</TableCell>
               <TableCell>작업</TableCell>
             </TableRow>
           </TableHead>
@@ -329,7 +329,7 @@ const ChurchManagePage: React.FC = () => {
           />
           <TextField
             fullWidth
-            label="위치"
+            label="주소"
             value={formData.location}
             onChange={(e) => setFormData({ ...formData, location: e.target.value })}
             margin="normal"

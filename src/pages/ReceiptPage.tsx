@@ -365,96 +365,130 @@ const ReceiptPage: React.FC = () => {
       )}
 
       <Dialog open={receiptDialogOpen} onClose={() => setReceiptDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: 24 }}>영수증 (RECEIPT)</DialogTitle>
-        <DialogContent>
-          {/* Print-only CSS */}
+        <DialogTitle sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: 24, letterSpacing: 2, borderBottom: 'none', p: 0, pt: 3, color: '#111' }}>영 수 증 (RECEIPT)</DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
           <style>{`
             @media print {
-              body * {
-                visibility: hidden !important;
-              }
-              #print-receipt, #print-receipt * {
-                visibility: visible !important;
-                font-weight: bold !important;
-                color: #111 !important;
-                padding: 8px 12px !important;
-              }
-              #print-receipt td, #print-receipt th {
-                padding: 8px 12px !important;
-              }
+              body * { visibility: hidden !important; }
+              #print-receipt, #print-receipt * { visibility: visible !important; color: #111 !important; }
               #print-receipt {
-                position: absolute;
+                position: relative !important;
                 left: 0 !important;
                 right: 0 !important;
-                top: 0 !important;
-                width: 700px !important;
                 margin: 0 auto !important;
+                width: 620px !important;
+                max-width: 620px !important;
+                min-width: 0 !important;
                 background: white;
                 z-index: 9999;
                 box-shadow: none !important;
-                padding: 0 !important;
+                box-sizing: border-box !important;
+                padding: 5px !important;
+                border: 3px solid #222 !important;
+                page-break-inside: avoid;
+                overflow: hidden !important;
+              }
+              @page {
+                size: A4 portrait;
+                margin: 10mm;
+                orientation: portrait;
               }
             }
           `}</style>
           {selectedReceipt && (
-            <div id="print-receipt" style={{ padding: 16 }}>
-              <table style={{ width: 700, borderCollapse: 'collapse', border: '2px solid #222', marginBottom: 16 }}>
-                <tbody>
-                  <tr>
-                    <td style={{ fontWeight: 'bold', border: '1px solid #222', width: '35%', padding: '8px 12px' }}>NO. 250503-111</td>
-                    <td style={{ border: '1px solid #222', padding: '8px 12px' }}>고유번호: 129-82-73149</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 'bold', border: '1px solid #222', padding: '8px 12px' }}>내역 (Event)</td>
-                    <td style={{ border: '1px solid #222', padding: '8px 12px' }}>{/* 이벤트명 */}2024-영성수련회</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 'bold', border: '1px solid #222', padding: '8px 12px' }}>영수지정인 (Received of)</td>
-                    <td style={{ border: '1px solid #222', padding: '8px 12px' }}>{selectedReceipt.churchName}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 'bold', border: '1px solid #222', padding: '8px 12px' }}>비고 (Participants)</td>
-                    <td style={{ border: '1px solid #222', padding: '8px 12px' }}>{selectedReceipt.partTotal}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 'bold', border: '1px solid #222', padding: '8px 12px' }}>금액 (Amount)</td>
-                    <td style={{ border: '1px solid #222', padding: '8px 12px' }}>{selectedReceipt.costs.toLocaleString()}원</td>
-                  </tr>
-                  <tr>
-                    <td colSpan={2} style={{ border: '1px solid #222', textAlign: 'center', height: 40, padding: '8px 12px' }}>
-                      상기 금액을 영수합니다.
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 'bold', border: '1px solid #222', padding: '8px 12px' }}>날짜 (Date)</td>
-                    <td style={{ border: '1px solid #222', padding: '8px 12px' }}>{selectedReceipt.paymentDate ? new Date(selectedReceipt.paymentDate).toLocaleDateString() : ''}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 'bold', border: '1px solid #222', padding: '8px 12px' }}>담당 (By)</td>
-                    <td style={{ border: '1px solid #222', padding: '8px 12px' }}>{selectedReceipt.managerName}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div style={{ position: 'relative', textAlign: 'center', margin: '32px 0 16px 0', height: 120 }}>
-                <div style={{ fontWeight: 'bold', fontSize: 28, letterSpacing: 2, lineHeight: '120px', position: 'relative', zIndex: 1 }}>
-                  AWANA KOREA
+            <div id="print-receipt" style={{
+              width: 700,
+              margin: '0 auto',
+              border: '3px solid #222',
+              padding: 0,
+              background: '#fff',
+              fontFamily: 'inherit',
+              position: 'relative',
+              color: '#111',
+            }}>
+              <div style={{ padding: 32, paddingBottom: 16 }}>
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 28, letterSpacing: 2, marginBottom: 16, color: '#111' }}>영 수 증 (RECEIPT)</div>
+                <div style={{ fontSize: 16, color: '#111', marginBottom: 8, padding: '0 32px' }}>
+                  {/* No. */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 32 }}>
+                    <span style={{ minWidth: 220, fontWeight: 500, flexShrink: 0, fontSize: 16 }}>No.</span>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
+                      <div style={{ display: 'inline-block', minWidth: 350 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4 }}>{'129-82-73149'}</span>
+                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* 영수지정인 */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 32 }}>
+                    <span style={{ minWidth: 220, fontWeight: 500, flexShrink: 0, fontSize: 16 }}>• 영수지정인 (Received of)</span>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
+                      <div style={{ display: 'inline-block', minWidth: 350 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4 }}>{selectedReceipt.churchName}</span>
+                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* 내역 */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 32 }}>
+                    <span style={{ minWidth: 220, fontWeight: 500, flexShrink: 0, fontSize: 16 }}>• 내역 (Description)</span>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
+                      <div style={{ display: 'inline-block', minWidth: 350 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4 }}>{events.find(e => e._id === selectedReceipt.eventId)?.event_Name || ''}</span>
+                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* 금액 */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 32 }}>
+                    <span style={{ minWidth: 220, fontWeight: 500, flexShrink: 0, fontSize: 16 }}>금액 (Amount)</span>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end' }}>
+                      <div style={{ display: 'inline-block', minWidth: 180 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4 }}>{selectedReceipt.costs.toLocaleString()}<span style={{ marginLeft: 16 }}>원(₩)</span></span>
+                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 15, color: '#111', margin: '28px 0 28px 0', textAlign: 'left', fontWeight: 400 }}>
+                    상기 금액을 영수 / 청구 합니다.
+                  </div>
+                  {/* 날짜, 담당자 한 줄 */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 32 }}>
+                    <span style={{ minWidth: 140, fontWeight: 500, flexShrink: 0, fontSize: 16 }}>날짜 (Date)</span>
+                    <div style={{ flex: 1, maxWidth: 220, display: 'flex', alignItems: 'flex-end', marginRight: 32 }}>
+                      <div style={{ display: 'inline-block', minWidth: 120, maxWidth: 220 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedReceipt.paymentDate ? new Date(selectedReceipt.paymentDate).toLocaleDateString() : ''}</span>
+                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{ minWidth: 100, fontWeight: 500, flexShrink: 0, fontSize: 16, marginLeft: 32 }}>담당 (by)</span>
+                    <div style={{ flex: 1, maxWidth: 220, display: 'flex', alignItems: 'flex-end' }}>
+                      <div style={{ display: 'inline-block', minWidth: 120, maxWidth: 220 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontWeight: 400, fontSize: 17, color: '#111', lineHeight: '38px', paddingLeft: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedReceipt.managerName}<img src="/sign.png" alt="sign" style={{ height: 32, marginLeft: 8, marginBottom: -8, display: 'inline-block', verticalAlign: 'middle' }} /></span>
+                          <div style={{ borderBottom: '1.5px solid #222', width: '100%', marginTop: 4 }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <img
-                  src="/stamp.png"
-                  alt="도장"
-                  style={{
-                    position: 'absolute',
-                    left: '63%',
-                    top: '50%',
-                    transform: 'translate(-50%, -60%)',
-                    width: 100,
-                    height: 100,
-                    objectFit: 'contain',
-                    opacity: 0.7,
-                    zIndex: 2,
-                    pointerEvents: 'none',
-                  }}
-                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 24 }}>
+                  <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: 10, color: '#111' }}>
+                    <img src="/logo.png" alt="logo" style={{ height: 32, marginRight: 8, verticalAlign: 'middle' }} />
+                  AWANA KOREA
+                  </div>
+                  <img src="/stamp.png" alt="stamp" style={{ height: 60, opacity: 0.8, marginLeft: 8 }} />
+                </div>
               </div>
             </div>
           )}

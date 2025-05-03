@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -15,6 +15,8 @@ import {
   Receipt as ReceiptIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
+import { eventApi } from '../../services/api/eventApi';
+import { churchApi } from '../../services/api/churchApi';
 
 interface StatCard {
   title: string;
@@ -23,29 +25,66 @@ interface StatCard {
   color: string;
 }
 
-const stats: StatCard[] = [
-  {
-    title: '총 이벤트',
-    value: 12,
-    icon: <EventIcon sx={{ fontSize: 40 }} />,
-    color: '#1976d2',
-  },
-  {
-    title: '등록된 교회',
-    value: 156,
-    icon: <ChurchIcon sx={{ fontSize: 40 }} />,
-    color: '#2e7d32',
-  },
-  {
-    title: '이번 달 영수증',
-    value: 45,
-    icon: <ReceiptIcon sx={{ fontSize: 40 }} />,
-    color: '#ed6c02',
-  },
-];
-
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+
+  const [eventCount, setEventCount] = useState<number>(0);
+  const [churchCount, setChurchCount] = useState<number>(0);
+  const [newChurchCount, setNewChurchCount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      setLoading(true);
+      try {
+        // 올해 생성된 이벤트 개수
+        const now = new Date();
+        const year = now.getFullYear();
+        const events = await eventApi.getEvents({ year });
+        setEventCount(events.length);
+        // 전체 교회 목록 받아서 개수 계산
+        const allChurchRes = await churchApi.searchChurches({ getAllResults: true });
+        const allChurches = allChurchRes.data;
+        setChurchCount(allChurches.length);
+        // 이번 달 신규 등록 교회 개수
+        const startOfMonth = new Date(year, now.getMonth(), 1);
+        const endOfMonth = new Date(year, now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const newChurches = allChurches.filter(c => {
+          const created = new Date(c.createdAt);
+          return created >= startOfMonth && created <= endOfMonth;
+        });
+        setNewChurchCount(newChurches.length);
+      } catch (e) {
+        setEventCount(0);
+        setChurchCount(0);
+        setNewChurchCount(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const stats = [
+    {
+      title: '올해 이벤트',
+      value: loading ? '-' : eventCount,
+      icon: <EventIcon sx={{ fontSize: 40 }} />,
+      color: '#1976d2',
+    },
+    {
+      title: '등록된 교회',
+      value: loading ? '-' : churchCount,
+      icon: <ChurchIcon sx={{ fontSize: 40 }} />,
+      color: '#2e7d32',
+    },
+    {
+      title: '신규 등록 교회(이번 달)',
+      value: loading ? '-' : newChurchCount,
+      icon: <ChurchIcon sx={{ fontSize: 40 }} />,
+      color: '#ed6c02',
+    },
+  ];
 
   return (
     <Container maxWidth="lg">

@@ -15,6 +15,9 @@ export interface IEvent {
   isPublic: boolean;
   createdAt: string;
   updatedAt: string;
+  event_Link?: string;
+  event_Registration_Start_Time?: string;
+  event_Registration_End_Time?: string;
 }
 
 // Church interfaces

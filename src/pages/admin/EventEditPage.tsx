@@ -35,7 +35,10 @@ const EventEditPage: React.FC = () => {
     event_End_Date: moment().format('YYYY-MM-DD'),
     event_Registration_Start_Date: moment().format('YYYY-MM-DD'),
     event_Registration_End_Date: moment().format('YYYY-MM-DD'),
-    event_Open_Available: '공개'
+    event_Open_Available: '공개',
+    event_Link: '',
+    event_Registration_Start_Time: '',
+    event_Registration_End_Time: ''
   });
 
   useEffect(() => {
@@ -55,7 +58,10 @@ const EventEditPage: React.FC = () => {
             event_End_Date: moment(event.event_End_Date).format('YYYY-MM-DD'),
             event_Registration_Start_Date: moment(event.event_Registration_Start_Date).format('YYYY-MM-DD'),
             event_Registration_End_Date: moment(event.event_Registration_End_Date).format('YYYY-MM-DD'),
-            event_Open_Available: event.event_Open_Available
+            event_Open_Available: event.event_Open_Available,
+            event_Link: event.event_Link || '',
+            event_Registration_Start_Time: event.event_Registration_Start_Time || '',
+            event_Registration_End_Time: event.event_Registration_End_Time || ''
           });
         }
       } catch (error) {
@@ -130,7 +136,7 @@ const EventEditPage: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="장소"
+                label="지역"
                 name="event_Place"
                 value={formData.event_Place}
                 onChange={handleInputChange}
@@ -140,7 +146,7 @@ const EventEditPage: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="위치"
+                label="주소"
                 name="event_Location"
                 value={formData.event_Location}
                 onChange={handleInputChange}
@@ -203,7 +209,7 @@ const EventEditPage: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <LocalizationProvider dateAdapter={AdapterMoment}>
                 <DatePicker
-                  label="등록 시작일"
+                  label="접수 시작일"
                   value={moment(formData.event_Registration_Start_Date)}
                   onChange={handleDateChange('event_Registration_Start_Date')}
                   slotProps={{
@@ -218,7 +224,7 @@ const EventEditPage: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <LocalizationProvider dateAdapter={AdapterMoment}>
                 <DatePicker
-                  label="등록 종료일"
+                  label="접수 종료일"
                   value={moment(formData.event_Registration_End_Date)}
                   onChange={handleDateChange('event_Registration_End_Date')}
                   slotProps={{
@@ -243,6 +249,36 @@ const EventEditPage: React.FC = () => {
                   <MenuItem value="비공개">비공개</MenuItem>
                 </Select>
               </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="이벤트 관련 링크 (선택)"
+                name="event_Link"
+                value={formData.event_Link || ''}
+                onChange={handleInputChange}
+                placeholder="https://example.com"
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="접수 등록 시간 (예: 09:00)"
+                name="event_Registration_Start_Time"
+                value={formData.event_Registration_Start_Time || ''}
+                onChange={handleInputChange}
+                placeholder="09:00"
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                label="접수 마감 시간 (예: 18:00)"
+                name="event_Registration_End_Time"
+                value={formData.event_Registration_End_Time || ''}
+                onChange={handleInputChange}
+                placeholder="18:00"
+              />
             </Grid>
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>

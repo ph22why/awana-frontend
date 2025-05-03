@@ -31,6 +31,8 @@ const MainPage: React.FC = () => {
     date: string;
     imageUrl: string;
     isSample: boolean;
+    startTime?: string;
+    endTime?: string;
   }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,10 +50,23 @@ const MainPage: React.FC = () => {
 
         // 1. DB에서 공개된 이벤트만 필터링
         const publicEvents = dbEvents.filter(e => e.event_Open_Available === '공개');
+        // 2. 접수 활성화(오늘이 접수 시작~종료 사이) 이벤트만 필터링
+        const nowTime = Date.now();
+        const activeEvents = publicEvents.filter(e => {
+          if (!e.event_Registration_Start_Date || !e.event_Registration_End_Date) return false;
+          // 시간 문자열이 있으면 날짜와 합쳐서 비교
+          const startDate = e.event_Registration_Start_Date.split('T')[0];
+          const endDate = e.event_Registration_End_Date.split('T')[0];
+          const startTime = e.event_Registration_Start_Time || '00:00';
+          const endTime = e.event_Registration_End_Time || '23:59';
+          const start = Date.parse(`${startDate}T${startTime}:00`);
+          const end = Date.parse(`${endDate}T${endTime}:59`);
+          return start <= nowTime && nowTime <= end;
+        });
         // 3. 샘플이벤트 기준으로 병합
         const merged = sampleEvents.map((sample) => {
           const normalize = (name: string) => name.replace(/\d{4}/g, '').replace(/\s/g, '').toLowerCase();
-          const matched = publicEvents.find(
+          const matched = activeEvents.find(
             (db) => normalize(db.event_Name) === normalize(sample.sampleEvent_Name)
           );
           if (matched) {
@@ -63,20 +78,15 @@ const MainPage: React.FC = () => {
               date: matched.event_Start_Date || matched.event_Year?.toString() || '미정',
               imageUrl: `/images/${sample.sampleEvent_Name.replace(/\s/g, '-').toLowerCase()}.jpg`,
               isSample: false,
+              startTime: matched.event_Registration_Start_Time,
+              endTime: matched.event_Registration_End_Time,
             };
           } else {
             // 샘플 정보 + 기간 미정
-            return {
-              id: `sample-${sample.sampleEvent_ID}`,
-              title: sample.sampleEvent_Name,
-              description: sample.sampleEvent_Name,
-              date: '미정',
-              imageUrl: `/images/${sample.sampleEvent_Name.replace(/\s/g, '-').toLowerCase()}.jpg`,
-              isSample: true,
-            };
+            return null;
           }
-        });
-        setMergedEvents(merged);
+        }).filter(Boolean);
+        setMergedEvents(merged as typeof mergedEvents);
       } catch (err: any) {
         setError(err.message || '이벤트 목록을 불러오는데 실패했습니다.');
       } finally {
@@ -297,102 +307,104 @@ const MainPage: React.FC = () => {
               }
             }}
           >
-            이벤트 목록
+            접수 활성화 이벤트
         </Typography>
         {loading ? (
           <Typography align="center">불러오는 중...</Typography>
         ) : error ? (
           <Typography color="error" align="center">{error}</Typography>
         ) : (
-          <Box sx={{ 
-            maxHeight: '600px', 
-            overflowY: 'auto',
-            '&::-webkit-scrollbar': {
-              width: '8px',
-            },
-            '&::-webkit-scrollbar-track': {
-              backgroundColor: 'background.paper',
-              borderRadius: '4px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'primary.light',
-              borderRadius: '4px',
-              '&:hover': {
-                backgroundColor: 'primary.main',
+          mergedEvents.length === 0 ? (
+            <Typography align="center" sx={{ color: 'text.secondary', py: 8, fontSize: 20 }}>
+              활성화된 이벤트가 없습니다.
+            </Typography>
+          ) : (
+            <Box sx={{ 
+              maxHeight: '600px', 
+              overflowY: 'auto',
+              '&::-webkit-scrollbar': {
+                width: '8px',
               },
-            },
-          }}>
-        <Grid container spacing={4}>
-          {mergedEvents.map((event) => (
-            <Grid item key={event.id} xs={12} sm={6} md={4}>
-              <Card
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                      transition: 'transform 0.3s ease-in-out',
-                      '&:hover': {
-                        transform: 'translateY(-8px)',
-                      }
-                }}
-              >
-                <CardMedia
-                  component="img"
-                  sx={{
-                    height: 200,
-                        objectFit: 'cover',
-                  }}
-                  image={event.imageUrl}
-                  alt={event.title}
-                />
-                <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography gutterBottom variant="h5" component="h2" sx={{ fontWeight: 600 }}>
-                    {event.title}
-                  </Typography>
-                      <Typography color="text.secondary" sx={{ mb: 2 }}>
-                    {event.description}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                        color="primary"
-                        sx={{ 
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          fontWeight: 500
-                        }}
-                  >
-                        <CalendarMonth fontSize="small" />
-                        {event.date === '미정'
-                          ? '미정'
-                          : new Date(event.date).toLocaleDateString('ko-KR', {
-                              year: 'numeric',
-                              month: 'long',
-                            })}
-                  </Typography>
-                </CardContent>
-                    <Divider sx={{ mx: 2 }} />
-                    <CardActions sx={{ p: 2 }}>
-                  <Button
-                        fullWidth
-                        variant="contained"
-                    onClick={() => navigate(`/events/${event.id}`)}
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: 'background.paper',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'primary.light',
+                borderRadius: '4px',
+                '&:hover': {
+                  backgroundColor: 'primary.main',
+                },
+              },
+            }}>
+              <Grid container spacing={4}>
+                {mergedEvents.map((event) => (
+                  <Grid item key={event.id} xs={12} sm={6} md={4} style={{ marginTop: "10px" }}>
+                    <Card
+                      sx={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        transition: 'transform 0.3s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateY(-8px)',
+                        }
+                      }}
+                    >
+                      {/* <CardMedia
+                        component="img"
                         sx={{
-                          bgcolor: 'primary.main',
-                          color: 'white',
-                          '&:hover': {
-                            bgcolor: 'primary.dark',
-                          }
+                          height: 200,
+                          objectFit: 'cover',
                         }}
-                  >
-                    자세히 보기
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-          </Box>
+                        image={event.imageUrl}
+                        alt={event.title}
+                      /> */}
+                      <CardContent sx={{ flexGrow: 1 }}>
+                        <Typography gutterBottom variant="h5" component="h2" sx={{ fontWeight: 600 }}>
+                          {event.title}
+                        </Typography>
+                        <Typography color="text.secondary" sx={{ mb: 2 }}>
+                          {event.description}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="primary"
+                          sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 500 }}
+                        >
+                          <CalendarMonth fontSize="small" />
+                          {event.date === '미정'
+                            ? '미정'
+                            : new Date(event.date).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                          {/* 시간 표시 */}
+                          {event.startTime && event.endTime
+                            ? ` (${event.startTime}~${event.endTime})`
+                            : ' (시간 미정)'}
+                        </Typography>
+                      </CardContent>
+                      <Divider sx={{ mx: 2 }} />
+                      <CardActions sx={{ p: 2 }}>
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          onClick={() => navigate(`/events/${event.id}`)}
+                          sx={{
+                            bgcolor: 'primary.main',
+                            color: 'white',
+                            '&:hover': {
+                              bgcolor: 'primary.dark',
+                            }
+                          }}
+                        >
+                          자세히 보기
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )
         )}
       </Container>
       </Box>

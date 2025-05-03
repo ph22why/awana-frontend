@@ -144,7 +144,7 @@ const ChurchListPage: React.FC = () => {
                 <TableRow>
                   <TableCell>교회명</TableCell>
                   <TableCell>교회 ID</TableCell>
-                  <TableCell>위치</TableCell>
+                  <TableCell>주소</TableCell>
                   <TableCell>연락처</TableCell>
                 </TableRow>
               </TableHead>

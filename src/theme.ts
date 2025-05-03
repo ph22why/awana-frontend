@@ -41,8 +41,8 @@ const palette = {
     contrastText: '#FFFFFF',
   },
   background: {
-    default: '#000000',
-    paper: '#111827',
+    default: '#23272F',
+    paper: '#2C303A',
     gradient: 'linear-gradient(135deg, #6366F1 0%, #3B82F6 50%, #10B981 100%)',
   },
   text: {
@@ -148,15 +148,15 @@ const createMainTheme = () => createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          backgroundColor: 'rgba(17, 24, 39, 0.8)',
+          backgroundColor: 'rgba(44, 48, 58, 0.92)',
           backdropFilter: 'blur(10px)',
           borderRadius: 16,
           border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2)',
+          boxShadow: '0 4px 24px rgba(35, 39, 47, 0.18)',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': {
             transform: 'translateY(-4px)',
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 12px 32px rgba(35, 39, 47, 0.28)',
             border: '1px solid rgba(255, 255, 255, 0.2)',
           },
         },
@@ -165,26 +165,26 @@ const createMainTheme = () => createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          backgroundColor: 'rgba(17, 24, 39, 0.8)',
+          backgroundColor: 'rgba(44, 48, 58, 0.92)',
           backdropFilter: 'blur(10px)',
           borderRadius: 16,
           border: '1px solid rgba(255, 255, 255, 0.1)',
         },
         elevation1: {
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
+          boxShadow: '0 4px 20px rgba(35, 39, 47, 0.18)',
         },
         elevation2: {
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
+          boxShadow: '0 8px 24px rgba(35, 39, 47, 0.22)',
         },
         elevation3: {
-          boxShadow: '0 12px 32px rgba(0, 0, 0, 0.3)',
+          boxShadow: '0 12px 32px rgba(35, 39, 47, 0.28)',
         },
       },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: 'rgba(35, 39, 47, 0.7)',
           backdropFilter: 'blur(10px)',
           borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         },

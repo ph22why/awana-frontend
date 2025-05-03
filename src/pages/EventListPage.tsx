@@ -8,6 +8,7 @@ import {
   CardMedia,
   CardActions,
   Button,
+  Box,
 } from '@mui/material';
 import { eventApi, IEvent } from '../services/api/eventApi';
 import { SampleEvent } from '../types/event';
@@ -74,6 +75,33 @@ const EventListPage: React.FC = () => {
     fetchEvents();
   }, []);
 
+  // 분류 기준 배열
+  const eventNames = [
+    '성경퀴즈대회', '컨퍼런스', '올림픽 설명회', '올림픽', 'T&T Camp', '영성수련회',
+  ];
+  const eduNames = [
+    '상반기 연합 BT', '하반기 연합 BT', '조정관 학교 1101', '조정관 학교 201', '감독관 학교 101', '수시BT',
+  ];
+  const abroadNames = [
+    'YM Summit', 'YM MIT', '장학캠프',
+  ];
+
+  // 1. 활성 및 예정: 공개 + 오늘 이후 시작(종료 안된) 이벤트
+  const now = Date.now();
+  const activeEvents = mergedEvents.filter(e => {
+    if (e.isSample) return false;
+    // 종료일이 미래이거나 오늘인 것만
+    if (!e.date || e.date === '미정') return false;
+    const end = Date.parse(e.date);
+    return end >= now;
+  });
+  // 2. 이벤트
+  const eventEvents = mergedEvents.filter(e => eventNames.some(name => e.title.replace(/\d{4}/g, '').includes(name)));
+  // 3. 교육
+  const eduEvents = mergedEvents.filter(e => eduNames.some(name => e.title.replace(/\d{4}/g, '').includes(name)));
+  // 4. 해외 캠프
+  const abroadEvents = mergedEvents.filter(e => abroadNames.some(name => e.title.replace(/\d{4}/g, '').includes(name)));
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
@@ -84,42 +112,143 @@ const EventListPage: React.FC = () => {
       ) : error ? (
         <Typography color="error" align="center">{error}</Typography>
       ) : (
-        <Grid container spacing={4}>
-          {mergedEvents.map((event) => (
-            <Grid item key={event.id} xs={12} sm={6} md={4}>
-              <Card>
-                <CardMedia
-                  component="img"
-                  height="200"
-                  image={event.imageUrl}
-                  alt={event.title}
-                />
-                <CardContent>
-                  <Typography gutterBottom variant="h5" component="h2">
-                    {event.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    {event.description}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    일시: {event.date === '미정' ? '미정' : new Date(event.date).toLocaleDateString()}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    장소: {event.location || '미정'}
-                  </Typography>
-                </CardContent>
-                <CardActions>
-                  <Button size="small" color="primary">
-                    자세히 보기
-                  </Button>
-                  <Button size="small" color="primary">
-                    신청하기
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        <>
+          {/* 1. 활성 및 예정 */}
+          <Typography variant="h5" sx={{ mt: 4, mb: 2, fontWeight: 700 }}>활성 및 예정</Typography>
+          <Grid container spacing={4}>
+            {activeEvents.length === 0 ? (
+              <Grid item xs={12}><Typography align="center" color="text.secondary">해당 이벤트가 없습니다.</Typography></Grid>
+            ) : activeEvents.map((event) => (
+              <Grid item key={event.id} xs={12}>
+                <Card sx={{ display: { xs: 'block', sm: 'flex' }, height: { xs: 'auto', sm: 120 }, minHeight: 120 }}>
+                  {/* <CardMedia
+                    component="img"
+                    sx={{ width: { xs: '100%', sm: 140 }, height: { xs: 140, sm: 120 }, objectFit: 'cover', borderRadius: { xs: '8px 8px 0 0', sm: '8px 0 0 8px' } }}
+                    image={event.imageUrl}
+                    alt={event.title}
+                  /> */}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <CardContent sx={{ flex: '1 0 auto', py: 0, px: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
+                      <Typography gutterBottom variant="h6" component="h2" sx={{ fontWeight: 700, fontSize: 18, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 14, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.description}</Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', fontSize: 13, color: 'text.secondary', mb: 0.5 }}>
+                        <span>일시: {event.date === '미정' ? '미정' : new Date(event.date).toLocaleDateString()}</span>
+                        <span>|</span>
+                        <span>지역: {event.location || '미정'}</span>
+                      </Box>
+                    </CardContent>
+                    <CardActions sx={{ py: 0, px: 2, justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <Button size="small" color="primary">자세히 보기</Button>
+                      <Button size="small" color="primary">신청하기</Button>
+                    </CardActions>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* 2. 이벤트 */}
+          <Typography variant="h5" sx={{ mt: 6, mb: 2, fontWeight: 700 }}>이벤트</Typography>
+          <Grid container spacing={4}>
+            {eventEvents.length === 0 ? (
+              <Grid item xs={12}><Typography align="center" color="text.secondary">해당 이벤트가 없습니다.</Typography></Grid>
+            ) : eventEvents.map((event) => (
+              <Grid item key={event.id} xs={12}>
+                <Card sx={{ display: { xs: 'block', sm: 'flex' }, height: { xs: 'auto', sm: 120 }, minHeight: 120 }}>
+                  {/* <CardMedia
+                    component="img"
+                    sx={{ width: { xs: '100%', sm: 140 }, height: { xs: 140, sm: 120 }, objectFit: 'cover', borderRadius: { xs: '8px 8px 0 0', sm: '8px 0 0 8px' } }}
+                    image={event.imageUrl}
+                    alt={event.title}
+                  /> */}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <CardContent sx={{ flex: '1 0 auto', py: 0, px: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
+                      <Typography gutterBottom variant="h6" component="h2" sx={{ fontWeight: 700, fontSize: 18, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 14, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.description}</Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', fontSize: 13, color: 'text.secondary', mb: 0.5 }}>
+                        <span>일시: {event.date === '미정' ? '미정' : new Date(event.date).toLocaleDateString()}</span>
+                        <span>|</span>
+                        <span>지역: {event.location || '미정'}</span>
+                      </Box>
+                    </CardContent>
+                    <CardActions sx={{ py: 0, px: 2, justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <Button size="small" color="primary">자세히 보기</Button>
+                      <Button size="small" color="primary">신청하기</Button>
+                    </CardActions>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* 3. 교육 */}
+          <Typography variant="h5" sx={{ mt: 6, mb: 2, fontWeight: 700 }}>교육</Typography>
+          <Grid container spacing={4}>
+            {eduEvents.length === 0 ? (
+              <Grid item xs={12}><Typography align="center" color="text.secondary">해당 이벤트가 없습니다.</Typography></Grid>
+            ) : eduEvents.map((event) => (
+              <Grid item key={event.id} xs={12}>
+                <Card sx={{ display: { xs: 'block', sm: 'flex' }, height: { xs: 'auto', sm: 120 }, minHeight: 120 }}>
+                  {/* <CardMedia
+                    component="img"
+                    sx={{ width: { xs: '100%', sm: 140 }, height: { xs: 140, sm: 120 }, objectFit: 'cover', borderRadius: { xs: '8px 8px 0 0', sm: '8px 0 0 8px' } }}
+                    image={event.imageUrl}
+                    alt={event.title}
+                  /> */}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <CardContent sx={{ flex: '1 0 auto', py: 0, px: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
+                      <Typography gutterBottom variant="h6" component="h2" sx={{ fontWeight: 700, fontSize: 18, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 14, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.description}</Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', fontSize: 13, color: 'text.secondary', mb: 0.5 }}>
+                        <span>일시: {event.date === '미정' ? '미정' : new Date(event.date).toLocaleDateString()}</span>
+                        <span>|</span>
+                        <span>지역: {event.location || '미정'}</span>
+                      </Box>
+                    </CardContent>
+                    <CardActions sx={{ py: 0, px: 2, justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <Button size="small" color="primary">자세히 보기</Button>
+                      <Button size="small" color="primary">신청하기</Button>
+                    </CardActions>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+
+          {/* 4. 해외 캠프 */}
+          <Typography variant="h5" sx={{ mt: 6, mb: 2, fontWeight: 700 }}>해외 캠프</Typography>
+          <Grid container spacing={4}>
+            {abroadEvents.length === 0 ? (
+              <Grid item xs={12}><Typography align="center" color="text.secondary">해당 이벤트가 없습니다.</Typography></Grid>
+            ) : abroadEvents.map((event) => (
+              <Grid item key={event.id} xs={12}>
+                <Card sx={{ display: { xs: 'block', sm: 'flex' }, height: { xs: 'auto', sm: 120 }, minHeight: 120 }}>
+                  {/* <CardMedia
+                    component="img"
+                    sx={{ width: { xs: '100%', sm: 140 }, height: { xs: 140, sm: 120 }, objectFit: 'cover', borderRadius: { xs: '8px 8px 0 0', sm: '8px 0 0 8px' } }}
+                    image={event.imageUrl}
+                    alt={event.title}
+                  /> */}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <CardContent sx={{ flex: '1 0 auto', py: 0, px: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
+                      <Typography gutterBottom variant="h6" component="h2" sx={{ fontWeight: 700, fontSize: 18, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 14, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.description}</Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', fontSize: 13, color: 'text.secondary', mb: 0.5 }}>
+                        <span>일시: {event.date === '미정' ? '미정' : new Date(event.date).toLocaleDateString()}</span>
+                        <span>|</span>
+                        <span>지역: {event.location || '미정'}</span>
+                      </Box>
+                    </CardContent>
+                    <CardActions sx={{ py: 0, px: 2, justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <Button size="small" color="primary">자세히 보기</Button>
+                      <Button size="small" color="primary">신청하기</Button>
+                    </CardActions>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </>
       )}
     </Container>
   );
