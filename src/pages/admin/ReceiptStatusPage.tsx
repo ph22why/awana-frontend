@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Container, Paper, Typography, FormControl, InputLabel, Select, MenuItem, Button, Table, TableHead, TableRow, TableCell, TableBody, Alert } from '@mui/material';
 import axios from 'axios';
 
-interface Event { id: string; name: string; }
+interface Event { id: string; name: string; place: string; }
 interface Receipt { id: string; church: string; people: number; amount: number; }
 
 const ReceiptStatusPage: React.FC = () => {
@@ -20,7 +20,8 @@ const ReceiptStatusPage: React.FC = () => {
           .filter((ev: any) => ev.event_Open_Available === '공개')
           .map((ev: any) => ({
             id: ev._id,
-            name: ev.event_Name
+            name: ev.event_Name,
+            place: ev.event_Place
           })));
       })
       .catch(() => {});
@@ -55,7 +56,9 @@ const ReceiptStatusPage: React.FC = () => {
             required
           >
             {events.map(ev => (
-              <MenuItem key={ev.id} value={ev.id}>{ev.name}</MenuItem>
+              <MenuItem key={ev.id} value={ev.id}>
+                {ev.name} ({ev.place})
+              </MenuItem>
             ))}
           </Select>
         </FormControl>

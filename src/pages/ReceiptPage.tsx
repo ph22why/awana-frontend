@@ -91,13 +91,13 @@ const ReceiptPage: React.FC = () => {
     const value = e.target.value.replace(/[^\d]/g, '');
     if (value.length <= 4) {
       setRegistrationNumber(value);
-      if (value.length === 4) {
+      if (value.length >= 3) {
         setHasSearched(true);
         setIsLoading(true);
         try {
-          // 실제 API 호출로 mainId(등록번호)로 교회 조회
-          const res = await churchApi.searchChurches({ mainId: value, getAllResults: true });
-          const churches = (res.data || []).filter(church => church.mainId === value);
+          // 실제 API 호출로 mainId(등록번호)로 교회 조회 (전체 받아서 includes로 필터)
+          const res = await churchApi.searchChurches({ getAllResults: true });
+          const churches = (res.data || []).filter(church => church.mainId.includes(value));
           // subId 종류별로 그룹화
           const subIdMap: { [subId: string]: Church[] } = {};
           churches.forEach(church => {
@@ -240,7 +240,7 @@ const ReceiptPage: React.FC = () => {
                 >
                   {filteredEvents.map((event) => (
                     <MenuItem key={event._id} value={event._id}>
-                      {event.event_Name}
+                      {event.event_Name} ({event.event_Place})
                     </MenuItem>
                   ))}
                 </Select>
@@ -254,7 +254,7 @@ const ReceiptPage: React.FC = () => {
                 label="등록번호"
                 value={registrationNumber}
                 onChange={handleRegistrationNumber}
-                placeholder="4자리 입력"
+                placeholder="3자리 이상 입력"
                 inputProps={{ maxLength: 4 }}
                 helperText="교회 등록번호 4자리"
               />
@@ -478,7 +478,6 @@ const ReceiptPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-
                   </div>
                 </div>
                 {/* 하단 로고/도장 */}

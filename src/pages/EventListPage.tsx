@@ -23,9 +23,12 @@ const EventListPage: React.FC = () => {
     imageUrl: string;
     location: string;
     isSample: boolean;
+    place?: string;
   }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [region, setRegion] = useState<string>('전체');
+  const [regionList, setRegionList] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -37,14 +40,21 @@ const EventListPage: React.FC = () => {
         const sampleEvents: SampleEvent[] = sampleRes.data || [];
         // 1. DB에서 공개된 이벤트만 필터링
         const publicEvents = dbEvents.filter(e => e.event_Open_Available === '공개');
+        // 지역 목록 추출 (중복 제거)
+        const regionSet = new Set<string>();
+        publicEvents.forEach(ev => {
+          if (ev.event_Place) regionSet.add(ev.event_Place);
+        });
+        setRegionList(['전체', ...Array.from(regionSet)]);
         // 2. 샘플이벤트 기준으로 병합
-        const merged = sampleEvents.map((sample) => {
+        const merged = sampleEvents.flatMap((sample) => {
           const normalize = (name: string) => name.replace(/\d{4}/g, '').replace(/\s/g, '').toLowerCase();
-          const matched = publicEvents.find(
+          // 동일 이름의 공개 이벤트 여러개(지역별) 매칭
+          const matchedList = publicEvents.filter(
             (db) => normalize(db.event_Name) === normalize(sample.sampleEvent_Name)
           );
-          if (matched) {
-            return {
+          if (matchedList.length > 0) {
+            return matchedList.map(matched => ({
               id: matched._id,
               title: matched.event_Name,
               description: matched.event_Description || sample.sampleEvent_Name,
@@ -52,9 +62,10 @@ const EventListPage: React.FC = () => {
               imageUrl: `/images/${sample.sampleEvent_Name.replace(/\s/g, '-').toLowerCase()}.jpg`,
               location: matched.event_Place || sample.sampleEvent_Place || '미정',
               isSample: false,
-            };
+              place: matched.event_Place,
+            }));
           } else {
-            return {
+            return [{
               id: `sample-${sample.sampleEvent_ID}`,
               title: sample.sampleEvent_Name,
               description: sample.sampleEvent_Name,
@@ -62,7 +73,8 @@ const EventListPage: React.FC = () => {
               imageUrl: `/images/${sample.sampleEvent_Name.replace(/\s/g, '-').toLowerCase()}.jpg`,
               location: sample.sampleEvent_Place || '미정',
               isSample: true,
-            };
+              place: sample.sampleEvent_Place || '미정',
+            }];
           }
         });
         setMergedEvents(merged);
@@ -86,26 +98,26 @@ const EventListPage: React.FC = () => {
     'YM Summit', 'YM MIT', '장학캠프',
   ];
 
-  // 1. 활성 및 예정: 공개 + 오늘 이후 시작(종료 안된) 이벤트
+  // 1. 활성 및 예정: 공개 + 오늘 이후 시작(종료 안된) 이벤트 (지역별 필터)
   const now = Date.now();
   const activeEvents = mergedEvents.filter(e => {
     if (e.isSample) return false;
-    // 종료일이 미래이거나 오늘인 것만
+    if (region !== '전체' && e.place !== region) return false;
     if (!e.date || e.date === '미정') return false;
     const end = Date.parse(e.date);
     return end >= now;
   });
-  // 2. 이벤트
-  const eventEvents = mergedEvents.filter(e => eventNames.some(name => e.title.replace(/\d{4}/g, '').includes(name)));
-  // 3. 교육
-  const eduEvents = mergedEvents.filter(e => eduNames.some(name => e.title.replace(/\d{4}/g, '').includes(name)));
-  // 4. 해외 캠프
-  const abroadEvents = mergedEvents.filter(e => abroadNames.some(name => e.title.replace(/\d{4}/g, '').includes(name)));
+
+  // 하단 리스트: 샘플이벤트만
+  const sampleEventsOnly = mergedEvents.filter(e => e.isSample);
+  const eventEvents = sampleEventsOnly.filter(e => eventNames.some(name => e.title.replace(/\d{4}/g, '').includes(name)));
+  const eduEvents = sampleEventsOnly.filter(e => eduNames.some(name => e.title.replace(/\d{4}/g, '').includes(name)));
+  const abroadEvents = sampleEventsOnly.filter(e => abroadNames.some(name => e.title.replace(/\d{4}/g, '').includes(name)));
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        이벤트 목록
+        전체 이벤트 목록
       </Typography>
       {loading ? (
         <Typography align="center">불러오는 중...</Typography>
@@ -113,41 +125,8 @@ const EventListPage: React.FC = () => {
         <Typography color="error" align="center">{error}</Typography>
       ) : (
         <>
-          {/* 1. 활성 및 예정 */}
-          <Typography variant="h5" sx={{ mt: 4, mb: 2, fontWeight: 700 }}>활성 및 예정</Typography>
-          <Grid container spacing={4}>
-            {activeEvents.length === 0 ? (
-              <Grid item xs={12}><Typography align="center" color="text.secondary">해당 이벤트가 없습니다.</Typography></Grid>
-            ) : activeEvents.map((event) => (
-              <Grid item key={event.id} xs={12}>
-                <Card sx={{ display: { xs: 'block', sm: 'flex' }, height: { xs: 'auto', sm: 120 }, minHeight: 120 }}>
-                  {/* <CardMedia
-                    component="img"
-                    sx={{ width: { xs: '100%', sm: 140 }, height: { xs: 140, sm: 120 }, objectFit: 'cover', borderRadius: { xs: '8px 8px 0 0', sm: '8px 0 0 8px' } }}
-                    image={event.imageUrl}
-                    alt={event.title}
-                  /> */}
-                  <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                    <CardContent sx={{ flex: '1 0 auto', py: 0, px: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
-                      <Typography gutterBottom variant="h6" component="h2" sx={{ fontWeight: 700, fontSize: 18, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: 14, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.description}</Typography>
-                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', fontSize: 13, color: 'text.secondary', mb: 0.5 }}>
-                        <span>일시: {event.date === '미정' ? '미정' : new Date(event.date).toLocaleDateString()}</span>
-                        <span>|</span>
-                        <span>지역: {event.location || '미정'}</span>
-                      </Box>
-                    </CardContent>
-                    <CardActions sx={{ py: 0, px: 2, justifyContent: 'flex-end', alignItems: 'center' }}>
-                      <Button size="small" color="primary">자세히 보기</Button>
-                      <Button size="small" color="primary">신청하기</Button>
-                    </CardActions>
-                  </Box>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
 
-          {/* 2. 이벤트 */}
+          {/* 2. 이벤트 (샘플이벤트만) */}
           <Typography variant="h5" sx={{ mt: 6, mb: 2, fontWeight: 700 }}>이벤트</Typography>
           <Grid container spacing={4}>
             {eventEvents.length === 0 ? (
@@ -155,12 +134,6 @@ const EventListPage: React.FC = () => {
             ) : eventEvents.map((event) => (
               <Grid item key={event.id} xs={12}>
                 <Card sx={{ display: { xs: 'block', sm: 'flex' }, height: { xs: 'auto', sm: 120 }, minHeight: 120 }}>
-                  {/* <CardMedia
-                    component="img"
-                    sx={{ width: { xs: '100%', sm: 140 }, height: { xs: 140, sm: 120 }, objectFit: 'cover', borderRadius: { xs: '8px 8px 0 0', sm: '8px 0 0 8px' } }}
-                    image={event.imageUrl}
-                    alt={event.title}
-                  /> */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                     <CardContent sx={{ flex: '1 0 auto', py: 0, px: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
                       <Typography gutterBottom variant="h6" component="h2" sx={{ fontWeight: 700, fontSize: 18, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</Typography>
@@ -181,7 +154,7 @@ const EventListPage: React.FC = () => {
             ))}
           </Grid>
 
-          {/* 3. 교육 */}
+          {/* 3. 교육 (샘플이벤트만) */}
           <Typography variant="h5" sx={{ mt: 6, mb: 2, fontWeight: 700 }}>교육</Typography>
           <Grid container spacing={4}>
             {eduEvents.length === 0 ? (
@@ -189,12 +162,6 @@ const EventListPage: React.FC = () => {
             ) : eduEvents.map((event) => (
               <Grid item key={event.id} xs={12}>
                 <Card sx={{ display: { xs: 'block', sm: 'flex' }, height: { xs: 'auto', sm: 120 }, minHeight: 120 }}>
-                  {/* <CardMedia
-                    component="img"
-                    sx={{ width: { xs: '100%', sm: 140 }, height: { xs: 140, sm: 120 }, objectFit: 'cover', borderRadius: { xs: '8px 8px 0 0', sm: '8px 0 0 8px' } }}
-                    image={event.imageUrl}
-                    alt={event.title}
-                  /> */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                     <CardContent sx={{ flex: '1 0 auto', py: 0, px: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
                       <Typography gutterBottom variant="h6" component="h2" sx={{ fontWeight: 700, fontSize: 18, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</Typography>
@@ -215,7 +182,7 @@ const EventListPage: React.FC = () => {
             ))}
           </Grid>
 
-          {/* 4. 해외 캠프 */}
+          {/* 4. 해외 캠프 (샘플이벤트만) */}
           <Typography variant="h5" sx={{ mt: 6, mb: 2, fontWeight: 700 }}>해외 캠프</Typography>
           <Grid container spacing={4}>
             {abroadEvents.length === 0 ? (
@@ -223,12 +190,6 @@ const EventListPage: React.FC = () => {
             ) : abroadEvents.map((event) => (
               <Grid item key={event.id} xs={12}>
                 <Card sx={{ display: { xs: 'block', sm: 'flex' }, height: { xs: 'auto', sm: 120 }, minHeight: 120 }}>
-                  {/* <CardMedia
-                    component="img"
-                    sx={{ width: { xs: '100%', sm: 140 }, height: { xs: 140, sm: 120 }, objectFit: 'cover', borderRadius: { xs: '8px 8px 0 0', sm: '8px 0 0 8px' } }}
-                    image={event.imageUrl}
-                    alt={event.title}
-                  /> */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                     <CardContent sx={{ flex: '1 0 auto', py: 0, px: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
                       <Typography gutterBottom variant="h6" component="h2" sx={{ fontWeight: 700, fontSize: 18, mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</Typography>

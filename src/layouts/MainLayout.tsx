@@ -18,10 +18,9 @@ const MainLayout: React.FC = () => {
 
   const drawer = (
     <Box sx={{ width: 220 }} role="presentation" onClick={handleDrawerToggle}>
-      <Button color="inherit" component={RouterLink} to="/events" sx={{ width: '100%' }}>이벤트</Button>
-      <Button color="inherit" component={RouterLink} to="/churches" sx={{ width: '100%' }}>교회</Button>
+      {/* <Button color="inherit" component={RouterLink} to="/events" sx={{ width: '100%' }}>이벤트</Button> */}
+      <Button color="inherit" component={RouterLink} to="/churches" sx={{ width: '100%' }}>교회 찾기</Button>
       <Button color="inherit" component={RouterLink} to="/receipts" sx={{ width: '100%' }}>영수증 발급</Button>
-      {/* <Button color="inherit" component={RouterLink} to="/admin" sx={{ width: '100%' }}>관리자</Button> */}
     </Box>
   );
 
@@ -43,21 +42,21 @@ const MainLayout: React.FC = () => {
           </Typography>
           {/* 데스크탑 메뉴 */}
           <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-            <Button
+            {/* <Button
               color="inherit"
               component={RouterLink}
               to="/events"
               sx={{ mx: 1 }}
             >
               이벤트
-            </Button>
+            </Button> */}
             <Button
               color="inherit"
               component={RouterLink}
               to="/churches"
               sx={{ mx: 1 }}
             >
-              교회
+              교회 찾기
             </Button>
             <Button
               color="inherit"
@@ -66,14 +65,6 @@ const MainLayout: React.FC = () => {
               sx={{ mx: 1 }}
             >
               영수증 발급
-            </Button>
-            <Button
-              color="inherit"
-              component={RouterLink}
-              to="/admin"
-              sx={{ mx: 1 }}
-            >
-              관리자
             </Button>
           </Box>
           {/* 모바일 메뉴(햄버거) */}

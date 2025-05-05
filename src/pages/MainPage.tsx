@@ -39,6 +39,7 @@ const MainPage: React.FC = () => {
     registrationEndDate?: string;
     eventStartTime?: string;
     eventEndTime?: string;
+    eventPlace?: string;
   }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,14 +70,13 @@ const MainPage: React.FC = () => {
           return start <= nowTime && nowTime <= end;
         });
         // 3. 샘플이벤트 기준으로 병합
-        const merged = sampleEvents.map((sample) => {
-          const normalize = (name: string) => name.replace(/\d{4}/g, '').replace(/\s/g, '').toLowerCase();
-          const matched = publicEvents.find(
-            (db) => normalize(db.event_Name) === normalize(sample.sampleEvent_Name)
-          );
-          if (matched) {
-            // DB 이벤트 정보 사용
-            return {
+        const merged = sampleEvents
+          .map((sample) => {
+            const normalize = (name: string) => name.replace(/\d{4}/g, '').replace(/\s/g, '').toLowerCase();
+            const matchedEvents = publicEvents.filter(
+              (db) => normalize(db.event_Name) === normalize(sample.sampleEvent_Name)
+            );
+            return matchedEvents.map((matched) => ({
               id: matched._id,
               title: matched.event_Name,
               description: matched.event_Description || sample.sampleEvent_Name,
@@ -89,13 +89,10 @@ const MainPage: React.FC = () => {
               eventEndDate: matched.event_End_Date,
               registrationStartDate: matched.event_Registration_Start_Date,
               registrationEndDate: matched.event_Registration_End_Date,
-              // 이벤트 시작/종료 시간 필드는 없음 (시간 미정으로 표시)
-            };
-          } else {
-            // 샘플 정보 + 기간 미정
-            return null;
-          }
-        }).filter(Boolean);
+              eventPlace: matched.event_Place,
+            }));
+          })
+          .flat();
         setMergedEvents(merged as typeof mergedEvents);
       } catch (err: any) {
         setError(err.message || '이벤트 목록을 불러오는데 실패했습니다.');
@@ -154,7 +151,7 @@ const MainPage: React.FC = () => {
             Approved Workmen Are Not Ashamed
           </Typography>
           <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
-            <Button 
+            {/* <Button 
               variant="outlined" 
               onClick={() => navigate('/events')}
               startIcon={<CalendarMonth />}
@@ -171,7 +168,7 @@ const MainPage: React.FC = () => {
               }}
             >
               이벤트 보기
-            </Button>
+            </Button> */}
             <Button 
               variant="outlined"
               onClick={() => navigate('/churches')}
@@ -393,7 +390,7 @@ const MainPage: React.FC = () => {
                           })()}
                         </Typography>
                         <Typography color="text.secondary" sx={{ mb: 2 }}>
-                          {event.description}
+                          {event.eventPlace}
                         </Typography>
                         <Typography
                           variant="body2"

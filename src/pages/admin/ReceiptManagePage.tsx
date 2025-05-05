@@ -28,6 +28,7 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
+  Backdrop,
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -362,7 +363,11 @@ const ReceiptManagePage: React.FC = () => {
       
       if (response.success) {
         setChurches(response.data);
-        setTotalPages(Math.max(1, Math.ceil(response.pagination.total / pageSize)));
+        setTotalPages(
+          response.pagination?.total
+            ? Math.max(1, Math.ceil(response.pagination.total / pageSize))
+            : 1
+        );
       } else {
         throw new Error('데이터를 불러오는데 실패했습니다.');
       }
@@ -928,6 +933,258 @@ const ReceiptManagePage: React.FC = () => {
     setDetailDialogOpen(false);
   };
 
+  const handleDBDownload = async () => {
+    if (!selectedEvent) {
+      setError('이벤트를 선택해주세요.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await receiptApi.getReceipts({
+        eventId: selectedEvent,
+        limit: 1000 // Fetch all receipts
+      });
+
+      if (response.success) {
+        const receipts = response.data;
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.aoa_to_sheet([
+          [
+            '교회명',
+            '등록번호',
+            '하위ID',
+            '담당자 이름',
+            '담당자 연락처',
+            '전체 인원',
+            'CM',
+            'leader',
+            'YM',
+            '비용',
+            '결제수단',
+            '결제상태',
+            '결제일',
+            '등록일',
+            '비고(Description)'
+          ],
+          ...receipts.map((receipt) => [
+            receipt.churchName,
+            receipt.churchId.mainId,
+            receipt.churchId.subId,
+            receipt.managerName,
+            receipt.managerPhone,
+            receipt.partTotal,
+            receipt.partStudent,
+            receipt.partTeacher,
+            receipt.partYM,
+            receipt.costs,
+            receipt.paymentMethod,
+            receipt.paymentStatus,
+            receipt.paymentDate ? new Date(receipt.paymentDate).toLocaleString() : '',
+            receipt.createdAt ? new Date(receipt.createdAt).toLocaleString() : '',
+            receipt.description || ''
+          ])
+        ]);
+
+        XLSX.utils.book_append_sheet(workbook, worksheet, '영수증');
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
+        saveAs(data, `${selectedEvent}_영수증_상세목록.xlsx`);
+
+        setSnackbar({
+          open: true,
+          message: '영수증 상세 목록이 성공적으로 다운로드되었습니다.',
+          severity: 'success'
+        });
+      } else {
+        throw new Error('영수증 목록을 불러오는데 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('Error downloading receipts:', err);
+      setError('영수증 목록을 다운로드하는데 실패했습니다.');
+      setSnackbar({
+        open: true,
+        message: '영수증 목록을 다운로드하는데 실패했습니다.',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // DB포맷엑셀파일 다운로드 (결제수단/상태도 제거, 한글)
+  const handleDBFormatDownload = () => {
+    const headers = [
+      '등록번호',
+      '하위ID',
+      '담당자 이름',
+      '담당자 연락처',
+      '전체 인원',
+      'CM',
+      'leader',
+      'YM',
+      '비용'
+    ];
+    const worksheet = XLSX.utils.aoa_to_sheet([headers]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'DB포맷');
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
+    saveAs(data, '영수증_DB포맷.xlsx');
+  };
+
+  // 한글→영어 매핑 테이블 (결제수단/상태도 제거)
+  const KOR_TO_ENG: Record<string, string> = {
+    '등록번호': 'churchId.mainId',
+    '하위ID': 'churchId.subId',
+    '담당자 이름': 'managerName',
+    '담당자 연락처': 'managerPhone',
+    '전체 인원': 'partTotal',
+    'CM': 'partStudent',
+    'leader': 'partTeacher',
+    'YM': 'partYM',
+    '비용': 'costs',
+  };
+
+  // 업로드: 결제수단/상태 자동, 등록번호 4자리 보정
+  const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      setLoading(true);
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as Array<Array<any>>;
+        const [header, ...body] = rows;
+        // 한글 컬럼명 → 영어 필드명 매핑
+        const mappedHeader = header.map((h) => KOR_TO_ENG[h] || h);
+        const expectedEngHeaders = [
+          'churchId.mainId',
+          'churchId.subId',
+          'managerName',
+          'managerPhone',
+          'partTotal',
+          'partStudent',
+          'partTeacher',
+          'partYM',
+          'costs',
+        ];
+        if (JSON.stringify(mappedHeader) !== JSON.stringify(expectedEngHeaders)) {
+          setSnackbar({
+            open: true,
+            message: '엑셀 포맷이 올바르지 않습니다. 최신 DB포맷 파일을 사용하세요.',
+            severity: 'error'
+          });
+          setLoading(false);
+          // input value 초기화(같은 파일 재업로드 가능)
+          if (event.target) event.target.value = '';
+          return;
+        }
+        let successCount = 0;
+        let failCount = 0;
+        const failedRows: any[] = [];
+        for (const row of body) {
+          if (row.length < expectedEngHeaders.length) continue;
+          // 매핑된 헤더를 기준으로 객체 생성
+          const obj: Record<string, any> = {};
+          mappedHeader.forEach((key, idx) => {
+            obj[key] = row[idx];
+          });
+          // 파싱 결과 alert로 출력
+          alert(JSON.stringify(obj, null, 2));
+          // 등록번호 4자리 보정
+          let mainId = (obj['churchId.mainId'] || '').toString().trim();
+          if (!mainId) { failCount++; failedRows.push(obj); continue; }
+          if (mainId.length === 3) mainId = '0' + mainId;
+          if (mainId.length !== 4) { failCount++; failedRows.push(obj); continue; }
+          // 하위ID 소문자/공백 보정
+          let subId = (obj['churchId.subId'] || '').toString().trim().toLowerCase();
+          if (!subId || subId.length !== 1) { failCount++; failedRows.push(obj); continue; }
+          // 숫자 필드 빈칸 0 처리
+          const safeNumber = (v: any) => v === undefined || v === null || v === '' ? 0 : parseInt(v) || 0;
+          // churchName은 4자리-mainId-subID 형식의 churchId로 DB에서 조회
+          let churchName = '';
+          const churchKey = `${mainId}-${subId}`;
+          try {
+            const searchRes = await churchApi.searchChurches({ mainId });
+            if (searchRes.success) {
+              const filtered = searchRes.data.filter(
+                (c: any) => `${c.mainId}-${c.subId}` === churchKey
+              );
+              if (filtered.length === 1) {
+                churchName = filtered[0].name;
+              } else {
+                failCount++;
+                failedRows.push(obj);
+                continue; // 교회명 찾기 실패시 이 row는 실패 처리
+              }
+            } else {
+              failCount++;
+              failedRows.push(obj);
+              continue;
+            }
+          } catch {
+            failCount++;
+            failedRows.push(obj);
+            continue;
+          }
+          const receipt = {
+            churchName,
+            churchId: { mainId, subId },
+            managerName: obj['managerName'],
+            managerPhone: obj['managerPhone'],
+            partTotal: safeNumber(obj['partTotal']),
+            partStudent: safeNumber(obj['partStudent']),
+            partTeacher: safeNumber(obj['partTeacher']),
+            partYM: safeNumber(obj['partYM']),
+            costs: safeNumber(obj['costs']),
+            paymentMethod: 'cash' as const,
+            paymentStatus: 'pending' as const,
+            paymentDate: new Date().toISOString(),
+            description: '',
+            eventId: selectedEvent?.toString() || ''
+          };
+          try {
+            const res = await receiptApi.createReceipt(receipt);
+            if (res.success) successCount++;
+            else { failCount++; failedRows.push(obj); }
+          } catch {
+            failCount++;
+            failedRows.push(obj);
+          }
+        }
+        let failMsg = '';
+        if (failCount > 0) {
+          const preview = failedRows.slice(0, 3).map(r => `등록번호:${r['churchId.mainId']}, 하위ID:${r['churchId.subId']}`).join(' | ');
+          failMsg = ` 실패 row: ${preview}` + (failCount > 3 ? ` 외 ${failCount - 3}건` : '');
+        }
+        setSnackbar({
+          open: true,
+          message: `업로드 완료: 성공 ${successCount}건, 실패 ${failCount}건.${failMsg}`,
+          severity: failCount === 0 ? 'success' : 'error'
+        });
+        setLoading(false);
+        // input value 초기화(같은 파일 재업로드 가능)
+        if (event.target) event.target.value = '';
+        // 업로드 후 목록 새로고침
+        if (selectedEvent) fetchReceipts(selectedEvent, true);
+      };
+      reader.readAsArrayBuffer(file);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: '엑셀 업로드 중 오류가 발생했습니다.',
+        severity: 'error'
+      });
+      setLoading(false);
+      // input value 초기화(같은 파일 재업로드 가능)
+      if (event.target) event.target.value = '';
+    }
+  };
+
   if (role === 'mini') {
     return (
       <Container maxWidth="lg">
@@ -972,7 +1229,7 @@ const ReceiptManagePage: React.FC = () => {
               >
                 {events && events.map((event) => (
                   <MenuItem key={event._id} value={event._id}>
-                    {event.event_Name}
+                    {event.event_Name} ({event.event_Place})
                   </MenuItem>
                 ))}
               </Select>
@@ -1116,7 +1373,7 @@ const ReceiptManagePage: React.FC = () => {
                   <Grid item xs={4}>
                     <TextField
                       fullWidth
-                      label="학생 수"
+                      label="CM"
                       type="number"
                       value={currentReceipt.partStudent}
                       onChange={(e) => setCurrentReceipt(prev => ({ ...prev, partStudent: e.target.value }))}
@@ -1126,7 +1383,7 @@ const ReceiptManagePage: React.FC = () => {
                   <Grid item xs={4}>
                     <TextField
                       fullWidth
-                      label="선생 수"
+                      label="leader"
                       type="number"
                       value={currentReceipt.partTeacher}
                       onChange={(e) => setCurrentReceipt(prev => ({ ...prev, partTeacher: e.target.value }))}
@@ -1136,7 +1393,7 @@ const ReceiptManagePage: React.FC = () => {
                   <Grid item xs={4}>
                     <TextField
                       fullWidth
-                      label="YM 수"
+                      label="YM"
                       type="number"
                       value={currentReceipt.partYM}
                       onChange={(e) => setCurrentReceipt(prev => ({ ...prev, partYM: e.target.value }))}
@@ -1224,6 +1481,43 @@ const ReceiptManagePage: React.FC = () => {
                 <MenuItem value={50}>50개</MenuItem>
               </Select>
             </FormControl>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<DownloadIcon />}
+              onClick={handleDBDownload}
+              disabled={loading || !selectedEvent}
+              sx={{ minWidth: 140 }}
+            >
+              DB 다운로드
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={handleDBFormatDownload}
+              sx={{ minWidth: 180 }}
+            >
+              DB포맷엑셀파일 다운로드
+            </Button>
+            <label htmlFor="bulk-upload-input">
+              <input
+                id="bulk-upload-input"
+                type="file"
+                accept=".xlsx,.xls"
+                style={{ display: 'none' }}
+                onChange={handleBulkUpload}
+                disabled={loading}
+              />
+              <Button
+                variant="contained"
+                color="success"
+                component="span"
+                sx={{ minWidth: 160 }}
+                disabled={loading}
+              >
+                영수증 일괄 업로드
+              </Button>
+            </label>
           </Box>
 
           <TableContainer component={Paper} sx={{ mb: 3, overflowX: 'auto' }}>
@@ -1360,6 +1654,10 @@ const ReceiptManagePage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      {/* 업로드/로딩 전체화면 스피너 */}
+      <Backdrop open={loading} sx={{ zIndex: (theme) => theme.zIndex.drawer + 100 }}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Container>
   );
 };
