@@ -18,7 +18,7 @@ app.get('/health', (req, res) => {
 });
 
 // MongoDB 연결
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongodb:27017/receipt-service';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/receipt-service';
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('MongoDB에 연결되었습니다.'))
   .catch((error) => console.error('MongoDB 연결 실패:', error));

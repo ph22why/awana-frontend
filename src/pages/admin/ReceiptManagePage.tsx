@@ -29,6 +29,7 @@ import {
   Alert,
   Snackbar,
   Backdrop,
+  Pagination,
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -364,8 +365,8 @@ const ReceiptManagePage: React.FC = () => {
       if (response.success) {
         setChurches(response.data);
         setTotalPages(
-          response.pagination?.total
-            ? Math.max(1, Math.ceil(response.pagination.total / pageSize))
+          response.count
+            ? Math.max(1, Math.ceil(response.count / pageSize))
             : 1
         );
       } else {
@@ -788,34 +789,15 @@ const ReceiptManagePage: React.FC = () => {
       
       console.log('Raw API response:', response);
       
-      // Handle both array response and object response formats
-      let receiptData: Receipt[] = [];
-      if (Array.isArray(response)) {
-        receiptData = response;
-        setTotalPages(Math.ceil(response.length / pageSize));
-      } else if (response && response.data) {
-        receiptData = response.data;
+      if (response.success) {
+        setReceipts(response.data);
         if (response.count) {
           setTotalPages(Math.ceil(response.count / pageSize));
         }
+        setError(null);
       } else {
         throw new Error('영수증 목록을 불러오는데 실패했습니다.');
       }
-
-      // Transform and validate the data
-      const validatedReceipts = receiptData.map(receipt => ({
-        ...receipt,
-        churchName: receipt.churchName || '',
-        partTotal: receipt.partTotal || 0,
-        partStudent: receipt.partStudent || 0,
-        partTeacher: receipt.partTeacher || 0,
-        partYM: receipt.partYM || 0,
-        costs: receipt.costs || 0,
-      }));
-
-      console.log('Processed receipts:', validatedReceipts);
-      setReceipts(validatedReceipts);
-      setError(null);
     } catch (err) {
       console.error('Error fetching receipts:', err);
       setError('영수증 목록을 불러오는데 실패했습니다.');
@@ -1574,6 +1556,25 @@ const ReceiptManagePage: React.FC = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
+          {/* 페이지네이션 컨트롤 추가 */}
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 3 }}>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(_, value) => {
+                  setPage(value);
+                  if (selectedEvent) {
+                    fetchReceipts(selectedEvent, false);
+                  }
+                }}
+                color="primary"
+                showFirstButton
+                showLastButton
+              />
+            </Box>
+          )}
         </>
       )}
 

@@ -26,21 +26,38 @@ app.get('/api/churches', async (req, res) => {
         if (!mongoose_1.default.connection || !mongoose_1.default.connection.db) {
             throw new Error('Database connection not initialized');
         }
-        const { search = '' } = req.query;
+        const { search = '', page = 1, limit = 20 } = req.query;
         const searchQuery = search ? {
             $or: [
                 { name: { $regex: search, $options: 'i' } },
                 { location: { $regex: search, $options: 'i' } }
             ]
         } : {};
+
         const churches = await mongoose_1.default.connection.db.collection('churches')
             .find(searchQuery)
             .toArray();
-        res.json(churches);
+
+        // 프론트엔드 기대 응답 구조로 변환
+        res.json({
+            success: true,
+            data: churches,
+            pagination: {
+                total: churches.length,
+                page: Number(page),
+                limit: Number(limit),
+                totalPages: Math.ceil(churches.length / Number(limit))
+            }
+        });
     }
     catch (error) {
         console.error('Error in /api/churches:', error);
-        res.status(500).json({ error: 'Failed to fetch churches' });
+        res.status(500).json({ 
+            success: false, 
+            data: [], 
+            pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
+            error: 'Failed to fetch churches' 
+        });
     }
 });
 // MongoDB connection

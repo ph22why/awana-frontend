@@ -1,11 +1,22 @@
 import axios from 'axios';
 
-const RECEIPT_API_URL = process.env.REACT_APP_RECEIPT_API_URL || 'http://localhost:3003';
+const RECEIPT_API_URL = process.env.REACT_APP_RECEIPT_API_URL || '/api/receipts';
 
 const receiptAxios = axios.create({
   baseURL: RECEIPT_API_URL,
   timeout: 10000,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  }
 });
+
+// API 경로 상수
+const API_PATHS = {
+  RECEIPTS: '/',
+  SEARCH: '/search'
+};
 
 export interface Receipt {
   _id?: string;  // MongoDB ID
@@ -41,7 +52,7 @@ export interface ReceiptResponse {
 export const receiptApi = {
   createReceipt: async (data: Omit<Receipt, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      const response = await receiptAxios.post<{ success: boolean; data: Receipt }>('/api/receipts', data);
+      const response = await receiptAxios.post<{ success: boolean; data: Receipt }>(API_PATHS.RECEIPTS, data);
       return response.data;
     } catch (error) {
       console.error('Error creating receipt:', error);
@@ -51,7 +62,7 @@ export const receiptApi = {
 
   getReceipts: async (params?: { eventId?: string; churchId?: string; page?: number; limit?: number }) => {
     try {
-      const response = await receiptAxios.get<ReceiptResponse>('/api/receipts', { params });
+      const response = await receiptAxios.get<ReceiptResponse>(API_PATHS.RECEIPTS, { params });
       return response.data;
     } catch (error) {
       console.error('Error getting receipts:', error);
@@ -61,7 +72,7 @@ export const receiptApi = {
 
   getReceiptById: async (id: string) => {
     try {
-      const response = await receiptAxios.get<{ success: boolean; data: Receipt }>(`/api/receipts/${id}`);
+      const response = await receiptAxios.get<{ success: boolean; data: Receipt }>(`${API_PATHS.RECEIPTS}${id}`);
       return response.data;
     } catch (error) {
       console.error('Error getting receipt:', error);
@@ -71,7 +82,7 @@ export const receiptApi = {
 
   updateReceipt: async (id: string, data: Partial<Omit<Receipt, 'id' | 'createdAt' | 'updatedAt'>>) => {
     try {
-      const response = await receiptAxios.put<{ success: boolean; data: Receipt }>(`/api/receipts/${id}`, data);
+      const response = await receiptAxios.put<{ success: boolean; data: Receipt }>(`${API_PATHS.RECEIPTS}${id}`, data);
       return response.data;
     } catch (error) {
       console.error('Error updating receipt:', error);
@@ -81,7 +92,7 @@ export const receiptApi = {
 
   deleteReceipt: async (id: string) => {
     try {
-      const response = await receiptAxios.delete<{ success: boolean }>(`/api/receipts/${id}`);
+      const response = await receiptAxios.delete<{ success: boolean }>(`${API_PATHS.RECEIPTS}${id}`);
       return response.data;
     } catch (error) {
       console.error('Error deleting receipt:', error);

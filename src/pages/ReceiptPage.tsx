@@ -137,13 +137,18 @@ const ReceiptPage: React.FC = () => {
     const fetchReceipts = async () => {
       setReceiptLoading(true);
       try {
-        const response = await receiptApi.getReceipts();
-        const allReceipts = Array.isArray(response) ? response : response.data;
-        setReceipts(allReceipts);
-        // Extract unique years from receipts
-        const years = Array.from(new Set(allReceipts.map(r => new Date(r.paymentDate || r.createdAt).getFullYear().toString()))).sort((a, b) => b.localeCompare(a));
-        setReceiptYears(years);
+        const response = await receiptApi.getReceipts({ limit: 10000 }); // 큰 limit 값으로 모든 영수증 조회
+        if (response.success) {
+          const allReceipts = response.data;
+          setReceipts(allReceipts);
+          // Extract unique years from receipts
+          const years = Array.from(new Set(allReceipts.map(r => new Date(r.paymentDate || r.createdAt).getFullYear().toString()))).sort((a, b) => b.localeCompare(a));
+          setReceiptYears(years);
+        } else {
+          throw new Error('영수증 데이터를 불러오는데 실패했습니다.');
+        }
       } catch (err) {
+        console.error('Error fetching receipts:', err);
         setReceiptError('영수증 데이터를 불러오는데 실패했습니다.');
       } finally {
         setReceiptLoading(false);

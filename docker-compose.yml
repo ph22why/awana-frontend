@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # MongoDB 서비스
   mongodb:
-    image: mongo:latest
+    image: mongo:4.4 # 개발시엔 latest 사용 배포시엔 4.4 사용
     ports:
       - "27017:27017"
     volumes:
@@ -20,7 +20,7 @@ services:
     ports:
       - "3002:3002"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/church-service
+      - MONGODB_URI=mongodb://localhost:27017/church-service
       - PORT=3002
     depends_on:
       - mongodb
@@ -35,7 +35,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/event-service
+      - MONGODB_URI=mongodb://localhost:27017/event-service
       - PORT=3001
     depends_on:
       - mongodb
@@ -50,7 +50,7 @@ services:
     ports:
       - "3003:3003"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/receipt-service
+      - MONGODB_URI=mongodb://localhost:27017/receipt-service
       - PORT=3003
     depends_on:
       - mongodb

@@ -6,7 +6,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/event-service
+      - MONGODB_URI=mongodb://localhost:27017/event-service
       - PORT=3001
     depends_on:
       - mongodb

@@ -46,7 +46,7 @@ app.get('/api/test', (req, res) => {
 app.use(errorHandler);
 
 // Database connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongodb:27017/event-service';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/event-service';
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('MongoDB에 연결되었습니다.'))
   .catch((error) => console.error('MongoDB 연결 실패:', error));

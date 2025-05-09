@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { churchApi, Church, PaginationInfo } from '../services/api/churchApi';
+import { churchApi, Church } from '../services/api/churchApi';
 import {
   Container,
   Typography,
@@ -26,38 +26,43 @@ const ChurchListPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [allChurches, setAllChurches] = useState<Church[]>([]);
   const [churches, setChurches] = useState<Church[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    const fetchChurches = async () => {
+  // 모든 교회 데이터 가져오기
+  const fetchAllChurches = async () => {
+    try {
       setLoading(true);
       setError(null);
-      try {
-        const response = await churchApi.searchChurches({
-          getAllResults: true,
-          name: searchTerm || undefined,
-        });
-        setAllChurches(response.data);
-      } catch (err) {
-        setError('교회 목록을 불러오는데 실패했습니다.');
+      const response = await churchApi.searchChurches({ getAllResults: true });
+      if (response.success) {
+        setAllChurches(response.data || []);
+      } else {
         setAllChurches([]);
-      } finally {
-        setLoading(false);
+        throw new Error('데이터를 불러오는데 실패했습니다.');
       }
-    };
-    const debounceTimer = setTimeout(fetchChurches, 300);
-    return () => clearTimeout(debounceTimer);
-  }, [searchTerm]);
+    } catch (err) {
+      console.error('Error fetching churches:', err);
+      setError('교회 목록을 불러오는데 실패했습니다.');
+      setAllChurches([]); // Set empty array on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllChurches();
+  }, []);
 
   useEffect(() => {
     // 검색어가 있으면 프론트에서 필터링 (이름, mainId 부분 일치)
-    let filtered = allChurches;
+    let filtered = allChurches || []; // Ensure filtered is always an array
     if (searchTerm.trim() !== '') {
       const term = searchTerm.trim().toLowerCase();
-      filtered = allChurches.filter(church =>
+      filtered = filtered.filter(church =>
         (church.name && church.name.toLowerCase().includes(term)) ||
         (church.mainId && church.mainId.toLowerCase().includes(term))
       );
@@ -66,12 +71,17 @@ const ChurchListPage: React.FC = () => {
     const startIdx = (page - 1) * pageSize;
     const endIdx = startIdx + pageSize;
     setChurches(filtered.slice(startIdx, endIdx));
+    // 전체 페이지 수 계산
+    setTotalPages(Math.max(1, Math.ceil(filtered.length / pageSize)));
   }, [allChurches, searchTerm, page, pageSize]);
-
-  const totalPages = Math.max(1, Math.ceil(allChurches.length / pageSize));
 
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
+  };
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(1); // Reset to first page when searching
   };
 
   return (
@@ -80,19 +90,16 @@ const ChurchListPage: React.FC = () => {
         교회 목록
       </Typography>
 
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <TextField
           fullWidth
+          label="교회명 또는 등록번호로 검색"
           variant="outlined"
-          placeholder="교회 이름 또는 지역으로 검색"
           value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setPage(1); // Reset to first page on new search
-          }}
+          onChange={handleSearch}
           InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
+            endAdornment: (
+              <InputAdornment position="end">
                 <SearchIcon />
               </InputAdornment>
             ),

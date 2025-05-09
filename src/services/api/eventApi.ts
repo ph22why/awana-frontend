@@ -2,22 +2,23 @@ import axios from 'axios';
 import { EventFormData, SampleEvent } from '../../types/event';
 
 // BASE_URL을 환경 변수에서 가져오되, /api는 제외
-const BASE_URL = process.env.REACT_APP_EVENT_API_URL || 'http://localhost:3001';
+const BASE_URL = process.env.REACT_APP_EVENT_API_URL || '/api/events';
 
 // axios 인스턴스 생성
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
+  timeout: 10000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
-  },
-  withCredentials: true
+  }
 });
 
 // API 경로 상수
 const API_PATHS = {
-  EVENTS: '/api/events',
-  SAMPLE_EVENTS: '/api/events/samples'
+  EVENTS: '/',
+  SAMPLE_EVENTS: '/samples'
 };
 
 export interface IEventCreate {

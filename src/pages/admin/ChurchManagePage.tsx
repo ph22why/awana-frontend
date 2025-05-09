@@ -33,24 +33,7 @@ import {
   Search as SearchIcon,
 } from '@mui/icons-material';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import axios from 'axios';
-
-interface Church {
-  mainId: string;
-  subId: string;
-  name: string;
-  location: string;
-  _id: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ChurchApiResponse {
-  success: boolean;
-  data: Church[];
-  count: number;
-  error?: string;
-}
+import { churchApi, Church, ChurchResponse } from '../../services/api/churchApi';
 
 interface ChurchFormData {
   mainId: string;
@@ -59,20 +42,13 @@ interface ChurchFormData {
   location: string;
 }
 
-const API_BASE_URL = process.env.REACT_APP_CHURCH_API_URL || 'http://localhost:3002';
-
-// Axios 인스턴스 생성
-const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000, // 10초 타임아웃 설정
-});
-
 const ChurchManagePage: React.FC = () => {
   const navigate = useNavigate();
   const { role } = useOutletContext<{ role: string }>();
   const [churches, setChurches] = useState<Church[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
@@ -105,28 +81,28 @@ const ChurchManagePage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axiosInstance.get<ChurchApiResponse>('/api/churches', {
-        params: {
-          page: page,
-          limit: pageSize,  // pageSize를 limit으로 변경
-          search: debouncedSearchTerm || undefined  // 빈 문자열일 경우 undefined로 설정
-        }
+      const response = await churchApi.searchChurches({
+        page: page,
+        limit: pageSize,
+        name: debouncedSearchTerm || undefined
       });
       
-      console.log('API Response:', response.data);
+      console.log('API Response:', response);
       
-      if (response.data && response.data.success) {
-        const totalItems = response.data.count || 0;
-        setChurches(response.data.data || []);
-        setTotalPages(Math.max(1, Math.ceil(totalItems / pageSize)));
+      if (response.success) {
+        setChurches(response.data || []);
+        setTotalCount(response.count || 0);
+        const totalPages = Math.max(1, Math.ceil((response.count || 0) / pageSize));
+        setTotalPages(totalPages);
       } else {
-        throw new Error('데이터를 불러오는데 실패했습니다.');
+        throw new Error(response.error || '데이터를 불러오는데 실패했습니다.');
       }
     } catch (err) {
       console.error('Error fetching churches:', err);
       setError('교회 목록을 불러오는데 실패했습니다.');
       setChurches([]);
       setTotalPages(1);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -171,12 +147,12 @@ const ChurchManagePage: React.FC = () => {
   const handleSubmit = async () => {
     try {
       if (editingChurch) {
-        await axiosInstance.put(`/api/churches/${editingChurch.mainId}/${editingChurch.subId}`, {
+        await churchApi.updateChurch(editingChurch.mainId, editingChurch.subId, {
           name: formData.name,
           location: formData.location
         });
       } else {
-        await axiosInstance.post('/api/churches', formData);
+        await churchApi.createChurch(formData);
       }
       handleCloseDialog();
       fetchChurches();
@@ -188,7 +164,7 @@ const ChurchManagePage: React.FC = () => {
   const handleDelete = async (church: Church) => {
     if (window.confirm('정말로 이 교회를 삭제하시겠습니까?')) {
       try {
-        await axiosInstance.delete(`/api/churches/${church.mainId}/${church.subId}`);
+        await churchApi.deleteChurch(church.mainId, church.subId);
         fetchChurches();
       } catch (error) {
         console.error('Error deleting church:', error);
@@ -298,7 +274,7 @@ const ChurchManagePage: React.FC = () => {
           disabled={loading}
         />
         <Typography variant="body2" color="text.secondary">
-          총 {churches.length}개 항목 (페이지당 {pageSize}개)
+          총 {totalCount}개 항목 (페이지당 {pageSize}개)
         </Typography>
       </Box>
 

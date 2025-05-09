@@ -1,11 +1,24 @@
 import axios from 'axios';
 
-const CHURCH_API_URL = process.env.REACT_APP_CHURCH_API_URL || 'http://localhost:3002';
+// BASE_URL을 환경 변수에서 가져오되, /api는 제외
+const BASE_URL = process.env.REACT_APP_CHURCH_API_URL || '/api/churches';
 
-const churchAxios = axios.create({
-  baseURL: CHURCH_API_URL,
+// axios 인스턴스 생성
+const axiosInstance = axios.create({
+  baseURL: BASE_URL,
   timeout: 10000,
-});
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  }
+});             
+
+// API 경로 상수
+const API_PATHS = {
+  CHURCHES: '/',
+  SEARCH: '/search'
+};
 
 export interface Church {
   _id: string;
@@ -30,7 +43,13 @@ export interface PaginationInfo {
 export interface ChurchResponse {
   success: boolean;
   data: Church[];
-  pagination: PaginationInfo;
+  count: number;  // 백엔드 응답 형식에 맞춤
+  error?: string;
+}
+
+export interface SingleChurchResponse {
+  success: boolean;
+  data: Church;
   error?: string;
 }
 
@@ -40,37 +59,76 @@ export interface ChurchSearchParams {
   page?: number;
   limit?: number;
   location?: string;
-  getAllResults?: boolean;
+  search?: string;
+  getAllResults?: boolean;  // 전체 결과를 가져오기 위한 파라미터
 }
 
 export const churchApi = {
-  searchChurches: async (params: ChurchSearchParams) => {
+  searchChurches: async (params: ChurchSearchParams): Promise<ChurchResponse> => {
     try {
-      // If getAllResults is true, set a very high limit to get all results
-      const searchParams = params.getAllResults 
-        ? { ...params, limit: 10000, page: 1 } 
-        : {
-            ...params,
-            page: params.page || 1,
-            limit: params.limit || 20
-          };
-
-      const response = await churchAxios.get<ChurchResponse>('/api/churches', { 
-        params: searchParams
+      console.log('Fetching churches with params:', params);
+      const response = await axiosInstance.get<ChurchResponse>(API_PATHS.CHURCHES, { 
+        params: {
+          page: params.page || 1,
+          limit: params.getAllResults ? 10000 : (params.limit || 20),
+          search: params.name || params.search
+        }
       });
+      
+      console.log('Church API Response:', response.data);
+      return {
+        success: true,
+        data: response.data.data,
+        count: response.data.count,
+        error: response.data.error
+      };
+    } catch (error: any) {
+      console.error('Error fetching churches:', error);
+      return {
+        success: false,
+        data: [],
+        count: 0,
+        error: error?.response?.data?.message || error.message || '교회 목록을 불러오는데 실패했습니다.'
+      };
+    }
+  },
+
+  getChurchById: async (mainId: string, subId: string): Promise<SingleChurchResponse> => {
+    try {
+      const response = await axiosInstance.get<SingleChurchResponse>(`${API_PATHS.CHURCHES}${mainId}/${subId}`);
       return response.data;
-    } catch (error) {
-      console.error('Error searching churches:', error);
+    } catch (error: any) {
+      console.error('Error getting church:', error);
       throw error;
     }
   },
 
-  getChurchById: async (id: string) => {
+  createChurch: async (churchData: Omit<Church, '_id' | 'createdAt' | 'updatedAt'>): Promise<SingleChurchResponse> => {
     try {
-      const response = await churchAxios.get<{ success: boolean; data: Church }>(`/api/churches/${id}`);
+      const response = await axiosInstance.post<SingleChurchResponse>(API_PATHS.CHURCHES, churchData);
       return response.data;
-    } catch (error) {
-      console.error('Error getting church:', error);
+    } catch (error: any) {
+      console.error('Error creating church:', error);
+      throw error;
+    }
+  },
+
+  updateChurch: async (mainId: string, subId: string, churchData: Partial<Omit<Church, '_id' | 'createdAt' | 'updatedAt'>>): Promise<SingleChurchResponse> => {
+    try {
+      const response = await axiosInstance.put<SingleChurchResponse>(`${API_PATHS.CHURCHES}${mainId}/${subId}`, churchData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error updating church:', error);
+      throw error;
+    }
+  },
+
+  deleteChurch: async (mainId: string, subId: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const response = await axiosInstance.delete<{ success: boolean; message?: string }>(`${API_PATHS.CHURCHES}${mainId}/${subId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error deleting church:', error);
       throw error;
     }
   }
