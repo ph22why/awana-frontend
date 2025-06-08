@@ -1,9 +1,12 @@
 import axios from 'axios';
 
-const RECEIPT_API_URL = process.env.REACT_APP_RECEIPT_API_URL || '/api/receipts';
+const isDevelopment = process.env.NODE_ENV === 'development';
+const BASE_URL = isDevelopment 
+  ? `http://localhost:${process.env.NEXT_PUBLIC_RECEIPT_SERVICE_PORT || '3003'}`
+  : 'https://awanaevent.com:3003';
 
 const receiptAxios = axios.create({
-  baseURL: RECEIPT_API_URL,
+  baseURL: BASE_URL,
   timeout: 10000,
   withCredentials: true,
   headers: {

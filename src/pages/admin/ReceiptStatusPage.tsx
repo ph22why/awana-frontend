@@ -14,6 +14,7 @@ const ReceiptStatusPage: React.FC = () => {
 
   useEffect(() => {
     if (role !== 'mini' && role !== 'admin') return;
+    // axios.get('https://awanaevent.com:3001/api/events')
     axios.get('/api/events/')
       .then(res => {
         setEvents((res.data as any[])

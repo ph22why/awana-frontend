@@ -66,7 +66,7 @@ cd AWANA
 cp .env.example .env
 
 # 필요한 환경 변수 설정
-REACT_APP_API_URL=http://localhost:3000
+REACT_APP_API_URL=https://awanaevent.com:3000
 ```
 
 3. Docker Compose로 서비스 실행

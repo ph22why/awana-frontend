@@ -1,12 +1,14 @@
 import axios from 'axios';
 import { EventFormData, SampleEvent } from '../../types/event';
 
-// BASE_URL을 환경 변수에서 가져오되, /api는 제외
-const BASE_URL = process.env.REACT_APP_EVENT_API_URL || '/api/events';
+const isDevelopment = process.env.NODE_ENV === 'development';
+const BASE_URL = isDevelopment 
+  ? `http://localhost:${process.env.NEXT_PUBLIC_EVENT_SERVICE_PORT || '3001'}`
+  : 'https://awanaevent.com:3001';
 
 // axios 인스턴스 생성
 const axiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: `${BASE_URL}/api/events`,
   timeout: 10000,
   withCredentials: true,
   headers: {
@@ -71,7 +73,11 @@ export const eventApi = {
   getEvents: async (params?: { year?: number; page?: number; limit?: number }): Promise<IEvent[]> => {
     try {
       console.log('Fetching events with params:', params);
-      const response = await axiosInstance.get<IEvent[] | EventApiResponse>(`${API_PATHS.EVENTS}`, { params });
+      const response = await axiosInstance.get<IEvent[] | EventApiResponse>(API_PATHS.EVENTS, { 
+        params,
+        validateStatus: (status) => status < 500 // 500 미만의 모든 상태 코드를 유효한 응답으로 처리
+      });
+      
       console.log('Events response:', response.data);
       
       // 응답이 배열인 경우 직접 반환
@@ -93,6 +99,9 @@ export const eventApi = {
         data: error.response?.data,
         config: error.config
       });
+      if (error.response?.status === 404) {
+        return []; // 404 에러의 경우 빈 배열 반환
+      }
       throw new Error(error.response?.data?.error || error.message || '이벤트 목록을 불러오는데 실패했습니다.');
     }
   },

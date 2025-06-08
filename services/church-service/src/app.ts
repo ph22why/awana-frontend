@@ -11,7 +11,17 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors());  // 모든 도메인에서의 요청 허용
+// CORS 설정
+const allowedOrigins = process.env.NODE_ENV === 'development' 
+  ? ['http://localhost:3000']
+  : ['https://awanaevent.com'];
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Routes

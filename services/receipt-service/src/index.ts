@@ -6,7 +6,18 @@ import { receiptRoutes } from './routes/receiptRoutes';
 const app = express();
 const port = process.env.PORT || 3002;
 
-app.use(cors());
+// CORS 설정
+const allowedOrigins = process.env.NODE_ENV === 'development' 
+  ? ['http://localhost:3000']
+  : ['https://awanaevent.com'];
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Routes

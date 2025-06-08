@@ -1,0 +1,852 @@
+From a8f7b70b2c248acaaddbd66362c932559c3fd8a5 Mon Sep 17 00:00:00 2001
+From: ph22why <ph22why@gmail.com>
+Date: Sat, 10 May 2025 05:10:57 +0900
+Subject: [PATCH] service v1.0
+
+---
+ docker-compose.yml                        |   8 +-
+ services/church-service/Dockerfile        |   2 +
+ services/church-service/dist/app.js       |  23 ++++-
+ services/event-service/Dockerfile         |   3 +
+ services/event-service/docker-compose.yml |   2 +-
+ services/event-service/src/index.ts       |   2 +-
+ services/receipt-service/Dockerfile       |   2 +
+ services/receipt-service/src/index.ts     |   2 +-
+ src/pages/ChurchListPage.tsx              |  67 ++++++++------
+ src/pages/ReceiptPage.tsx                 |  17 ++--
+ src/pages/admin/ChurchManagePage.tsx      |  60 ++++--------
+ src/pages/admin/ReceiptManagePage.tsx     |  49 +++++-----
+ src/pages/admin/ReceiptStatusPage.tsx     |   2 +-
+ src/services/api/churchApi.ts             | 106 +++++++++++++++++-----
+ src/services/api/eventApi.ts              |  11 ++-
+ src/services/api/receiptApi.ts            |  23 +++--
+ ws-server.js                              |  26 ++++++
+ 17 files changed, 257 insertions(+), 148 deletions(-)
+ create mode 100644 ws-server.js
+
+diff --git a/docker-compose.yml b/docker-compose.yml
+index afa27f5..ebd26b5 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -3,7 +3,7 @@ version: '3.8'
+ services:
+   # MongoDB 서비스
+   mongodb:
+-    image: mongo:latest
++    image: mongo:4.4 # 개발시엔 latest 사용 배포시엔 4.4 사용
+     ports:
+       - "27017:27017"
+     volumes:
+@@ -20,7 +20,7 @@ services:
+     ports:
+       - "3002:3002"
+     environment:
+-      - MONGODB_URI=mongodb://mongodb:27017/church-service
++      - MONGODB_URI=mongodb://localhost:27017/church-service
+       - PORT=3002
+     depends_on:
+       - mongodb
+@@ -35,7 +35,7 @@ services:
+     ports:
+       - "3001:3001"
+     environment:
+-      - MONGODB_URI=mongodb://mongodb:27017/event-service
++      - MONGODB_URI=mongodb://localhost:27017/event-service
+       - PORT=3001
+     depends_on:
+       - mongodb
+@@ -50,7 +50,7 @@ services:
+     ports:
+       - "3003:3003"
+     environment:
+-      - MONGODB_URI=mongodb://mongodb:27017/receipt-service
++      - MONGODB_URI=mongodb://localhost:27017/receipt-service
+       - PORT=3003
+     depends_on:
+       - mongodb
+diff --git a/services/church-service/Dockerfile b/services/church-service/Dockerfile
+index c83b74f..9effc6f 100644
+--- a/services/church-service/Dockerfile
++++ b/services/church-service/Dockerfile
+@@ -8,6 +8,8 @@ RUN npm install
+ 
+ COPY . .
+ 
++RUN chmod +x ./node_modules/.bin/tsc
++
+ RUN npm run build
+ 
+ EXPOSE 3002
+diff --git a/services/church-service/dist/app.js b/services/church-service/dist/app.js
+index d815b59..8d2ba07 100644
+--- a/services/church-service/dist/app.js
++++ b/services/church-service/dist/app.js
+@@ -26,21 +26,38 @@ app.get('/api/churches', async (req, res) => {
+         if (!mongoose_1.default.connection || !mongoose_1.default.connection.db) {
+             throw new Error('Database connection not initialized');
+         }
+-        const { search = '' } = req.query;
++        const { search = '', page = 1, limit = 20 } = req.query;
+         const searchQuery = search ? {
+             $or: [
+                 { name: { $regex: search, $options: 'i' } },
+                 { location: { $regex: search, $options: 'i' } }
+             ]
+         } : {};
++
+         const churches = await mongoose_1.default.connection.db.collection('churches')
+             .find(searchQuery)
+             .toArray();
+-        res.json(churches);
++
++        // 프론트엔드 기대 응답 구조로 변환
++        res.json({
++            success: true,
++            data: churches,
++            pagination: {
++                total: churches.length,
++                page: Number(page),
++                limit: Number(limit),
++                totalPages: Math.ceil(churches.length / Number(limit))
++            }
++        });
+     }
+     catch (error) {
+         console.error('Error in /api/churches:', error);
+-        res.status(500).json({ error: 'Failed to fetch churches' });
++        res.status(500).json({ 
++            success: false, 
++            data: [], 
++            pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
++            error: 'Failed to fetch churches' 
++        });
+     }
+ });
+ // MongoDB connection
+diff --git a/services/event-service/Dockerfile b/services/event-service/Dockerfile
+index eee54c3..a4001ae 100644
+--- a/services/event-service/Dockerfile
++++ b/services/event-service/Dockerfile
+@@ -8,6 +8,9 @@ RUN npm install
+ 
+ COPY . .
+ 
++RUN chmod +x ./node_modules/.bin/tsc \
++    && chmod +x ./node_modules/.bin/ts-node
++
+ RUN npm run build
+ 
+ EXPOSE 3001
+diff --git a/services/event-service/docker-compose.yml b/services/event-service/docker-compose.yml
+index e659df6..6996b4b 100644
+--- a/services/event-service/docker-compose.yml
++++ b/services/event-service/docker-compose.yml
+@@ -6,7 +6,7 @@ services:
+     ports:
+       - "3001:3001"
+     environment:
+-      - MONGODB_URI=mongodb://mongodb:27017/event-service
++      - MONGODB_URI=mongodb://localhost:27017/event-service
+       - PORT=3001
+     depends_on:
+       - mongodb
+diff --git a/services/event-service/src/index.ts b/services/event-service/src/index.ts
+index 6039538..e79713f 100644
+--- a/services/event-service/src/index.ts
++++ b/services/event-service/src/index.ts
+@@ -46,7 +46,7 @@ app.get('/api/test', (req, res) => {
+ app.use(errorHandler);
+ 
+ // Database connection
+-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongodb:27017/event-service';
++const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/event-service';
+ mongoose.connect(MONGODB_URI)
+   .then(() => console.log('MongoDB에 연결되었습니다.'))
+   .catch((error) => console.error('MongoDB 연결 실패:', error));
+diff --git a/services/receipt-service/Dockerfile b/services/receipt-service/Dockerfile
+index 3e08763..2b3626c 100644
+--- a/services/receipt-service/Dockerfile
++++ b/services/receipt-service/Dockerfile
+@@ -8,6 +8,8 @@ RUN npm install
+ 
+ COPY . .
+ 
++RUN chmod +x ./node_modules/.bin/tsc
++
+ RUN npm run build
+ 
+ EXPOSE 3003
+diff --git a/services/receipt-service/src/index.ts b/services/receipt-service/src/index.ts
+index e9ca6ae..5bc8d2c 100644
+--- a/services/receipt-service/src/index.ts
++++ b/services/receipt-service/src/index.ts
+@@ -18,7 +18,7 @@ app.get('/health', (req, res) => {
+ });
+ 
+ // MongoDB 연결
+-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://mongodb:27017/receipt-service';
++const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/receipt-service';
+ mongoose.connect(MONGODB_URI)
+   .then(() => console.log('MongoDB에 연결되었습니다.'))
+   .catch((error) => console.error('MongoDB 연결 실패:', error));
+diff --git a/src/pages/ChurchListPage.tsx b/src/pages/ChurchListPage.tsx
+index b391389..9f90296 100644
+--- a/src/pages/ChurchListPage.tsx
++++ b/src/pages/ChurchListPage.tsx
+@@ -1,5 +1,5 @@
+ import React, { useState, useEffect } from 'react';
+-import { churchApi, Church, PaginationInfo } from '../services/api/churchApi';
++import { churchApi, Church } from '../services/api/churchApi';
+ import {
+   Container,
+   Typography,
+@@ -26,38 +26,43 @@ const ChurchListPage: React.FC = () => {
+   const [searchTerm, setSearchTerm] = useState('');
+   const [allChurches, setAllChurches] = useState<Church[]>([]);
+   const [churches, setChurches] = useState<Church[]>([]);
+-  const [loading, setLoading] = useState(true);
++  const [loading, setLoading] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [page, setPage] = useState(1);
+   const [pageSize, setPageSize] = useState(10);
++  const [totalPages, setTotalPages] = useState(1);
+ 
+-  useEffect(() => {
+-    const fetchChurches = async () => {
++  // 모든 교회 데이터 가져오기
++  const fetchAllChurches = async () => {
++    try {
+       setLoading(true);
+       setError(null);
+-      try {
+-        const response = await churchApi.searchChurches({
+-          getAllResults: true,
+-          name: searchTerm || undefined,
+-        });
+-        setAllChurches(response.data);
+-      } catch (err) {
+-        setError('교회 목록을 불러오는데 실패했습니다.');
++      const response = await churchApi.searchChurches({ getAllResults: true });
++      if (response.success) {
++        setAllChurches(response.data || []);
++      } else {
+         setAllChurches([]);
+-      } finally {
+-        setLoading(false);
++        throw new Error('데이터를 불러오는데 실패했습니다.');
+       }
+-    };
+-    const debounceTimer = setTimeout(fetchChurches, 300);
+-    return () => clearTimeout(debounceTimer);
+-  }, [searchTerm]);
++    } catch (err) {
++      console.error('Error fetching churches:', err);
++      setError('교회 목록을 불러오는데 실패했습니다.');
++      setAllChurches([]); // Set empty array on error
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  useEffect(() => {
++    fetchAllChurches();
++  }, []);
+ 
+   useEffect(() => {
+     // 검색어가 있으면 프론트에서 필터링 (이름, mainId 부분 일치)
+-    let filtered = allChurches;
++    let filtered = allChurches || []; // Ensure filtered is always an array
+     if (searchTerm.trim() !== '') {
+       const term = searchTerm.trim().toLowerCase();
+-      filtered = allChurches.filter(church =>
++      filtered = filtered.filter(church =>
+         (church.name && church.name.toLowerCase().includes(term)) ||
+         (church.mainId && church.mainId.toLowerCase().includes(term))
+       );
+@@ -66,33 +71,35 @@ const ChurchListPage: React.FC = () => {
+     const startIdx = (page - 1) * pageSize;
+     const endIdx = startIdx + pageSize;
+     setChurches(filtered.slice(startIdx, endIdx));
++    // 전체 페이지 수 계산
++    setTotalPages(Math.max(1, Math.ceil(filtered.length / pageSize)));
+   }, [allChurches, searchTerm, page, pageSize]);
+ 
+-  const totalPages = Math.max(1, Math.ceil(allChurches.length / pageSize));
+-
+   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+     setPage(value);
+   };
+ 
++  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
++    setSearchTerm(e.target.value);
++    setPage(1); // Reset to first page when searching
++  };
++
+   return (
+     <Container maxWidth="lg" sx={{ py: 4 }}>
+       <Typography variant="h4" component="h1" gutterBottom>
+         교회 목록
+       </Typography>
+ 
+-      <Box sx={{ mb: 4 }}>
++      <Box sx={{ mb: 3 }}>
+         <TextField
+           fullWidth
++          label="교회명 또는 등록번호로 검색"
+           variant="outlined"
+-          placeholder="교회 이름 또는 지역으로 검색"
+           value={searchTerm}
+-          onChange={(e) => {
+-            setSearchTerm(e.target.value);
+-            setPage(1); // Reset to first page on new search
+-          }}
++          onChange={handleSearch}
+           InputProps={{
+-            startAdornment: (
+-              <InputAdornment position="start">
++            endAdornment: (
++              <InputAdornment position="end">
+                 <SearchIcon />
+               </InputAdornment>
+             ),
+diff --git a/src/pages/ReceiptPage.tsx b/src/pages/ReceiptPage.tsx
+index b28e8b0..903fca4 100644
+--- a/src/pages/ReceiptPage.tsx
++++ b/src/pages/ReceiptPage.tsx
+@@ -137,13 +137,18 @@ const ReceiptPage: React.FC = () => {
+     const fetchReceipts = async () => {
+       setReceiptLoading(true);
+       try {
+-        const response = await receiptApi.getReceipts();
+-        const allReceipts = Array.isArray(response) ? response : response.data;
+-        setReceipts(allReceipts);
+-        // Extract unique years from receipts
+-        const years = Array.from(new Set(allReceipts.map(r => new Date(r.paymentDate || r.createdAt).getFullYear().toString()))).sort((a, b) => b.localeCompare(a));
+-        setReceiptYears(years);
++        const response = await receiptApi.getReceipts({ limit: 10000 }); // 큰 limit 값으로 모든 영수증 조회
++        if (response.success) {
++          const allReceipts = response.data;
++          setReceipts(allReceipts);
++          // Extract unique years from receipts
++          const years = Array.from(new Set(allReceipts.map(r => new Date(r.paymentDate || r.createdAt).getFullYear().toString()))).sort((a, b) => b.localeCompare(a));
++          setReceiptYears(years);
++        } else {
++          throw new Error('영수증 데이터를 불러오는데 실패했습니다.');
++        }
+       } catch (err) {
++        console.error('Error fetching receipts:', err);
+         setReceiptError('영수증 데이터를 불러오는데 실패했습니다.');
+       } finally {
+         setReceiptLoading(false);
+diff --git a/src/pages/admin/ChurchManagePage.tsx b/src/pages/admin/ChurchManagePage.tsx
+index 76ceb50..0a367ac 100644
+--- a/src/pages/admin/ChurchManagePage.tsx
++++ b/src/pages/admin/ChurchManagePage.tsx
+@@ -33,24 +33,7 @@ import {
+   Search as SearchIcon,
+ } from '@mui/icons-material';
+ import { useNavigate, useOutletContext } from 'react-router-dom';
+-import axios from 'axios';
+-
+-interface Church {
+-  mainId: string;
+-  subId: string;
+-  name: string;
+-  location: string;
+-  _id: string;
+-  createdAt: string;
+-  updatedAt: string;
+-}
+-
+-interface ChurchApiResponse {
+-  success: boolean;
+-  data: Church[];
+-  count: number;
+-  error?: string;
+-}
++import { churchApi, Church, ChurchResponse } from '../../services/api/churchApi';
+ 
+ interface ChurchFormData {
+   mainId: string;
+@@ -59,20 +42,13 @@ interface ChurchFormData {
+   location: string;
+ }
+ 
+-const API_BASE_URL = process.env.REACT_APP_CHURCH_API_URL || 'http://localhost:3002';
+-
+-// Axios 인스턴스 생성
+-const axiosInstance = axios.create({
+-  baseURL: API_BASE_URL,
+-  timeout: 10000, // 10초 타임아웃 설정
+-});
+-
+ const ChurchManagePage: React.FC = () => {
+   const navigate = useNavigate();
+   const { role } = useOutletContext<{ role: string }>();
+   const [churches, setChurches] = useState<Church[]>([]);
+   const [page, setPage] = useState(1);
+   const [totalPages, setTotalPages] = useState(1);
++  const [totalCount, setTotalCount] = useState(0);
+   const [searchTerm, setSearchTerm] = useState('');
+   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+   const [openDialog, setOpenDialog] = useState(false);
+@@ -105,28 +81,28 @@ const ChurchManagePage: React.FC = () => {
+     try {
+       setLoading(true);
+       setError(null);
+-      const response = await axiosInstance.get<ChurchApiResponse>('/api/churches', {
+-        params: {
+-          page: page,
+-          limit: pageSize,  // pageSize를 limit으로 변경
+-          search: debouncedSearchTerm || undefined  // 빈 문자열일 경우 undefined로 설정
+-        }
++      const response = await churchApi.searchChurches({
++        page: page,
++        limit: pageSize,
++        name: debouncedSearchTerm || undefined
+       });
+       
+-      console.log('API Response:', response.data);
++      console.log('API Response:', response);
+       
+-      if (response.data && response.data.success) {
+-        const totalItems = response.data.count || 0;
+-        setChurches(response.data.data || []);
+-        setTotalPages(Math.max(1, Math.ceil(totalItems / pageSize)));
++      if (response.success) {
++        setChurches(response.data || []);
++        setTotalCount(response.count || 0);
++        const totalPages = Math.max(1, Math.ceil((response.count || 0) / pageSize));
++        setTotalPages(totalPages);
+       } else {
+-        throw new Error('데이터를 불러오는데 실패했습니다.');
++        throw new Error(response.error || '데이터를 불러오는데 실패했습니다.');
+       }
+     } catch (err) {
+       console.error('Error fetching churches:', err);
+       setError('교회 목록을 불러오는데 실패했습니다.');
+       setChurches([]);
+       setTotalPages(1);
++      setTotalCount(0);
+     } finally {
+       setLoading(false);
+     }
+@@ -171,12 +147,12 @@ const ChurchManagePage: React.FC = () => {
+   const handleSubmit = async () => {
+     try {
+       if (editingChurch) {
+-        await axiosInstance.put(`/api/churches/${editingChurch.mainId}/${editingChurch.subId}`, {
++        await churchApi.updateChurch(editingChurch.mainId, editingChurch.subId, {
+           name: formData.name,
+           location: formData.location
+         });
+       } else {
+-        await axiosInstance.post('/api/churches', formData);
++        await churchApi.createChurch(formData);
+       }
+       handleCloseDialog();
+       fetchChurches();
+@@ -188,7 +164,7 @@ const ChurchManagePage: React.FC = () => {
+   const handleDelete = async (church: Church) => {
+     if (window.confirm('정말로 이 교회를 삭제하시겠습니까?')) {
+       try {
+-        await axiosInstance.delete(`/api/churches/${church.mainId}/${church.subId}`);
++        await churchApi.deleteChurch(church.mainId, church.subId);
+         fetchChurches();
+       } catch (error) {
+         console.error('Error deleting church:', error);
+@@ -298,7 +274,7 @@ const ChurchManagePage: React.FC = () => {
+           disabled={loading}
+         />
+         <Typography variant="body2" color="text.secondary">
+-          총 {churches.length}개 항목 (페이지당 {pageSize}개)
++          총 {totalCount}개 항목 (페이지당 {pageSize}개)
+         </Typography>
+       </Box>
+ 
+diff --git a/src/pages/admin/ReceiptManagePage.tsx b/src/pages/admin/ReceiptManagePage.tsx
+index 73dd94d..a678b39 100644
+--- a/src/pages/admin/ReceiptManagePage.tsx
++++ b/src/pages/admin/ReceiptManagePage.tsx
+@@ -29,6 +29,7 @@ import {
+   Alert,
+   Snackbar,
+   Backdrop,
++  Pagination,
+ } from '@mui/material';
+ import {
+   Visibility as VisibilityIcon,
+@@ -364,8 +365,8 @@ const ReceiptManagePage: React.FC = () => {
+       if (response.success) {
+         setChurches(response.data);
+         setTotalPages(
+-          response.pagination?.total
+-            ? Math.max(1, Math.ceil(response.pagination.total / pageSize))
++          response.count
++            ? Math.max(1, Math.ceil(response.count / pageSize))
+             : 1
+         );
+       } else {
+@@ -788,34 +789,15 @@ const ReceiptManagePage: React.FC = () => {
+       
+       console.log('Raw API response:', response);
+       
+-      // Handle both array response and object response formats
+-      let receiptData: Receipt[] = [];
+-      if (Array.isArray(response)) {
+-        receiptData = response;
+-        setTotalPages(Math.ceil(response.length / pageSize));
+-      } else if (response && response.data) {
+-        receiptData = response.data;
++      if (response.success) {
++        setReceipts(response.data);
+         if (response.count) {
+           setTotalPages(Math.ceil(response.count / pageSize));
+         }
++        setError(null);
+       } else {
+         throw new Error('영수증 목록을 불러오는데 실패했습니다.');
+       }
+-
+-      // Transform and validate the data
+-      const validatedReceipts = receiptData.map(receipt => ({
+-        ...receipt,
+-        churchName: receipt.churchName || '',
+-        partTotal: receipt.partTotal || 0,
+-        partStudent: receipt.partStudent || 0,
+-        partTeacher: receipt.partTeacher || 0,
+-        partYM: receipt.partYM || 0,
+-        costs: receipt.costs || 0,
+-      }));
+-
+-      console.log('Processed receipts:', validatedReceipts);
+-      setReceipts(validatedReceipts);
+-      setError(null);
+     } catch (err) {
+       console.error('Error fetching receipts:', err);
+       setError('영수증 목록을 불러오는데 실패했습니다.');
+@@ -1574,6 +1556,25 @@ const ReceiptManagePage: React.FC = () => {
+               </TableBody>
+             </Table>
+           </TableContainer>
++
++          {/* 페이지네이션 컨트롤 추가 */}
++          {totalPages > 1 && (
++            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 3 }}>
++              <Pagination
++                count={totalPages}
++                page={page}
++                onChange={(_, value) => {
++                  setPage(value);
++                  if (selectedEvent) {
++                    fetchReceipts(selectedEvent, false);
++                  }
++                }}
++                color="primary"
++                showFirstButton
++                showLastButton
++              />
++            </Box>
++          )}
+         </>
+       )}
+ 
+diff --git a/src/pages/admin/ReceiptStatusPage.tsx b/src/pages/admin/ReceiptStatusPage.tsx
+index 5e5277a..41c32f4 100644
+--- a/src/pages/admin/ReceiptStatusPage.tsx
++++ b/src/pages/admin/ReceiptStatusPage.tsx
+@@ -14,7 +14,7 @@ const ReceiptStatusPage: React.FC = () => {
+ 
+   useEffect(() => {
+     if (role !== 'mini' && role !== 'admin') return;
+-    axios.get('http://localhost:3001/api/events')
++    axios.get('/api/events/')
+       .then(res => {
+         setEvents((res.data as any[])
+           .filter((ev: any) => ev.event_Open_Available === '공개')
+diff --git a/src/services/api/churchApi.ts b/src/services/api/churchApi.ts
+index 630ccb1..88c126d 100644
+--- a/src/services/api/churchApi.ts
++++ b/src/services/api/churchApi.ts
+@@ -1,11 +1,24 @@
+ import axios from 'axios';
+ 
+-const CHURCH_API_URL = process.env.REACT_APP_CHURCH_API_URL || 'http://localhost:3002';
++// BASE_URL을 환경 변수에서 가져오되, /api는 제외
++const BASE_URL = process.env.REACT_APP_CHURCH_API_URL || '/api/churches';
+ 
+-const churchAxios = axios.create({
+-  baseURL: CHURCH_API_URL,
++// axios 인스턴스 생성
++const axiosInstance = axios.create({
++  baseURL: BASE_URL,
+   timeout: 10000,
+-});
++  withCredentials: true,
++  headers: {
++    'Content-Type': 'application/json',
++    'Accept': 'application/json'
++  }
++});             
++
++// API 경로 상수
++const API_PATHS = {
++  CHURCHES: '/',
++  SEARCH: '/search'
++};
+ 
+ export interface Church {
+   _id: string;
+@@ -30,7 +43,13 @@ export interface PaginationInfo {
+ export interface ChurchResponse {
+   success: boolean;
+   data: Church[];
+-  pagination: PaginationInfo;
++  count: number;  // 백엔드 응답 형식에 맞춤
++  error?: string;
++}
++
++export interface SingleChurchResponse {
++  success: boolean;
++  data: Church;
+   error?: string;
+ }
+ 
+@@ -40,37 +59,76 @@ export interface ChurchSearchParams {
+   page?: number;
+   limit?: number;
+   location?: string;
+-  getAllResults?: boolean;
++  search?: string;
++  getAllResults?: boolean;  // 전체 결과를 가져오기 위한 파라미터
+ }
+ 
+ export const churchApi = {
+-  searchChurches: async (params: ChurchSearchParams) => {
++  searchChurches: async (params: ChurchSearchParams): Promise<ChurchResponse> => {
+     try {
+-      // If getAllResults is true, set a very high limit to get all results
+-      const searchParams = params.getAllResults 
+-        ? { ...params, limit: 10000, page: 1 } 
+-        : {
+-            ...params,
+-            page: params.page || 1,
+-            limit: params.limit || 20
+-          };
+-
+-      const response = await churchAxios.get<ChurchResponse>('/api/churches', { 
+-        params: searchParams
++      console.log('Fetching churches with params:', params);
++      const response = await axiosInstance.get<ChurchResponse>(API_PATHS.CHURCHES, { 
++        params: {
++          page: params.page || 1,
++          limit: params.getAllResults ? 10000 : (params.limit || 20),
++          search: params.name || params.search
++        }
+       });
++      
++      console.log('Church API Response:', response.data);
++      return {
++        success: true,
++        data: response.data.data,
++        count: response.data.count,
++        error: response.data.error
++      };
++    } catch (error: any) {
++      console.error('Error fetching churches:', error);
++      return {
++        success: false,
++        data: [],
++        count: 0,
++        error: error?.response?.data?.message || error.message || '교회 목록을 불러오는데 실패했습니다.'
++      };
++    }
++  },
++
++  getChurchById: async (mainId: string, subId: string): Promise<SingleChurchResponse> => {
++    try {
++      const response = await axiosInstance.get<SingleChurchResponse>(`${API_PATHS.CHURCHES}${mainId}/${subId}`);
+       return response.data;
+-    } catch (error) {
+-      console.error('Error searching churches:', error);
++    } catch (error: any) {
++      console.error('Error getting church:', error);
+       throw error;
+     }
+   },
+ 
+-  getChurchById: async (id: string) => {
++  createChurch: async (churchData: Omit<Church, '_id' | 'createdAt' | 'updatedAt'>): Promise<SingleChurchResponse> => {
+     try {
+-      const response = await churchAxios.get<{ success: boolean; data: Church }>(`/api/churches/${id}`);
++      const response = await axiosInstance.post<SingleChurchResponse>(API_PATHS.CHURCHES, churchData);
+       return response.data;
+-    } catch (error) {
+-      console.error('Error getting church:', error);
++    } catch (error: any) {
++      console.error('Error creating church:', error);
++      throw error;
++    }
++  },
++
++  updateChurch: async (mainId: string, subId: string, churchData: Partial<Omit<Church, '_id' | 'createdAt' | 'updatedAt'>>): Promise<SingleChurchResponse> => {
++    try {
++      const response = await axiosInstance.put<SingleChurchResponse>(`${API_PATHS.CHURCHES}${mainId}/${subId}`, churchData);
++      return response.data;
++    } catch (error: any) {
++      console.error('Error updating church:', error);
++      throw error;
++    }
++  },
++
++  deleteChurch: async (mainId: string, subId: string): Promise<{ success: boolean; message?: string }> => {
++    try {
++      const response = await axiosInstance.delete<{ success: boolean; message?: string }>(`${API_PATHS.CHURCHES}${mainId}/${subId}`);
++      return response.data;
++    } catch (error: any) {
++      console.error('Error deleting church:', error);
+       throw error;
+     }
+   }
+diff --git a/src/services/api/eventApi.ts b/src/services/api/eventApi.ts
+index 98a979a..adb3d63 100644
+--- a/src/services/api/eventApi.ts
++++ b/src/services/api/eventApi.ts
+@@ -2,22 +2,23 @@ import axios from 'axios';
+ import { EventFormData, SampleEvent } from '../../types/event';
+ 
+ // BASE_URL을 환경 변수에서 가져오되, /api는 제외
+-const BASE_URL = process.env.REACT_APP_EVENT_API_URL || 'http://localhost:3001';
++const BASE_URL = process.env.REACT_APP_EVENT_API_URL || '/api/events';
+ 
+ // axios 인스턴스 생성
+ const axiosInstance = axios.create({
+   baseURL: BASE_URL,
++  timeout: 10000,
++  withCredentials: true,
+   headers: {
+     'Content-Type': 'application/json',
+     'Accept': 'application/json'
+-  },
+-  withCredentials: true
++  }
+ });
+ 
+ // API 경로 상수
+ const API_PATHS = {
+-  EVENTS: '/api/events',
+-  SAMPLE_EVENTS: '/api/events/samples'
++  EVENTS: '/',
++  SAMPLE_EVENTS: '/samples'
+ };
+ 
+ export interface IEventCreate {
+diff --git a/src/services/api/receiptApi.ts b/src/services/api/receiptApi.ts
+index 82aad60..f1152b7 100644
+--- a/src/services/api/receiptApi.ts
++++ b/src/services/api/receiptApi.ts
+@@ -1,12 +1,23 @@
+ import axios from 'axios';
+ 
+-const RECEIPT_API_URL = process.env.REACT_APP_RECEIPT_API_URL || 'http://localhost:3003';
++const RECEIPT_API_URL = process.env.REACT_APP_RECEIPT_API_URL || '/api/receipts';
+ 
+ const receiptAxios = axios.create({
+   baseURL: RECEIPT_API_URL,
+   timeout: 10000,
++  withCredentials: true,
++  headers: {
++    'Content-Type': 'application/json',
++    'Accept': 'application/json'
++  }
+ });
+ 
++// API 경로 상수
++const API_PATHS = {
++  RECEIPTS: '/',
++  SEARCH: '/search'
++};
++
+ export interface Receipt {
+   _id?: string;  // MongoDB ID
+   id: string;    // Keep the id field for backward compatibility
+@@ -41,7 +52,7 @@ export interface ReceiptResponse {
+ export const receiptApi = {
+   createReceipt: async (data: Omit<Receipt, 'id' | 'createdAt' | 'updatedAt'>) => {
+     try {
+-      const response = await receiptAxios.post<{ success: boolean; data: Receipt }>('/api/receipts', data);
++      const response = await receiptAxios.post<{ success: boolean; data: Receipt }>(API_PATHS.RECEIPTS, data);
+       return response.data;
+     } catch (error) {
+       console.error('Error creating receipt:', error);
+@@ -51,7 +62,7 @@ export const receiptApi = {
+ 
+   getReceipts: async (params?: { eventId?: string; churchId?: string; page?: number; limit?: number }) => {
+     try {
+-      const response = await receiptAxios.get<ReceiptResponse>('/api/receipts', { params });
++      const response = await receiptAxios.get<ReceiptResponse>(API_PATHS.RECEIPTS, { params });
+       return response.data;
+     } catch (error) {
+       console.error('Error getting receipts:', error);
+@@ -61,7 +72,7 @@ export const receiptApi = {
+ 
+   getReceiptById: async (id: string) => {
+     try {
+-      const response = await receiptAxios.get<{ success: boolean; data: Receipt }>(`/api/receipts/${id}`);
++      const response = await receiptAxios.get<{ success: boolean; data: Receipt }>(`${API_PATHS.RECEIPTS}${id}`);
+       return response.data;
+     } catch (error) {
+       console.error('Error getting receipt:', error);
+@@ -71,7 +82,7 @@ export const receiptApi = {
+ 
+   updateReceipt: async (id: string, data: Partial<Omit<Receipt, 'id' | 'createdAt' | 'updatedAt'>>) => {
+     try {
+-      const response = await receiptAxios.put<{ success: boolean; data: Receipt }>(`/api/receipts/${id}`, data);
++      const response = await receiptAxios.put<{ success: boolean; data: Receipt }>(`${API_PATHS.RECEIPTS}${id}`, data);
+       return response.data;
+     } catch (error) {
+       console.error('Error updating receipt:', error);
+@@ -81,7 +92,7 @@ export const receiptApi = {
+ 
+   deleteReceipt: async (id: string) => {
+     try {
+-      const response = await receiptAxios.delete<{ success: boolean }>(`/api/receipts/${id}`);
++      const response = await receiptAxios.delete<{ success: boolean }>(`${API_PATHS.RECEIPTS}${id}`);
+       return response.data;
+     } catch (error) {
+       console.error('Error deleting receipt:', error);
+diff --git a/ws-server.js b/ws-server.js
+new file mode 100644
+index 0000000..b344523
+--- /dev/null
++++ b/ws-server.js
+@@ -0,0 +1,26 @@
++// ws-server.js
++const WebSocket = require('ws');
++const http = require('http');
++
++const server = http.createServer();
++
++const wss = new WebSocket('wss://awanaevent.com/ws');
++
++wss.on('connection', (ws) => {
++  console.log('✅ WebSocket 연결됨');
++
++  ws.send(JSON.stringify({ type: 'welcome', data: '서버에 연결되었습니다.' }));
++
++  ws.on('message', (msg) => {
++    console.log('📨 받은 메시지:', msg.toString());
++    ws.send(JSON.stringify({ type: 'echo', data: msg.toString() }));
++  });
++
++  ws.on('close', () => {
++    console.log('❌ WebSocket 연결 종료');
++  });
++});
++
++server.listen(4000, () => {
++  console.log('📡 WebSocket 서버가 4000번 포트에서 실행 중');
++});
+-- 
+2.46.0
+

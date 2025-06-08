@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+const isDevelopment = process.env.NODE_ENV === 'development';
+const BASE_URL = isDevelopment 
+  ? `http://localhost:${process.env.NEXT_PUBLIC_CHURCH_SERVICE_PORT || '3002'}`
+  : 'https://awanaevent.com:3002';
+
 // BASE_URL을 환경 변수에서 가져오되, /api는 제외
-const BASE_URL = process.env.REACT_APP_CHURCH_API_URL || '/api/churches';
+// const BASE_URL = process.env.REACT_APP_CHURCH_API_URL || '/api/churches';
 
 // axios 인스턴스 생성
 const axiosInstance = axios.create({
