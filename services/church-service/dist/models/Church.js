@@ -29,10 +29,6 @@ const churchSchema = new mongoose_1.Schema({
 });
 // 교회 ID로 조회하기 위한 복합 인덱스
 churchSchema.index({ mainId: 1, subId: 1 }, { unique: true });
-// 검색을 위한 인덱스
-churchSchema.index({ name: 1 });
-churchSchema.index({ location: 1 });
-churchSchema.index({ mainId: 1 });
 // 가상 필드: 전체 교회 ID
 churchSchema.virtual('fullId').get(function () {
     return `${this.mainId}-${this.subId}`;

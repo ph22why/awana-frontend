@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importDefault(require("mongoose"));
 const Church_1 = require("../models/Church");
+// 하드코딩된 교회 데이터
 const churches = [
     { mainId: '0003', subId: 'a', name: '수원중앙침례교회 (Suwon Central Baptist Church)', location: '경기 용인시 수지구 포은대로 91-19 중앙예닮학교' },
     { mainId: '0012', subId: 'a', name: '할렐루야교회 (HALLELUJAH COMMUNITY CHURCH)', location: '경기 성남시 분당구 야탑동 132번지' },
@@ -444,24 +445,329 @@ const churches = [
     { mainId: '0880', subId: 'a', name: '부산새날교회 (NEWDAY CHURCH)', location: '부산 강서구 공항로1309번길 140-7 새날교회' },
     { mainId: '0884', subId: 'a', name: '열방교회 (ALL NATIONS CHURCH)', location: '서울 양천구 신정로13길 11' }
 ];
-// 중복 제거
-const uniqueChurches = churches.filter((church, index, self) => index === self.findIndex((c) => c.mainId === church.mainId && c.subId === church.subId));
+// 샘플 이벤트 데이터
+const sampleEvents = [
+    {
+        sampleEvent_ID: 1,
+        sampleEvent_Name: "성경퀴즈대회",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "1월"
+    },
+    {
+        sampleEvent_ID: 2,
+        sampleEvent_Name: "YM Summit",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "1월"
+    },
+    {
+        sampleEvent_ID: 3,
+        sampleEvent_Name: "상반기 연합 BT",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "2월"
+    },
+    {
+        sampleEvent_ID: 4,
+        sampleEvent_Name: "컨퍼런스",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "3월"
+    },
+    {
+        sampleEvent_ID: 5,
+        sampleEvent_Name: "올림픽 설명회",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "4월"
+    },
+    {
+        sampleEvent_ID: 6,
+        sampleEvent_Name: "올림픽",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "5월"
+    },
+    {
+        sampleEvent_ID: 7,
+        sampleEvent_Name: "조정관 학교 101",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "6월"
+    },
+    {
+        sampleEvent_ID: 8,
+        sampleEvent_Name: "조정관 학교 201",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "6월"
+    },
+    {
+        sampleEvent_ID: 9,
+        sampleEvent_Name: "T&T Camp",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "7월"
+    },
+    {
+        sampleEvent_ID: 10,
+        sampleEvent_Name: "감독관 학교 101",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "8월"
+    },
+    {
+        sampleEvent_ID: 11,
+        sampleEvent_Name: "YM MIT",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "8월"
+    },
+    {
+        sampleEvent_ID: 12,
+        sampleEvent_Name: "하반기 연합 BT",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "9월"
+    },
+    {
+        sampleEvent_ID: 13,
+        sampleEvent_Name: "영성수련회",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "10월"
+    },
+    {
+        sampleEvent_ID: 14,
+        sampleEvent_Name: "성경퀴즈대회 설명회",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "11월"
+    },
+    {
+        sampleEvent_ID: 15,
+        sampleEvent_Name: "비전캠프",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "12월"
+    },
+    {
+        sampleEvent_ID: 16,
+        sampleEvent_Name: "장학캠프",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "미정"
+    },
+    {
+        sampleEvent_ID: 17,
+        sampleEvent_Name: "수시 BT",
+        sampleEvent_Location: "미정",
+        sampleEvent_Year: "미정",
+        sampleEvent_Start_Date: null,
+        sampleEvent_End_Date: null,
+        sampleEvent_Registration_Start_Date: null,
+        sampleEvent_Registration_End_Date: null,
+        sampleEvent_Open_Available: "비공개",
+        sampleEvent_Place: "미정",
+        sampleEvent_Month: "미정"
+    }
+];
+// 다음 사용 가능한 subId를 찾는 함수
+async function findNextAvailableSubId(mainId) {
+    const existingChurches = await Church_1.Church.find({ mainId }).sort({ subId: 1 });
+    const usedSubIds = new Set(existingChurches.map(church => church.subId));
+    // a부터 z까지 순회하면서 사용 가능한 첫 번째 알파벳 찾기
+    for (let i = 97; i <= 122; i++) { // 97은 'a'의 ASCII 코드, 122는 'z'의 ASCII 코드
+        const subId = String.fromCharCode(i);
+        if (!usedSubIds.has(subId)) {
+            return subId;
+        }
+    }
+    throw new Error(`${mainId}에 대해 사용 가능한 subId가 없습니다 (a-z 모두 사용 중).`);
+}
 async function importChurchData() {
     try {
         // MongoDB 연결
-        await mongoose_1.default.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/church-service');
-        console.log('Connected to MongoDB');
-        // 기존 데이터 삭제
-        await Church_1.Church.deleteMany({});
-        console.log('Deleted existing church data');
-        // 새 데이터 삽입
-        await Church_1.Church.insertMany(uniqueChurches);
-        console.log(`Imported ${uniqueChurches.length} churches successfully`);
+        await mongoose_1.default.connect(process.env.MONGODB_URI || 'mongodb+srv://root:awanakorea353@awanadb.deemeso.mongodb.net/church-service?retryWrites=true&w=majority');
+        console.log('MongoDB에 연결되었습니다.');
+        // mainId별로 교회 데이터 그룹화
+        const churchesByMainId = churches.reduce((acc, church) => {
+            if (!acc[church.mainId]) {
+                acc[church.mainId] = [];
+            }
+            acc[church.mainId].push(church);
+            return acc;
+        }, {});
+        let totalModified = 0;
+        let totalUpserted = 0;
+        let totalMatched = 0;
+        // mainId별로 처리
+        for (const [mainId, churchGroup] of Object.entries(churchesByMainId)) {
+            let subIdCounter = 0;
+            for (const church of churchGroup) {
+                try {
+                    // 기존 데이터가 있는지 확인
+                    const existingChurch = await Church_1.Church.findOne({
+                        mainId: church.mainId,
+                        subId: church.subId
+                    });
+                    if (existingChurch) {
+                        // 이미 존재하는 경우, 다음 사용 가능한 subId 찾기
+                        const nextSubId = await findNextAvailableSubId(church.mainId);
+                        console.log(`교회 ${church.name}의 subId를 ${church.subId}에서 ${nextSubId}로 변경합니다.`);
+                        church.subId = nextSubId;
+                    }
+                    // upsert 수행
+                    const result = await Church_1.Church.updateOne({ mainId: church.mainId, subId: church.subId }, { $set: church }, { upsert: true });
+                    if (result.modifiedCount)
+                        totalModified++;
+                    if (result.upsertedCount)
+                        totalUpserted++;
+                    if (result.matchedCount)
+                        totalMatched++;
+                }
+                catch (error) {
+                    if (error.code === 11000) {
+                        console.warn(`중복 오류 발생: ${church.name} (${church.mainId}-${church.subId})`);
+                        // 다음 사용 가능한 subId로 재시도
+                        try {
+                            const nextSubId = await findNextAvailableSubId(church.mainId);
+                            console.log(`재시도: subId를 ${nextSubId}로 변경하여 시도합니다.`);
+                            church.subId = nextSubId;
+                            const retryResult = await Church_1.Church.updateOne({ mainId: church.mainId, subId: church.subId }, { $set: church }, { upsert: true });
+                            if (retryResult.modifiedCount)
+                                totalModified++;
+                            if (retryResult.upsertedCount)
+                                totalUpserted++;
+                            if (retryResult.matchedCount)
+                                totalMatched++;
+                        }
+                        catch (retryError) {
+                            console.error(`재시도 실패: ${church.name}`, retryError);
+                        }
+                    }
+                    else {
+                        console.error(`교회 데이터 처리 중 오류 발생: ${church.name}`, error);
+                    }
+                }
+            }
+        }
+        console.log(`처리된 교회 데이터:
+      - 수정된 문서: ${totalModified}
+      - 삽입된 문서: ${totalUpserted}
+      - 매칭된 문서: ${totalMatched}
+    `);
+        // 샘플 이벤트 데이터 임포트
+        const sampleEventCollection = mongoose_1.default.connection.collection('sampleEvents');
+        await sampleEventCollection.insertMany(sampleEvents);
+        console.log('샘플 이벤트 데이터가 성공적으로 임포트되었습니다.');
+        // 샘플 이벤트 인덱스 생성
+        await sampleEventCollection.createIndex({ sampleEvent_ID: 1 }, { unique: true });
+        await sampleEventCollection.createIndex({ sampleEvent_Name: 1 });
+        await sampleEventCollection.createIndex({ sampleEvent_Month: 1 });
+        console.log('샘플 이벤트 인덱스가 생성되었습니다.');
         await mongoose_1.default.disconnect();
-        console.log('Disconnected from MongoDB');
+        console.log('MongoDB 연결이 종료되었습니다.');
     }
     catch (error) {
-        console.error('Error importing church data:', error);
+        console.error('데이터 가져오기 오류:', error);
         process.exit(1);
     }
 }

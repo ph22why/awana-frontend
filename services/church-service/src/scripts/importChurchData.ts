@@ -708,12 +708,10 @@ async function findNextAvailableSubId(mainId: string): Promise<string> {
 async function importChurchData() {
   try {
     // MongoDB 연결
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/church-service');
+    await mongoose.connect(
+      process.env.MONGODB_URI || 'mongodb+srv://root:awanakorea353@awanadb.deemeso.mongodb.net/church-service?retryWrites=true&w=majority'
+    );
     console.log('MongoDB에 연결되었습니다.');
-
-    // 기존 데이터 삭제
-    await Church.deleteMany({});
-    console.log('기존 교회 데이터가 삭제되었습니다.');
 
     // mainId별로 교회 데이터 그룹화
     const churchesByMainId = churches.reduce((acc, church) => {
@@ -795,7 +793,6 @@ async function importChurchData() {
 
     // 샘플 이벤트 데이터 임포트
     const sampleEventCollection = mongoose.connection.collection('sampleEvents');
-    await sampleEventCollection.deleteMany({});
     await sampleEventCollection.insertMany(sampleEvents);
     console.log('샘플 이벤트 데이터가 성공적으로 임포트되었습니다.');
 

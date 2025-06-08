@@ -12,53 +12,13 @@ const churchRoutes_1 = __importDefault(require("./routes/churchRoutes"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 // Middleware
-app.use((0, cors_1.default)({
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use((0, cors_1.default)()); // 모든 도메인에서의 요청 허용
 app.use(express_1.default.json());
 // Routes
 app.use('/api/churches', churchRoutes_1.default);
-// Church routes
-app.get('/api/churches', async (req, res) => {
-    try {
-        if (!mongoose_1.default.connection || !mongoose_1.default.connection.db) {
-            throw new Error('Database connection not initialized');
-        }
-        const { search = '', page = 1, limit = 20 } = req.query;
-        const searchQuery = search ? {
-            $or: [
-                { name: { $regex: search, $options: 'i' } },
-                { location: { $regex: search, $options: 'i' } }
-            ]
-        } : {};
-
-        const churches = await mongoose_1.default.connection.db.collection('churches')
-            .find(searchQuery)
-            .toArray();
-
-        // 프론트엔드 기대 응답 구조로 변환
-        res.json({
-            success: true,
-            data: churches,
-            pagination: {
-                total: churches.length,
-                page: Number(page),
-                limit: Number(limit),
-                totalPages: Math.ceil(churches.length / Number(limit))
-            }
-        });
-    }
-    catch (error) {
-        console.error('Error in /api/churches:', error);
-        res.status(500).json({ 
-            success: false, 
-            data: [], 
-            pagination: { total: 0, page: 1, limit: 20, totalPages: 0 },
-            error: 'Failed to fetch churches' 
-        });
-    }
+// 기본 라우트
+app.get('/', (req, res) => {
+    res.json({ message: 'Church Service is running' });
 });
 // MongoDB connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/church-service';
