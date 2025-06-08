@@ -14,5 +14,4 @@ RUN npm run build
 
 EXPOSE 3002
 
-# 서비스 시작 시 교회 데이터 초기화 후 서버 실행
-CMD sh -c "node dist/scripts/importChurchData.js && npm start" 
+CMD ["npm", "start"] 

@@ -45,8 +45,4 @@ const churchEventParticipationSchema = new mongoose_1.Schema({
 });
 // 교회별 이벤트 참가 이력 조회를 위한 인덱스
 churchEventParticipationSchema.index({ 'churchId.mainId': 1, 'churchId.subId': 1 });
-// 이벤트별 참가 교회 조회를 위한 인덱스
-churchEventParticipationSchema.index({ eventId: 1 });
-// 결제 상태별 조회를 위한 인덱스
-churchEventParticipationSchema.index({ paymentStatus: 1 });
 exports.ChurchEventParticipation = (0, mongoose_1.model)('ChurchEventParticipation', churchEventParticipationSchema);

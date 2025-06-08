@@ -1,65 +1,45 @@
 version: '3.8'
 
 services:
-  # MongoDB 서비스
-  mongodb:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-      - ./services/church-service/src/scripts/importChurchData.ts:/docker-entrypoint-initdb.d/importChurchData.ts:ro
-    networks:
-      - awana_network
-
-  # 교회 서비스
   church-service:
+    container_name: church-service
     build:
       context: ./services/church-service
       dockerfile: Dockerfile
     ports:
       - "3002:3002"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/church-service
+      - MONGODB_URI=mongodb+srv://root:awanakorea353@awanadb.deemeso.mongodb.net/church-service?retryWrites=true&w=majority
       - PORT=3002
-    depends_on:
-      - mongodb
     networks:
       - awana_network
 
-  # 이벤트 서비스
   event-service:
+    container_name: event-service
     build:
       context: ./services/event-service
       dockerfile: Dockerfile
     ports:
       - "3001:3001"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/event-service
+      - MONGODB_URI=mongodb+srv://root:awanakorea353@awanadb.deemeso.mongodb.net/event-service?retryWrites=true&w=majority
       - PORT=3001
-    depends_on:
-      - mongodb
     networks:
       - awana_network
 
-  # 영수증 서비스
   receipt-service:
+    container_name: receipt-service
     build:
       context: ./services/receipt-service
       dockerfile: Dockerfile
     ports:
       - "3003:3003"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/receipt-service
+      - MONGODB_URI=mongodb+srv://root:awanakorea353@awanadb.deemeso.mongodb.net/receipt-service?retryWrites=true&w=majority
       - PORT=3003
-    depends_on:
-      - mongodb
     networks:
       - awana_network
 
 networks:
   awana_network:
     driver: bridge
-
-volumes:
-  mongodb_data: 
