@@ -68,23 +68,31 @@ interface SampleEventApiResponse {
 
 export const eventApi = {
   // 이벤트 목록 조회
-  getEvents: async (params?: { year?: number; page?: number; limit?: number }): Promise<IEvent[]> => {
+  getEvents: async (): Promise<IEvent[]> => {
     try {
-      console.log('Fetching events with params:', params);
-      const response = await axiosInstance.get<IEvent[] | EventApiResponse>(`${API_PATHS.EVENTS}`, { params });
-      console.log('Events response:', response.data);
+      console.log('Fetching events...');
+      console.log('Request URL:', `${BASE_URL}${API_PATHS.EVENTS}`);
       
-      // 응답이 배열인 경우 직접 반환
+      const response = await axios.get<IEvent[] | EventApiResponse>(`${BASE_URL}${API_PATHS.EVENTS}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        withCredentials: false
+      });
+      
+      console.log('Response:', response.data);
+      
+      // 응답이 배열인 경우
       if (Array.isArray(response.data)) {
         return response.data;
       }
       
-      // 응답이 EventApiResponse 형태인 경우 data 필드 반환
-      if ('data' in response.data) {
+      // 응답이 객체인 경우
+      if (response.data.data) {
         return response.data.data;
       }
       
-      // 기본값으로 빈 배열 반환
       return [];
     } catch (error: any) {
       console.error('Error fetching events:', {
@@ -94,6 +102,44 @@ export const eventApi = {
         config: error.config
       });
       throw new Error(error.response?.data?.error || error.message || '이벤트 목록을 불러오는데 실패했습니다.');
+    }
+  },
+
+  // 공개된 이벤트만 조회
+  getPublicEvents: async (): Promise<IEvent[]> => {
+    try {
+      console.log('Fetching public events...');
+      console.log('Request URL:', `${BASE_URL}${API_PATHS.EVENTS}?openAvailable=공개`);
+      
+      const response = await axios.get<IEvent[] | EventApiResponse>(`${BASE_URL}${API_PATHS.EVENTS}?openAvailable=공개`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        withCredentials: false
+      });
+      
+      console.log('Response:', response.data);
+      
+      // 응답이 배열인 경우
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      
+      // 응답이 객체인 경우
+      if (response.data.data) {
+        return response.data.data;
+      }
+      
+      return [];
+    } catch (error: any) {
+      console.error('Error fetching public events:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        config: error.config
+      });
+      throw new Error(error.response?.data?.error || error.message || '공개 이벤트 목록을 불러오는데 실패했습니다.');
     }
   },
 

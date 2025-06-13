@@ -42,7 +42,8 @@ const AdminDashboard: React.FC = () => {
         // 올해 생성된 이벤트 개수
         const now = new Date();
         const year = now.getFullYear();
-        const events = await eventApi.getEvents({ year });
+        const allEvents = await eventApi.getEvents();
+        const events = allEvents.filter(event => event.event_Year === year);
         setEventCount(events.length);
         // 전체 교회 목록 받아서 개수 계산
         const allChurchRes = await churchApi.searchChurches({ getAllResults: true });

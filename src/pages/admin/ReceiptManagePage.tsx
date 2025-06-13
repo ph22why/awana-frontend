@@ -726,12 +726,11 @@ const ReceiptManagePage: React.FC = () => {
   // 선택된 연도에 해당하는 이벤트 로드
   useEffect(() => {
     const fetchEventsByYear = async () => {
-      if (!selectedYear) return;
-
       try {
         setLoading(true);
-        const allEvents = await eventApi.getEvents({ year: selectedYear });
-        const sortedEvents = allEvents.sort((a, b) => 
+        const allEvents = await eventApi.getEvents();
+        const eventsForYear = allEvents.filter(event => event.event_Year === selectedYear);
+        const sortedEvents = eventsForYear.sort((a, b) => 
           new Date(b.event_Start_Date).getTime() - new Date(a.event_Start_Date).getTime()
         );
         setEvents(sortedEvents);
