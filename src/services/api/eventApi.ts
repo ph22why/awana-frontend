@@ -70,27 +70,32 @@ interface SampleEventApiResponse {
 
 export const eventApi = {
   // 이벤트 목록 조회
-  getEvents: async (params?: { year?: number; page?: number; limit?: number }): Promise<IEvent[]> => {
+  getEvents: async (): Promise<IEvent[]> => {
     try {
-      console.log('Fetching events with params:', params);
-      const response = await axiosInstance.get<IEvent[] | EventApiResponse>(API_PATHS.EVENTS, { 
-        params,
-        validateStatus: (status) => status < 500 // 500 미만의 모든 상태 코드를 유효한 응답으로 처리
+      console.log('Fetching events...');
+      const fullUrl = `${BASE_URL}/api/events${API_PATHS.EVENTS}`;
+      console.log('Request URL:', fullUrl);
+      
+      const response = await axios.get<IEvent[] | EventApiResponse>(fullUrl, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        withCredentials: false
       });
       
-      console.log('Events response:', response.data);
+      console.log('Response:', response.data);
       
-      // 응답이 배열인 경우 직접 반환
+      // 응답이 배열인 경우
       if (Array.isArray(response.data)) {
         return response.data;
       }
       
-      // 응답이 EventApiResponse 형태인 경우 data 필드 반환
-      if ('data' in response.data) {
+      // 응답이 객체인 경우
+      if (response.data.data) {
         return response.data.data;
       }
       
-      // 기본값으로 빈 배열 반환
       return [];
     } catch (error: any) {
       console.error('Error fetching events:', {
@@ -99,10 +104,46 @@ export const eventApi = {
         data: error.response?.data,
         config: error.config
       });
-      if (error.response?.status === 404) {
-        return []; // 404 에러의 경우 빈 배열 반환
-      }
       throw new Error(error.response?.data?.error || error.message || '이벤트 목록을 불러오는데 실패했습니다.');
+    }
+  },
+
+  // 공개된 이벤트만 조회
+  getPublicEvents: async (): Promise<IEvent[]> => {
+    try {
+      console.log('Fetching public events...');
+      const fullUrl = `${BASE_URL}/api/events${API_PATHS.EVENTS}?openAvailable=공개`;
+      console.log('Request URL:', fullUrl);
+      
+      const response = await axios.get<IEvent[] | EventApiResponse>(fullUrl, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        withCredentials: false
+      });
+      
+      console.log('Response:', response.data);
+      
+      // 응답이 배열인 경우
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      
+      // 응답이 객체인 경우
+      if (response.data.data) {
+        return response.data.data;
+      }
+      
+      return [];
+    } catch (error: any) {
+      console.error('Error fetching public events:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        config: error.config
+      });
+      throw new Error(error.response?.data?.error || error.message || '공개 이벤트 목록을 불러오는데 실패했습니다.');
     }
   },
 
@@ -202,10 +243,11 @@ export const eventApi = {
         event_Registration_End_Date: eventData.event_Registration_End_Date ? new Date(eventData.event_Registration_End_Date).toISOString() : undefined
       };
 
-      console.log('Request URL:', `${BASE_URL}${API_PATHS.EVENTS}/${id}`);
+      const fullUrl = `${BASE_URL}/api/events${API_PATHS.EVENTS}${id}`;
+      console.log('Request URL:', fullUrl);
       console.log('Event Data:', formattedData);
       
-      const response = await axios.put(`${BASE_URL}${API_PATHS.EVENTS}/${id}`, formattedData, {
+      const response = await axios.put(fullUrl, formattedData, {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -224,11 +266,12 @@ export const eventApi = {
   deleteEvent: async (id: string) => {
     try {
       console.log('Deleting event...');
-      console.log('Request URL:', `${BASE_URL}${API_PATHS.EVENTS}/${id}`);
+      const fullUrl = `${BASE_URL}/api/events${API_PATHS.EVENTS}${id}`;
+      console.log('Request URL:', fullUrl);
       
       const response = await axios({
         method: 'delete',
-        url: `${BASE_URL}${API_PATHS.EVENTS}/${id}`,
+        url: fullUrl,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'

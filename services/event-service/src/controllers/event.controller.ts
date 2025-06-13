@@ -60,8 +60,45 @@ export const getSampleEvents = async (req: Request, res: Response) => {
 
 export const getEvents = async (req: Request, res: Response) => {
   try {
-    const events = await Event.find().sort({ createdAt: -1 });
-    res.status(200).json(events);
+    const { openAvailable, year, page, limit } = req.query;
+    
+    // 쿼리 조건 구성
+    const query: any = {};
+    
+    // 공개/비공개 필터링
+    if (openAvailable) {
+      query.event_Open_Available = openAvailable;
+    }
+    
+    // 연도 필터링
+    if (year) {
+      query.event_Year = parseInt(year as string);
+    }
+    
+    // 페이지네이션 설정
+    const pageNum = parseInt(page as string) || 1;
+    const limitNum = parseInt(limit as string) || 20;
+    const skip = (pageNum - 1) * limitNum;
+    
+    // 이벤트 조회
+    const events = await Event.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+    
+    // 전체 개수 조회 (페이지네이션용)
+    const totalCount = await Event.countDocuments(query);
+    
+    res.status(200).json({
+      success: true,
+      data: events,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limitNum)
+      }
+    });
   } catch (error) {
     console.error('이벤트 목록 조회 오류:', error);
     res.status(500).json({
