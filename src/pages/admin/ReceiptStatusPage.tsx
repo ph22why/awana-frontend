@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Container, Paper, Typography, FormControl, InputLabel, Select, MenuItem, Button, Table, TableHead, TableRow, TableCell, TableBody, Alert } from '@mui/material';
-import axios from 'axios';
+import { eventApi } from '../../services/api/eventApi';
 
 interface Event { id: string; name: string; place: string; }
 interface Receipt { id: string; church: string; people: number; amount: number; }
@@ -14,18 +14,23 @@ const ReceiptStatusPage: React.FC = () => {
 
   useEffect(() => {
     if (role !== 'mini' && role !== 'admin') return;
-    // axios.get('https://awanaevent.com:3001/api/events')
-    axios.get('/api/events/')
-      .then(res => {
-        setEvents((res.data as any[])
+    
+    const fetchEvents = async () => {
+      try {
+        const eventsData = await eventApi.getEvents();
+        setEvents(eventsData
           .filter((ev: any) => ev.event_Open_Available === '공개')
           .map((ev: any) => ({
             id: ev._id,
             name: ev.event_Name,
             place: ev.event_Place
           })));
-      })
-      .catch(() => {});
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      }
+    };
+    
+    fetchEvents();
   }, [role]);
 
   useEffect(() => {

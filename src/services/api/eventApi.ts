@@ -4,7 +4,7 @@ import { EventFormData, SampleEvent } from '../../types/event';
 const isDevelopment = process.env.NODE_ENV === 'development';
 const BASE_URL = isDevelopment 
   ? `http://localhost:${process.env.NEXT_PUBLIC_EVENT_SERVICE_PORT || '3001'}`
-  : 'https://awanaevent.com:3001';
+  : 'http://182.231.199.64:3001';
 
 // axios 인스턴스 생성
 const axiosInstance = axios.create({
@@ -147,9 +147,10 @@ export const eventApi = {
   getSampleEvents: async (): Promise<SampleEventApiResponse> => {
     try {
       console.log('Fetching sample events...');
-      console.log('Request URL:', `${BASE_URL}${API_PATHS.SAMPLE_EVENTS}`);
+      const fullUrl = `${BASE_URL}/api/events${API_PATHS.SAMPLE_EVENTS}`;
+      console.log('Request URL:', fullUrl);
       
-      const response = await axios.get<SampleEvent[] | SampleEventApiResponse>(`${BASE_URL}${API_PATHS.SAMPLE_EVENTS}`, {
+      const response = await axios.get<SampleEvent[] | SampleEventApiResponse>(fullUrl, {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'

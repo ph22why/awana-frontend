@@ -9,7 +9,7 @@ const port = process.env.PORT || 3002;
 // CORS 설정
 const allowedOrigins = process.env.NODE_ENV === 'development' 
   ? ['http://localhost:3000']
-  : ['https://awanaevent.com'];
+  : ['http://182.231.199.64:3000', 'http://localhost:3000'];
 
 app.use(cors({
   origin: allowedOrigins,

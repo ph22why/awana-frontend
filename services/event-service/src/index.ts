@@ -12,8 +12,12 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 // CORS 설정
+const allowedOrigins = process.env.NODE_ENV === 'development' 
+  ? ['http://localhost:3000']
+  : ['http://182.231.199.64:3000', 'http://localhost:3000'];
+
 app.use(cors({
-  origin: 'http://localhost:3000',  // 개발 환경에서만 localhost 허용
+  origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -48,5 +52,5 @@ mongoose.connect(MONGODB_URI)
 app.listen(port, () => {
   console.log(`Event Service가 포트 ${port}에서 실행 중입니다.`);
   console.log(`개발 환경 API 엔드포인트: http://localhost:${port}/api/events`);
-  console.log(`프로덕션 환경 API 엔드포인트: https://awanaevent.com:${port}/api/events`);
+  console.log(`프로덕션 환경 API 엔드포인트: http://182.231.199.64:${port}/api/events`);
 }); 

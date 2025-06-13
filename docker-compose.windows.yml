@@ -7,9 +7,15 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - mongodb_data:/data/db
+      - D:\awanadb\data:/data/db
+      - D:\awanadb\logs:/var/log/mongodb
     networks:
       - awana-network
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=awana123
+    command: mongod --logpath /var/log/mongodb/mongod.log --logappend
 
   # Event Service
   event-service:
@@ -17,13 +23,14 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/event-service
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/event-service?authSource=admin
       - PORT=3001
-      - NODE_ENV=development
+      - NODE_ENV=production
     depends_on:
       - mongodb
     networks:
       - awana-network
+    restart: unless-stopped
 
   # Church Service
   church-service:
@@ -31,13 +38,14 @@ services:
     ports:
       - "3002:3002"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/church-service
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/church-service?authSource=admin
       - PORT=3002
-      - NODE_ENV=development
+      - NODE_ENV=production
     depends_on:
       - mongodb
     networks:
       - awana-network
+    restart: unless-stopped
 
   # Receipt Service
   receipt-service:
@@ -45,17 +53,20 @@ services:
     ports:
       - "3003:3003"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/receipt-service
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/receipt-service?authSource=admin
       - PORT=3003
-      - NODE_ENV=development
+      - NODE_ENV=production
     depends_on:
       - mongodb
     networks:
       - awana-network
+    restart: unless-stopped
 
 volumes:
+  # 윈도우 경로 사용
   mongodb_data:
+    driver: local
 
 networks:
   awana-network:
-    driver: bridge
+    driver: bridge 
