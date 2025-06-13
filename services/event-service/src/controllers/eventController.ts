@@ -1,23 +1,35 @@
 import { Request, Response } from 'express';
-import { Event, IEvent } from '../models/Event';
+import Event, { IEvent } from '../models/event.model';
 import { SampleEvent, ISampleEvent } from '../models/SampleEvent';
 
 // 이벤트 목록 조회 (연도별, 공개/비공개 필터링 지원)
 export const getAllEvents = async (req: Request, res: Response) => {
   try {
-    const { year, isPublic } = req.query;
+    const { year, isPublic, openAvailable } = req.query;
     const query: any = {};
     
+    console.log('Query parameters:', { year, isPublic, openAvailable });
+    
     if (year) {
-      query.eventYear = parseInt(year as string);
+      query.event_Year = parseInt(year as string);
     }
     if (isPublic !== undefined) {
       query.isPublic = isPublic === 'true';
     }
+    // 공개 가능한 이벤트만 필터링
+    if (openAvailable !== undefined) {
+      query.event_Open_Available = openAvailable;
+    }
 
-    const events = await Event.find(query).sort({ eventDate: 1 });
+    console.log('MongoDB query:', query);
+
+    const events = await Event.find(query).sort({ event_Start_Date: 1 });
+    console.log('Found events count:', events.length);
+    console.log('Events:', events.map(e => ({ id: e._id, name: e.event_Name, open: e.event_Open_Available })));
+    
     res.json(events);
   } catch (error) {
+    console.error('Error in getAllEvents:', error);
     res.status(500).json({ message: 'Error fetching events', error });
   }
 };
@@ -40,7 +52,7 @@ export const createEvent = async (req: Request, res: Response) => {
   try {
     const eventData = {
       ...req.body,
-      eventYear: new Date(req.body.eventDate).getFullYear()
+      event_Year: new Date(req.body.event_Start_Date).getFullYear()
     };
     const event = new Event(eventData);
     const savedEvent = await event.save();
@@ -55,7 +67,7 @@ export const updateEvent = async (req: Request, res: Response) => {
   try {
     const eventData = {
       ...req.body,
-      eventYear: new Date(req.body.eventDate).getFullYear()
+      event_Year: new Date(req.body.event_Start_Date).getFullYear()
     };
     const event = await Event.findByIdAndUpdate(
       req.params.id,
