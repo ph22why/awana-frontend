@@ -3,7 +3,7 @@ import axios from 'axios';
 const isDevelopment = process.env.NODE_ENV === 'development';
 const BASE_URL = isDevelopment 
   ? `http://localhost:${process.env.NEXT_PUBLIC_CHURCH_SERVICE_PORT || '3002'}`
-  : 'http://182.231.199.64:3002';
+  : ''; // Use relative URLs for HTTPS production
 
 // BASE_URL을 환경 변수에서 가져오되, /api는 제외
 // const BASE_URL = process.env.REACT_APP_CHURCH_API_URL || '/api/churches';
