@@ -11,10 +11,17 @@ echo.
 echo Current directory: %CD%
 echo.
 
-echo Step 1: Stopping all existing services...
+echo Step 1: Stopping all existing services and cleaning up ports...
 docker-compose -f docker-compose.prod.yml down 2>nul
 docker-compose -f docker-compose.https-awanaevent-final.yml down 2>nul
 docker-compose -f docker-compose.windows.yml down 2>nul
+
+REM Stop any containers using ports 80, 443, 3000-3003
+echo Stopping containers on conflicting ports...
+for /f "tokens=1" %%i in ('docker ps --format "table {{.ID}}" --filter "publish=80" --filter "publish=443" --filter "publish=3000" --filter "publish=3001" --filter "publish=3002" --filter "publish=3003" ^| findstr -v "CONTAINER"') do docker stop %%i 2>nul
+
+echo Removing stopped containers...
+docker container prune -f 2>nul
 
 echo.
 echo Step 2: Starting fresh services...
