@@ -1,0 +1,58 @@
+# SSL certificates and related files
+ssl/
+*.pem
+*.key
+*.crt
+*.csr
+
+# Node modules
+node_modules/
+*/node_modules/
+
+# Build directories
+build/
+dist/
+
+# Log files
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Git
+.git/
+.gitignore
+
+# Docker files (except the one being used)
+docker-compose*.yml
+Dockerfile*
+!Dockerfile.frontend
+
+# Batch files
+*.bat
+
+# Backup files
+*.backup
+*.bak
+
+# MongoDB data
+data/
+
+# Temporary files
+tmp/
+temp/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db 
