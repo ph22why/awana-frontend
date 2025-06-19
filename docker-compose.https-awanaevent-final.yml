@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # MongoDB (공통 데이터베이스)
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - D:\eventdb\data:/data/db
+      - D:\eventdb\logs:/var/log/mongodb
+      - D:\eventdb\backup:/data/backup
+    networks:
+      - awana-network
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=awana123
+    command: mongod --logpath /var/log/mongodb/mongod.log --logappend
+
+  # Event Service
+  event-service:
+    build: ./services/event-service
+    expose:
+      - "3001"
+    environment:
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
+      - PORT=3001
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - awana-network
+    restart: unless-stopped
+
+  # Church Service
+  church-service:
+    build: ./services/church-service
+    expose:
+      - "3002"
+    environment:
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
+      - PORT=3002
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - awana-network
+    restart: unless-stopped
+
+  # Receipt Service
+  receipt-service:
+    build: ./services/receipt-service
+    expose:
+      - "3003"
+    environment:
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
+      - PORT=3003
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - awana-network
+    restart: unless-stopped
+
+  # Frontend Service (React + Nginx with HTTPS and API Proxy)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        - NODE_ENV=production
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-https-awanaevent-with-api-proxy.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/letsencrypt
+      - ./ssl/www:/var/www/certbot
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - event-service
+      - church-service
+      - receipt-service
+    networks:
+      - awana-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  awana-network:
+    driver: bridge 

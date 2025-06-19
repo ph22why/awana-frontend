@@ -3,7 +3,7 @@ import axios from 'axios';
 const isDevelopment = process.env.NODE_ENV === 'development';
 const BASE_URL = isDevelopment 
   ? `http://localhost:${process.env.NEXT_PUBLIC_RECEIPT_SERVICE_PORT || '3003'}`
-  : 'http://182.231.199.64:3003';
+  : 'https://awanaevent.com/api/receipts';
 
 const receiptAxios = axios.create({
   baseURL: BASE_URL,
@@ -17,8 +17,8 @@ const receiptAxios = axios.create({
 
 // API 경로 상수
 const API_PATHS = {
-  RECEIPTS: '/',
-  SEARCH: '/search'
+  RECEIPTS: isDevelopment ? '/api/receipts/' : '/',
+  SEARCH: isDevelopment ? '/api/receipts/search' : '/search'
 };
 
 export interface Receipt {
