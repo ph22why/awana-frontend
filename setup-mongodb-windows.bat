@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 > nul
 echo 🗄️ MongoDB 데이터 디렉토리를 설정합니다...
 
 REM 관리자 권한 확인
