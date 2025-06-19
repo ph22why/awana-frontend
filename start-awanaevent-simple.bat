@@ -1,16 +1,33 @@
 @echo off
 chcp 65001
+
+REM Change to the script's directory
+cd /d "%~dp0"
+
 echo ====================================
 echo Starting AWANA Event (Simple Setup)
 echo ====================================
 echo.
+echo Current directory: %CD%
+echo.
 
 echo Configuration:
 echo - Frontend: http://localhost:3000 (React Dev Server)
-echo - Domain: http://awanaevent.com (via Nginx proxy to localhost:3000)
+echo - Domain: http://awanaevent.com (via Nginx redirect to localhost:3000)
 echo - Backend Services: 3001, 3002, 3003 (via Docker)
 echo.
 
+echo Checking if docker-compose file exists...
+if not exist "docker-compose.https-awanaevent-final.yml" (
+    echo ❌ Error: docker-compose.https-awanaevent-final.yml not found in current directory!
+    echo Current directory: %CD%
+    dir docker-compose*.yml
+    pause
+    exit /b 1
+)
+
+echo ✅ Docker compose file found!
+echo.
 echo Step 1: Starting backend services with Nginx redirect...
 docker-compose -f docker-compose.https-awanaevent-final.yml up -d --build nginx-redirect event-service church-service receipt-service mongodb
 
