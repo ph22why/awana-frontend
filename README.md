@@ -54,13 +54,36 @@
 
 ## 설치 및 실행 방법
 
+### 프로덕션 HTTPS 배포 (권장)
+
 1. 저장소 클론
 ```bash
 git clone [repository-url]
 cd AWANA
 ```
 
-2. 환경 변수 설정
+2. **프로덕션 HTTPS 서비스 배포**
+```bash
+# 전체 배포 (코드 업데이트 후)
+deploy-production.bat
+
+# 또는 빠른 재시작
+quick-restart.bat
+```
+
+3. **SSL 인증서 갱신** (3개월마다)
+```bash
+renew-ssl-certificate.bat
+```
+
+4. **MongoDB 백업**
+```bash
+backup-mongodb.bat
+```
+
+### 개발 환경 실행
+
+1. 환경 변수 설정
 ```bash
 # .env 파일 생성
 cp .env.example .env
@@ -69,10 +92,40 @@ cp .env.example .env
 REACT_APP_API_URL=https://awanaevent.com:3000
 ```
 
-3. Docker Compose로 서비스 실행
+2. Docker Compose로 서비스 실행
 ```bash
 docker-compose up -d
 ```
+
+## 프로덕션 배포 관리
+
+### 핵심 배치파일
+
+1. **`deploy-production.bat`** - 전체 배포
+   - 기존 서비스 중지
+   - 최신 코드로 빌드 (`--no-cache`)
+   - HTTPS 서비스 시작
+   - 서비스 상태 확인
+
+2. **`quick-restart.bat`** - 빠른 재시작
+   - 코드 변경 없이 서비스만 재시작
+   - 설정 변경 후 적용 시 사용
+
+3. **`renew-ssl-certificate.bat`** - SSL 인증서 갱신
+   - Certbot으로 인증서 자동 갱신
+   - 파일 권한 수정
+   - Frontend 서비스 재시작으로 새 인증서 적용
+
+4. **`backup-mongodb.bat`** - 데이터베이스 백업
+   - 날짜별 백업 폴더 생성
+   - 모든 데이터베이스 백업
+   - 백업 파일 위치: `D:\eventdb\backup\{YYYYMMDD}`
+
+### 서비스 URL
+
+- **Frontend (HTTPS)**: https://awanaevent.com
+- **MongoDB**: localhost:27017
+- **Admin 대시보드**: https://awanaevent.com/admin
 
 ## 교회 데이터베이스 설정
 
@@ -194,7 +247,45 @@ db.churches.insertMany([
 }
 ```
 
+## 배포 아키텍처
+
+### HTTPS 프로덕션 환경
+
+- **Frontend**: React + Nginx (HTTPS, HTTP/2)
+- **Backend Services**: 
+  - Event Service (Port 3001) - `event-service` DB
+  - Church Service (Port 3002) - `church-service` DB  
+  - Receipt Service (Port 3003) - `receipt-service` DB
+- **Database**: MongoDB (Port 27017)
+- **SSL**: Let's Encrypt 인증서 (자동 갱신)
+- **Proxy**: Nginx API 프록시 (`/api/*` → Backend Services)
+
+### Docker Compose 구성
+
+```yaml
+services:
+  mongodb:        # MongoDB 데이터베이스
+  event-service:  # 이벤트 관리 API
+  church-service: # 교회 관리 API  
+  receipt-service: # 영수증 관리 API
+  frontend:       # React 앱 + Nginx (HTTPS)
+```
+
+### 데이터 저장 구조
+
+- **MongoDB 데이터**: `D:\eventdb\data` (영구 저장)
+- **SSL 인증서**: `C:\AWANA\ssl` (Let's Encrypt)
+- **백업 파일**: `D:\eventdb\backup\{날짜}` (자동 백업)
+
 ## 버전 기록
+
+### Production HTTPS v2.1
+- HTTPS 프로덕션 환경 구축
+- SSL 인증서 자동 갱신 시스템
+- Docker 기반 마이크로서비스 아키텍처
+- Nginx API 프록시 및 로드 밸런싱
+- 데이터베이스별 서비스 분리 (`awana` → `service-specific`)
+- 프로덕션 배포 자동화 배치파일
 
 ### deploy v2.0
 
