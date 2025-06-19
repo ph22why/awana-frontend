@@ -4,7 +4,7 @@ import mongoose, { Error as MongooseError } from 'mongoose';
 import app from './app';
 
 const PORT = process.env.PORT || 3003;
-const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/church-service';
+const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/awana';
 
 app.use(express.json());
 

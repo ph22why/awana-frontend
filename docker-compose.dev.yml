@@ -23,7 +23,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/event-service?authSource=admin
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
       - PORT=3001
       - NODE_ENV=development
     depends_on:
@@ -38,7 +38,7 @@ services:
     ports:
       - "3002:3002"
     environment:
-      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/church-service?authSource=admin
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
       - PORT=3002
       - NODE_ENV=development
     depends_on:
@@ -53,7 +53,7 @@ services:
     ports:
       - "3003:3003"
     environment:
-      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/receipt-service?authSource=admin
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
       - PORT=3003
       - NODE_ENV=development
     depends_on:
