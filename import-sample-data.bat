@@ -12,18 +12,15 @@ echo 기존 데이터가 있는 경우 건너뛸 수 있습니다.
 echo.
 
 echo [1] 현재 데이터 상태 확인...
-docker exec awana-mongodb-1 mongosh --quiet --eval "
-use awana;
+docker exec awana-mongodb-1 mongosh -u admin -p awana123 --authenticationDatabase admin --eval "
+use('awana');
 console.log('=== 현재 데이터 상태 ===');
-const collections = ['events', 'churches', 'receipts', 'sampleevents'];
-collections.forEach(collection => {
-    try {
-        const count = db.getCollection(collection).countDocuments();
-        console.log(collection + ':', count, 'documents');
-    } catch(e) {
-        console.log(collection + ': collection does not exist');
-    }
-});
+const eventCount = db.events.countDocuments();
+const churchCount = db.churches.countDocuments();
+const receiptCount = db.receipts.countDocuments();
+console.log('events: ' + eventCount + ' documents');
+console.log('churches: ' + churchCount + ' documents');
+console.log('receipts: ' + receiptCount + ' documents');
 "
 
 echo.
@@ -36,8 +33,8 @@ if /i not "%CONTINUE%"=="y" (
 
 echo.
 echo [2] 샘플 이벤트 데이터 추가...
-docker exec awana-mongodb-1 mongosh --quiet --eval "
-use awana;
+docker exec awana-mongodb-1 mongosh -u admin -p awana123 --authenticationDatabase admin --eval "
+use('awana');
 
 // 샘플 이벤트 데이터
 const sampleEvents = [
@@ -83,8 +80,8 @@ if (db.events.countDocuments() === 0) {
 
 echo.
 echo [3] 샘플 교회 데이터 추가...
-docker exec awana-mongodb-1 mongosh --quiet --eval "
-use awana;
+docker exec awana-mongodb-1 mongosh -u admin -p awana123 --authenticationDatabase admin --eval "
+use('awana');
 
 // 샘플 교회 데이터
 const sampleChurches = [
@@ -133,31 +130,27 @@ if (db.churches.countDocuments() === 0) {
 
 echo.
 echo [4] 최종 데이터 확인...
-docker exec awana-mongodb-1 mongosh --quiet --eval "
-use awana;
-console.log('=== 최종 데이터 상태 ===');
-const collections = ['events', 'churches', 'receipts'];
-collections.forEach(collection => {
-    try {
-        const count = db.getCollection(collection).countDocuments();
-        console.log(collection + ':', count, 'documents');
-        
-        if (count > 0) {
-            console.log('  Sample documents:');
-            db.getCollection(collection).find().limit(2).forEach(doc => {
-                if (collection === 'events') {
-                    console.log('    -', doc.event_Name || doc.name || doc._id);
-                } else if (collection === 'churches') {
-                    console.log('    -', doc.name, '(' + doc.location + ')');
-                } else {
-                    console.log('    -', doc._id);
-                }
-            });
-        }
-    } catch(e) {
-        console.log(collection + ': error -', e.message);
-    }
-});
+docker exec awana-mongodb-1 mongosh -u admin -p awana123 --authenticationDatabase admin --eval "
+use('awana');
+console.log('=== Final Data Count in AWANA Database ===');
+console.log('Events: ' + db.events.countDocuments());
+console.log('Churches: ' + db.churches.countDocuments());
+console.log('Receipts: ' + db.receipts.countDocuments());
+
+console.log('\n=== Sample Data ===');
+if (db.events.countDocuments() > 0) {
+    console.log('Sample Event:');
+    const sampleEvent = db.events.findOne();
+    console.log('- Event Name: ' + sampleEvent.event_Name);
+    console.log('- Event Location: ' + sampleEvent.event_Location);
+}
+
+if (db.churches.countDocuments() > 0) {
+    console.log('Sample Church:');
+    const sampleChurch = db.churches.findOne();
+    console.log('- Church Name: ' + sampleChurch.name);
+    console.log('- Church Location: ' + sampleChurch.location);
+}
 "
 
 echo.
