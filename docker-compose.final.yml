@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # MongoDB (공통 데이터베이스)
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - D:\eventdb\data:/data/db
+      - D:\eventdb\logs:/var/log/mongodb
+      - D:\eventdb\backup:/data/backup
+    networks:
+      - awana-network
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=awana123
+    command: mongod --logpath /var/log/mongodb/mongod.log --logappend
+
+  # Event Service
+  event-service:
+    build: ./services/event-service
+    ports:
+      - "3001:3001"
+    expose:
+      - "3001"
+    environment:
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
+      - PORT=3001
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - awana-network
+    restart: unless-stopped
+
+  # Church Service
+  church-service:
+    build: ./services/church-service
+    ports:
+      - "3002:3002"
+    expose:
+      - "3002"
+    environment:
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
+      - PORT=3002
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - awana-network
+    restart: unless-stopped
+
+  # Receipt Service
+  receipt-service:
+    build: ./services/receipt-service
+    ports:
+      - "3003:3003"
+    expose:
+      - "3003"
+    environment:
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
+      - PORT=3003
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - awana-network
+    restart: unless-stopped
+
+  # Frontend Service (React App)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        - NODE_ENV=production
+    expose:
+      - "3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - awana-network
+    restart: unless-stopped
+
+  # Nginx Proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx-awanaevent.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - frontend
+      - event-service
+      - church-service
+      - receipt-service
+    networks:
+      - awana-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  awana-network:
+    driver: bridge 
