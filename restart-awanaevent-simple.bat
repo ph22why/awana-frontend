@@ -19,9 +19,10 @@ docker-compose -f docker-compose.windows.yml down 2>nul
 echo.
 echo Step 2: Starting fresh services...
 echo Configuration:
-echo - Frontend: http://localhost:3000 (React Dev Server - start manually)
-echo - Domain: http://awanaevent.com (via Nginx redirect to localhost:3000)
+echo - Frontend: Docker container (port 3000) - auto-started
+echo - Domain: http://awanaevent.com (via Nginx proxy to frontend container)
 echo - Backend Services: 3001, 3002, 3003 (via Docker)
+echo - APIs: Available at /api/events/, /api/churches/, /api/receipts/
 echo.
 
 echo Checking if docker-compose file exists...
@@ -35,8 +36,8 @@ if not exist "docker-compose.https-awanaevent-final.yml" (
 
 echo ✅ Docker compose file found!
 echo.
-echo Starting backend services with Nginx redirect...
-docker-compose -f docker-compose.https-awanaevent-final.yml up -d --build nginx-redirect event-service church-service receipt-service mongodb
+echo Starting all services with Nginx proxy...
+docker-compose -f docker-compose.https-awanaevent-final.yml up -d --build
 
 if %ERRORLEVEL% EQU 0 (
     echo ✅ Services started successfully!
@@ -58,17 +59,21 @@ if %ERRORLEVEL% EQU 0 (
     
     echo.
     echo ====================================
-    echo SUCCESS! Backend services are running
+    echo SUCCESS! All services are running
     echo ====================================
     echo.
-    echo Next Steps:
-    echo 1. Open NEW terminal/command prompt
-    echo 2. Navigate to: %CD%
-    echo 3. Run: npm start
-    echo 4. Wait for React to start on http://localhost:3000
-    echo 5. Test access:
-    echo    - http://awanaevent.com (should redirect to localhost:3000)
-    echo    - http://localhost:3000 (direct React dev server)
+    echo ✅ Frontend: Running in Docker container
+    echo ✅ Backend: All services operational
+    echo ✅ Nginx: Proxy configured for awanaevent.com
+    echo.
+    echo Access URLs:
+    echo 🌐 http://awanaevent.com (main site via proxy)
+    echo 🔗 http://localhost:3000 (direct frontend container)
+    echo 📡 http://awanaevent.com/api/events/ (Event API)
+    echo 📡 http://awanaevent.com/api/churches/ (Church API)
+    echo 📡 http://awanaevent.com/api/receipts/ (Receipt API)
+    echo.
+    echo No additional manual steps needed!
     echo ====================================
     
 ) else (
