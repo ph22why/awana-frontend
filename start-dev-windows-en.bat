@@ -1,6 +1,18 @@
 @echo off
 echo Starting AWANA Development Environment...
 
+REM Change to the script directory
+cd /d "%~dp0"
+
+REM Check if docker-compose.dev.yml exists
+if not exist "docker-compose.dev.yml" (
+    echo docker-compose.dev.yml file not found in current directory.
+    echo Current directory: %CD%
+    echo Please run this script from the AWANA project root directory.
+    pause
+    exit /b 1
+)
+
 REM Check MongoDB data directory
 if not exist "D:\eventdb\data" (
     echo MongoDB data directory does not exist.
