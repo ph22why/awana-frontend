@@ -24,7 +24,7 @@ services:
     expose:
       - "3001"
     environment:
-      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/event-service?authSource=admin
       - PORT=3001
       - NODE_ENV=production
     depends_on:
@@ -39,7 +39,7 @@ services:
     expose:
       - "3002"
     environment:
-      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/church-service?authSource=admin
       - PORT=3002
       - NODE_ENV=production
     depends_on:
@@ -54,7 +54,7 @@ services:
     expose:
       - "3003"
     environment:
-      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/awana?authSource=admin
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/receipt-service?authSource=admin
       - PORT=3003
       - NODE_ENV=production
     depends_on:
