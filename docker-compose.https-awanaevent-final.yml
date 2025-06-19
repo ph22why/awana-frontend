@@ -21,8 +21,6 @@ services:
   # Event Service
   event-service:
     build: ./services/event-service
-    ports:
-      - "3001:3001"
     expose:
       - "3001"
     environment:
@@ -38,8 +36,6 @@ services:
   # Church Service
   church-service:
     build: ./services/church-service
-    ports:
-      - "3002:3002"
     expose:
       - "3002"
     environment:
@@ -55,8 +51,6 @@ services:
   # Receipt Service
   receipt-service:
     build: ./services/receipt-service
-    ports:
-      - "3003:3003"
     expose:
       - "3003"
     environment:
@@ -69,33 +63,23 @@ services:
       - awana-network
     restart: unless-stopped
 
-  # Frontend Service (React App)
+  # Frontend Service (React + Nginx with HTTPS and API Proxy)
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
       args:
         - NODE_ENV=production
-    expose:
-      - "3000"
-    environment:
-      - NODE_ENV=production
-    networks:
-      - awana-network
-    restart: unless-stopped
-
-  # Nginx Proxy Service (awanaevent.com -> frontend container)
-  nginx-proxy:
-    image: nginx:alpine
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx-complete.conf:/etc/nginx/nginx.conf
+      - ./nginx-https-awanaevent-with-api-proxy.conf:/etc/nginx/nginx.conf
       - ./ssl:/etc/letsencrypt
       - ./ssl/www:/var/www/certbot
+    environment:
+      - NODE_ENV=production
     depends_on:
-      - frontend
       - event-service
       - church-service
       - receipt-service
