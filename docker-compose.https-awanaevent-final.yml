@@ -85,12 +85,16 @@ services:
     restart: unless-stopped
 
   # Nginx Proxy Service (awanaevent.com -> frontend container)
-  nginx-redirect:
+  nginx-proxy:
     image: nginx:alpine
     ports:
       - "80:80"
+      - "443:443"
+      - "8080:8080"
     volumes:
-      - ./nginx-simple-redirect.conf:/etc/nginx/nginx.conf
+      - ./nginx-complete.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/letsencrypt
+      - ./ssl/www:/var/www/certbot
     depends_on:
       - frontend
       - event-service

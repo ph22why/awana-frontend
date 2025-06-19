@@ -19,8 +19,10 @@ docker-compose -f docker-compose.windows.yml down 2>nul
 echo.
 echo Step 2: Starting fresh services...
 echo Configuration:
-echo - Frontend: Docker container (port 3000) - auto-started
-echo - Domain: http://awanaevent.com (via Nginx proxy to frontend container)
+echo - Frontend: Docker container (port 3000) - auto-started  
+echo - HTTP: http://awanaevent.com (auto-redirects to HTTPS)
+echo - HTTPS: https://awanaevent.com (main site)
+echo - HTTP Test: http://awanaevent.com:8080 (non-SSL testing)
 echo - Backend Services: 3001, 3002, 3003 (via Docker)
 echo - APIs: Available at /api/events/, /api/churches/, /api/receipts/
 echo.
@@ -67,11 +69,14 @@ if %ERRORLEVEL% EQU 0 (
     echo ✅ Nginx: Proxy configured for awanaevent.com
     echo.
     echo Access URLs:
-    echo 🌐 http://awanaevent.com (main site via proxy)
+    echo 🌐 https://awanaevent.com (main site - HTTPS)
+    echo 🔗 http://awanaevent.com:8080 (HTTP testing port)
     echo 🔗 http://localhost:3000 (direct frontend container)
-    echo 📡 http://awanaevent.com/api/events/ (Event API)
-    echo 📡 http://awanaevent.com/api/churches/ (Church API)
-    echo 📡 http://awanaevent.com/api/receipts/ (Receipt API)
+    echo 📡 https://awanaevent.com/api/events/ (Event API - HTTPS)
+    echo 📡 https://awanaevent.com/api/churches/ (Church API - HTTPS)
+    echo 📡 https://awanaevent.com/api/receipts/ (Receipt API - HTTPS)
+    echo.
+    echo Note: HTTP (port 80) automatically redirects to HTTPS
     echo.
     echo No additional manual steps needed!
     echo ====================================
