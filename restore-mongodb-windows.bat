@@ -2,7 +2,7 @@
 echo 🔄 MongoDB 데이터를 복구합니다...
 
 REM 백업 디렉토리 확인
-if not exist "D:\awanadb\backup" (
+if not exist "D:\eventdb\backup" (
     echo ❌ 백업 디렉토리가 존재하지 않습니다.
     pause
     exit /b 1
@@ -17,13 +17,13 @@ if %errorLevel% neq 0 (
 )
 
 echo 📁 사용 가능한 백업 목록:
-dir "D:\awanadb\backup" /b /ad
+dir "D:\eventdb\backup" /b /ad
 
 echo.
 set /p backup_folder="복구할 백업 폴더명을 입력하세요 (예: event-service_2024-01-01_12-00-00): "
 
 REM 백업 폴더 존재 확인
-if not exist "D:\awanadb\backup\%backup_folder%" (
+if not exist "D:\eventdb\backup\%backup_folder%" (
     echo ❌ 지정한 백업 폴더가 존재하지 않습니다.
     pause
     exit /b 1
@@ -41,7 +41,7 @@ echo 🔄 데이터를 복구합니다...
 
 REM 백업 파일을 컨테이너로 복사
 echo 📁 백업 파일을 컨테이너로 복사합니다...
-docker cp "D:\awanadb\backup\%backup_folder%" awana-mongodb-1:/data/backup/
+docker cp "D:\eventdb\backup\%backup_folder%" awana-mongodb-1:/data/backup/
 
 REM 데이터베이스 이름 추출 (폴더명에서)
 for /f "tokens=1 delims=_" %%a in ("%backup_folder%") do set db_name=%%a

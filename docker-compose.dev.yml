@@ -25,7 +25,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/event-service?authSource=admin
       - PORT=3001
-      - NODE_ENV=production
+      - NODE_ENV=development
     depends_on:
       - mongodb
     networks:
@@ -40,7 +40,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/church-service?authSource=admin
       - PORT=3002
-      - NODE_ENV=production
+      - NODE_ENV=development
     depends_on:
       - mongodb
     networks:
@@ -55,35 +55,14 @@ services:
     environment:
       - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/receipt-service?authSource=admin
       - PORT=3003
-      - NODE_ENV=production
+      - NODE_ENV=development
     depends_on:
       - mongodb
     networks:
       - awana-network
     restart: unless-stopped
 
-  # Frontend Service (React)
-  frontend:
-    build: 
-      context: .
-      dockerfile: Dockerfile.frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_EVENT_SERVICE_PORT=3001
-      - NEXT_PUBLIC_CHURCH_SERVICE_PORT=3002
-      - NEXT_PUBLIC_RECEIPT_SERVICE_PORT=3003
-    depends_on:
-      - event-service
-      - church-service
-      - receipt-service
-    networks:
-      - awana-network
-    restart: unless-stopped
-
 volumes:
-  # 윈도우 경로 사용
   mongodb_data:
     driver: local
 

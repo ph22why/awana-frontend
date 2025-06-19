@@ -14,7 +14,7 @@ set "backup_date=%YYYY%-%MM%-%DD%_%HH%-%Min%-%Sec%"
 echo 📅 백업 날짜: %backup_date%
 
 REM 백업 디렉토리 확인
-if not exist "D:\awanadb\backup" (
+if not exist "D:\eventdb\backup" (
     echo ❌ 백업 디렉토리가 존재하지 않습니다. setup-mongodb-windows.bat를 먼저 실행해주세요.
     pause
     exit /b 1
@@ -42,9 +42,9 @@ docker exec awana-mongodb-1 mongodump --username admin --password awana123 --aut
 
 REM 백업 파일을 윈도우 호스트로 복사
 echo 📁 백업 파일을 호스트로 복사합니다...
-docker cp awana-mongodb-1:/data/backup/event-service_%backup_date% D:\awanadb\backup\
-docker cp awana-mongodb-1:/data/backup/church-service_%backup_date% D:\awanadb\backup\
-docker cp awana-mongodb-1:/data/backup/receipt-service_%backup_date% D:\awanadb\backup\
+docker cp awana-mongodb-1:/data/backup/event-service_%backup_date% D:\eventdb\backup\
+docker cp awana-mongodb-1:/data/backup/church-service_%backup_date% D:\eventdb\backup\
+docker cp awana-mongodb-1:/data/backup/receipt-service_%backup_date% D:\eventdb\backup\
 
 REM 컨테이너 내부의 임시 백업 파일 정리
 docker exec awana-mongodb-1 rm -rf /data/backup/event-service_%backup_date%
@@ -53,7 +53,7 @@ docker exec awana-mongodb-1 rm -rf /data/backup/receipt-service_%backup_date%
 
 echo ✅ 백업이 완료되었습니다!
 echo.
-echo 📁 백업 위치: D:\awanadb\backup\
+echo 📁 백업 위치: D:\eventdb\backup\
 echo 📊 백업된 데이터베이스:
 echo   - event-service_%backup_date%
 echo   - church-service_%backup_date%

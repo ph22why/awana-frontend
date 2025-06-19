@@ -9,6 +9,7 @@ services:
     volumes:
       - D:\eventdb\data:/data/db
       - D:\eventdb\logs:/var/log/mongodb
+      - D:\eventdb\backup:/data/backup
     networks:
       - awana-network
     restart: unless-stopped
@@ -62,18 +63,18 @@ services:
       - awana-network
     restart: unless-stopped
 
-  # Frontend Service (React)
+  # Frontend Service (React + Nginx)
   frontend:
     build: 
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        - NODE_ENV=production
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_EVENT_SERVICE_PORT=3001
-      - NEXT_PUBLIC_CHURCH_SERVICE_PORT=3002
-      - NEXT_PUBLIC_RECEIPT_SERVICE_PORT=3003
+      - SERVER_IP=182.231.199.64
     depends_on:
       - event-service
       - church-service
@@ -83,7 +84,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  # 윈도우 경로 사용
   mongodb_data:
     driver: local
 
