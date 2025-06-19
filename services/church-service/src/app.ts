@@ -33,7 +33,7 @@ app.get('/', (req, res) => {
 });
 
 // MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/awana';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/church-service';
 
 mongoose.connect(MONGODB_URI)
   .then(() => {
