@@ -21,6 +21,8 @@ services:
   # Event Service
   event-service:
     build: ./services/event-service
+    ports:
+      - "3001:3001"
     expose:
       - "3001"
     environment:
@@ -36,6 +38,8 @@ services:
   # Church Service
   church-service:
     build: ./services/church-service
+    ports:
+      - "3002:3002"
     expose:
       - "3002"
     environment:
@@ -51,6 +55,8 @@ services:
   # Receipt Service
   receipt-service:
     build: ./services/receipt-service
+    ports:
+      - "3003:3003"
     expose:
       - "3003"
     environment:

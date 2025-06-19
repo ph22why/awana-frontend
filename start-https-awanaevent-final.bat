@@ -47,10 +47,18 @@ if %ERRORLEVEL% EQU 0 (
     docker-compose -f docker-compose.https-awanaevent-final.yml ps
     
     echo.
-    echo Testing API endpoints...
+    echo Testing direct backend services (for development/debugging):
+    echo Event Service: http://localhost:3001
+    echo Church Service: http://localhost:3002  
+    echo Receipt Service: http://localhost:3003
+    echo.
+    echo Testing API endpoints via Nginx proxy...
     echo Event Service Health Check:
     curl -k https://awanaevent.com/api/events/ 2>nul | echo
     echo.
+    echo Alternative access (if domain not configured):
+    echo Frontend: http://localhost (or http://www.awanaevent.com:3000 if available)
+    echo HTTPS: https://localhost (self-signed certificate)
     
 ) else (
     echo Error: Failed to start services
