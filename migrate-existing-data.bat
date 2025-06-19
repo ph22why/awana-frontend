@@ -24,7 +24,7 @@ docker exec awana-mongodb-1 mongodump --out /data/backup/migration-backup --auth
 
 echo.
 echo [2] 데이터 마이그레이션 실행...
-docker exec awana-mongodb-1 mongosh --quiet --eval "
+docker exec awana-mongodb-1 mongosh -u admin -p awana123 --authenticationDatabase admin --quiet --eval "
 console.log('=== 데이터 마이그레이션 시작 ===');
 
 // Event Service 데이터 마이그레이션

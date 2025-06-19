@@ -35,42 +35,32 @@ docker logs awana-mongodb-1 --tail 20
 
 echo.
 echo [4] MongoDB에 연결하여 데이터베이스 목록 확인...
-docker exec awana-mongodb-1 mongosh -u admin -p awana123 --authenticationDatabase admin --eval "
-console.log('=== Current Data Status ===');
+docker exec awana-mongodb-1 mongosh -u admin -p awana123 --authenticationDatabase admin --quiet --eval "
+console.log('=== 데이터베이스 목록 ===');
+db.adminCommand('listDatabases').databases.forEach(db => {
+    console.log('Database:', db.name, '- Size:', db.sizeOnDisk || 0);
+});
 
-// Check event-service database
-use('event-service');
-const eventCount = db.events.countDocuments();
-console.log('event-service.events: ' + eventCount + ' documents');
+console.log('\n=== awana 데이터베이스 확인 ===');
+use awana;
+console.log('Collections in awana database:');
+db.getCollectionNames().forEach(collection => {
+    console.log('- ' + collection + ':', db.getCollection(collection).countDocuments());
+});
 
-// Check church-service database  
-use('church-service');
-const churchCount = db.churches.countDocuments();
-console.log('church-service.churches: ' + churchCount + ' documents');
-
-// Check receipt-service database
-use('receipt-service');
-const receiptCount = db.receipts.countDocuments();
-console.log('receipt-service.receipts: ' + receiptCount + ' documents');
-
-// Check awana database
-use('awana');
-const awanaEventCount = db.events.countDocuments();
-const awanaChurchCount = db.churches.countDocuments();
-const awanaReceiptCount = db.receipts.countDocuments();
-console.log('awana.events: ' + awanaEventCount + ' documents');
-console.log('awana.churches: ' + awanaChurchCount + ' documents');
-console.log('awana.receipts: ' + awanaReceiptCount + ' documents');
-
-console.log('\n=== Sample Data Preview ===');
-if (awanaEventCount > 0) {
-    const sampleEvent = db.events.findOne();
-    console.log('Sample Event: ' + sampleEvent.event_Name);
-}
-if (awanaChurchCount > 0) {
-    const sampleChurch = db.churches.findOne();
-    console.log('Sample Church: ' + sampleChurch.name);
-}
+console.log('\n=== 기존 데이터베이스들 확인 ===');
+['event-service', 'church-service', 'receipt-service'].forEach(dbName => {
+    const result = db.adminCommand('listDatabases').databases.find(db => db.name === dbName);
+    if (result) {
+        console.log('Found database:', dbName);
+        const collections = db.getSiblingDB(dbName).getCollectionNames();
+        console.log('Collections:', collections);
+        collections.forEach(collection => {
+            const count = db.getSiblingDB(dbName).getCollection(collection).countDocuments();
+            console.log('  - ' + collection + ':', count, 'documents');
+        });
+    }
+});
 "
 
 echo.
