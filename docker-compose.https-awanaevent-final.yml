@@ -69,26 +69,13 @@ services:
       - awana-network
     restart: unless-stopped
 
-  # Frontend Service (React + Nginx with HTTPS and API Proxy)
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-      args:
-        - NODE_ENV=production
+  # Nginx Redirect Service (awanaevent.com -> localhost:3000)
+  nginx-redirect:
+    image: nginx:alpine
     ports:
       - "80:80"
-      - "443:443"
     volumes:
-      - ./nginx-https-awanaevent-with-api-proxy.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/letsencrypt
-      - ./ssl/www:/var/www/certbot
-    environment:
-      - NODE_ENV=production
-    depends_on:
-      - event-service
-      - church-service
-      - receipt-service
+      - ./nginx-simple-redirect.conf:/etc/nginx/nginx.conf
     networks:
       - awana-network
     restart: unless-stopped
