@@ -29,11 +29,17 @@ ENV TSC_COMPILE_ON_ERROR=true
 # Build the app with increased memory limit and error handling
 RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build || (echo "Build failed, checking for common issues..." && ls -la && npm run build)
 
+# List build contents for debugging
+RUN ls -la /app/build/
+
 # Production stage
 FROM nginx:alpine
 
 # Install curl for health check
 RUN apk add --no-cache curl
+
+# Remove default nginx config
+RUN rm /etc/nginx/conf.d/default.conf
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
@@ -41,9 +47,8 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy build files to nginx html root
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Create the tntcamp directory and copy files there as well for compatibility
-RUN mkdir -p /usr/share/nginx/html/tntcamp
-COPY --from=build /app/build /usr/share/nginx/html/tntcamp
+# Verify files are copied
+RUN ls -la /usr/share/nginx/html/
 
 # Expose port
 EXPOSE 80
