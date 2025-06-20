@@ -131,13 +131,20 @@ services:
   tntcamp-app:
     build: 
       context: ./awana-english-camp-app
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3100:3000"
     expose:
       - "80"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - REACT_APP_BACKEND_HOST=https://awanaevent.com
-      - PUBLIC_URL=/tntcamp
+      - CHOKIDAR_USEPOLLING=true
+      - WDS_SOCKET_HOST=localhost
+      - WDS_SOCKET_PORT=3100
+    volumes:
+      - ./awana-english-camp-app:/app
+      - /app/node_modules
     networks:
       - awana-network
     restart: unless-stopped
@@ -146,13 +153,20 @@ services:
   tntcamp-admin:
     build: 
       context: ./awana-english-camp-admin
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3101:3000"
     expose:
       - "80"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - REACT_APP_BACKEND_HOST=https://awanaevent.com
-      - PUBLIC_URL=/tntadmin
+      - CHOKIDAR_USEPOLLING=true
+      - WDS_SOCKET_HOST=localhost
+      - WDS_SOCKET_PORT=3101
+    volumes:
+      - ./awana-english-camp-admin:/app
+      - /app/node_modules
     networks:
       - awana-network
     restart: unless-stopped
