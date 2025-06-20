@@ -26,11 +26,17 @@ ENV SKIP_PREFLIGHT_CHECK=true
 ENV DISABLE_ESLINT_PLUGIN=true
 ENV TSC_COMPILE_ON_ERROR=true
 
+# Debug: Show source files
+RUN echo "=== Source files ===" && ls -la /app/src/
+
 # Build the app with increased memory limit and error handling
-RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build || (echo "Build failed, checking for common issues..." && ls -la && npm run build)
+RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
+
+# Debug: Check if build directory was created
+RUN echo "=== Build directory check ===" && ls -la /app/
 
 # List build contents for debugging
-RUN ls -la /app/build/
+RUN echo "=== Build contents ===" && ls -la /app/build/ || echo "Build directory not found!"
 
 # Production stage
 FROM nginx:alpine
@@ -38,17 +44,18 @@ FROM nginx:alpine
 # Install curl for health check
 RUN apk add --no-cache curl
 
-# Remove default nginx config
+# Remove default nginx config and default html
 RUN rm /etc/nginx/conf.d/default.conf
+RUN rm -rf /usr/share/nginx/html/*
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy build files to nginx html root
+# Copy build files to nginx html root (check if build exists first)
 COPY --from=build /app/build /usr/share/nginx/html
 
 # Verify files are copied
-RUN ls -la /usr/share/nginx/html/
+RUN echo "=== Final nginx html contents ===" && ls -la /usr/share/nginx/html/
 
 # Expose port
 EXPOSE 80
