@@ -46,12 +46,20 @@
     "ajv": "^6.12.6",
     "ajv-keywords": "^3.5.2",
     "ajv-formats": "^1.6.1",
-    "schema-utils": "^3.3.0"
+    "schema-utils": "^3.3.0",
+    "webpack": "^5.88.0",
+    "terser-webpack-plugin": "^5.3.7",
+    "css-minimizer-webpack-plugin": "^3.4.1",
+    "mini-css-extract-plugin": "^2.7.6"
   },
   "resolutions": {
     "ajv": "^6.12.6",
     "ajv-keywords": "^3.5.2",
     "ajv-formats": "^1.6.1",
-    "schema-utils": "^3.3.0"
+    "schema-utils": "^3.3.0",
+    "webpack": "^5.88.0",
+    "terser-webpack-plugin": "^5.3.7",
+    "css-minimizer-webpack-plugin": "^3.4.1",
+    "mini-css-extract-plugin": "^2.7.6"
   }
 }
