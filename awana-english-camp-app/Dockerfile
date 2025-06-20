@@ -29,14 +29,24 @@ ENV TSC_COMPILE_ON_ERROR=true
 # Debug: Show source files
 RUN echo "=== Source files ===" && ls -la /app/src/
 
-# Build the app with increased memory limit and error handling
-RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
+# Build the app with detailed error output
+RUN echo "=== Starting React build ===" && \
+    NODE_OPTIONS="--max-old-space-size=4096" npm run build 2>&1 | tee /tmp/build.log || \
+    (echo "=== Build failed, showing error log ===" && cat /tmp/build.log && exit 1)
 
 # Debug: Check if build directory was created
 RUN echo "=== Build directory check ===" && ls -la /app/
 
 # List build contents for debugging
-RUN echo "=== Build contents ===" && ls -la /app/build/ || echo "Build directory not found!"
+RUN echo "=== Build contents ===" && \
+    if [ -d "/app/build" ]; then \
+        ls -la /app/build/; \
+        echo "=== Build files count ==="; \
+        find /app/build -type f | wc -l; \
+    else \
+        echo "Build directory not found!"; \
+        exit 1; \
+    fi
 
 # Production stage
 FROM nginx:alpine
@@ -55,7 +65,8 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/build /usr/share/nginx/html
 
 # Verify files are copied
-RUN echo "=== Final nginx html contents ===" && ls -la /usr/share/nginx/html/
+RUN echo "=== Final nginx html contents ===" && ls -la /usr/share/nginx/html/ && \
+    echo "=== File count ===" && find /usr/share/nginx/html -type f | wc -l
 
 # Expose port
 EXPOSE 80
