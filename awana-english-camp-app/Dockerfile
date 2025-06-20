@@ -6,9 +6,12 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Remove package-lock.json and node_modules to force fresh install
+RUN rm -f package-lock.json && rm -rf node_modules
+
 # Clean npm cache and install dependencies with force and legacy peer deps
 RUN npm cache clean --force
-RUN npm install --legacy-peer-deps --force --no-audit --no-fund
+RUN npm install --legacy-peer-deps --force --no-audit --no-fund --no-optional
 
 # Copy source code
 COPY . .
@@ -18,6 +21,7 @@ ENV NODE_ENV=production
 ENV REACT_APP_BACKEND_HOST=https://awanaevent.com
 ENV PUBLIC_URL=/tntcamp
 ENV GENERATE_SOURCEMAP=false
+ENV CI=false
 
 # Build the app with increased memory limit
 RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
