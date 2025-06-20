@@ -62,7 +62,7 @@ interface ChurchFormData {
 const isDevelopment = process.env.NODE_ENV === 'development';
 const API_BASE_URL = isDevelopment 
   ? `http://localhost:${process.env.NEXT_PUBLIC_CHURCH_SERVICE_PORT || '3002'}`
-  : 'http://182.231.199.64:3002';
+  : '';
 
 // Axios 인스턴스 생성
 const axiosInstance = axios.create({
