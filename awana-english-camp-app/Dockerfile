@@ -19,7 +19,7 @@ COPY . .
 # Set environment variables for production build
 ENV NODE_ENV=production
 ENV REACT_APP_BACKEND_HOST=https://awanaevent.com
-ENV PUBLIC_URL=/tntcamp
+ENV PUBLIC_URL=/
 ENV GENERATE_SOURCEMAP=false
 ENV CI=false
 ENV SKIP_PREFLIGHT_CHECK=true
@@ -38,7 +38,11 @@ RUN apk add --no-cache curl
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy build files
+# Copy build files to nginx html root
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Create the tntcamp directory and copy files there as well for compatibility
+RUN mkdir -p /usr/share/nginx/html/tntcamp
 COPY --from=build /app/build /usr/share/nginx/html/tntcamp
 
 # Expose port
