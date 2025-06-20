@@ -6,8 +6,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies with legacy peer deps to handle React version conflicts
-RUN npm install --legacy-peer-deps
+# Clean npm cache and install dependencies with force and legacy peer deps
+RUN npm cache clean --force
+RUN npm install --legacy-peer-deps --force --no-audit --no-fund
 
 # Copy source code
 COPY . .
@@ -16,9 +17,10 @@ COPY . .
 ENV NODE_ENV=production
 ENV REACT_APP_BACKEND_HOST=https://awanaevent.com
 ENV PUBLIC_URL=/tntcamp/admin
+ENV GENERATE_SOURCEMAP=false
 
-# Build the app
-RUN npm run build
+# Build the app with increased memory limit
+RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 # Production stage
 FROM nginx:alpine
