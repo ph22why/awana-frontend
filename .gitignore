@@ -1,3 +1,128 @@
+# TNT Camp Project - Root .gitignore
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Production builds
+build/
+dist/
+
+# Docker volumes and data
+data/
+mysql_data/
+mongodb_data/
+tntcampdb/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads and user content
+uploads/*
+!uploads/.gitkeep
+backups/
+*.backup
+*.bak
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Windows batch file logs
+*.bat.log
+
+# TNT Camp specific
+awana-english-camp-admin/build/
+awana-english-camp-app/build/
+backend-server/uploads/*
+backend-server/logs/
+backend-server/data/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# SSL certificates
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Cache files
+.cache
+.parcel-cache
+
+# TypeScript
+*.tsbuildinfo
+
+# React
+.eslintcache
+
 # dependencies
 /node_modules
 /services/**/node_modules

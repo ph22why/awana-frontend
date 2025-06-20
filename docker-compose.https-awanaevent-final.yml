@@ -18,6 +18,25 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=awana123
     command: mongod --logpath /var/log/mongodb/mongod.log --logappend
 
+  # MySQL (TNT Camp 데이터베이스)
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    volumes:
+      - D:\tntcampdb\mysql:/var/lib/mysql
+      - D:\tntcampdb\init:/docker-entrypoint-initdb.d
+      - D:\tntcampdb\backup:/backup
+    networks:
+      - awana-network
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=tntcamp
+      - MYSQL_USER=tntcamp
+      - MYSQL_PASSWORD=tntcamp123!@#
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
   # Event Service
   event-service:
     build: ./services/event-service
@@ -86,6 +105,58 @@ services:
     networks:
       - awana-network
     restart: unless-stopped
+
+  # TNT Camp Backend Server
+  tntcamp-backend:
+    build: ./backend-server
+    expose:
+      - "8080"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=mysql
+      - DB_USER=tntcamp
+      - DB_PASSWORD=tntcamp123!@#
+      - DB_NAME=tntcamp
+      - PORT=8080
+    volumes:
+      - D:\tntcampdb\uploads:/app/uploads
+      - D:\tntcampdb\logs:/app/logs
+    depends_on:
+      - mysql
+    networks:
+      - awana-network
+    restart: unless-stopped
+
+  # TNT Camp Main App
+  tntcamp-app:
+    build: 
+      context: ./awana-english-camp-app
+      dockerfile: Dockerfile
+    expose:
+      - "80"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_BACKEND_HOST=https://awanaevent.com
+      - PUBLIC_URL=/tntcamp
+    networks:
+      - awana-network
+    restart: unless-stopped
+
+  # TNT Camp Admin App
+  tntcamp-admin:
+    build: 
+      context: ./awana-english-camp-admin
+      dockerfile: Dockerfile
+    expose:
+      - "80"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_BACKEND_HOST=https://awanaevent.com
+      - PUBLIC_URL=/tntadmin
+    networks:
+      - awana-network
+    restart: unless-stopped
+
 
 volumes:
   mongodb_data:
