@@ -72,10 +72,10 @@ app.post('/register/student', (req, res) => {
   // Convert Korean gender to English
   const genderEn = gender === '남자' ? 'male' : gender === '여자' ? 'female' : gender;
 
-  const sql = `INSERT INTO students (koreanName, englishName, churchName, churchNumber, parentContact, healthNotes, shirtSize, gender, image)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const sql = `INSERT INTO students (koreanName, englishName, churchName, churchNumber, phoneNumber, shirtSize, gender)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
-  db.query(sql, [koreanName, englishName, churchName, churchNumber, parentContact, healthNotes, shirtSize, genderEn, image], (err, result) => {
+  db.query(sql, [koreanName, englishName, churchName, churchNumber, parentContact, shirtSize, genderEn], (err, result) => {
     if (err) {
       console.error('Error inserting student data:', err);
       res.status(500).json({ error: 'Error inserting data', details: err.message });
@@ -113,10 +113,11 @@ app.post('/register/ym', (req, res) => {
   // Convert Korean gender to English
   const genderEn = gender === '남자' ? 'male' : gender === '여자' ? 'female' : gender;
 
-  const sql = `INSERT INTO ym (name, englishName, churchName, churchNumber, gender, awanaRole, position, contact, shirtSize)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  // Use correct column names matching database schema
+  const sql = `INSERT INTO ym (koreanName, englishName, churchName, churchNumber, gender, phoneNumber, shirtSize)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
-  db.query(sql, [name, englishName, churchName, churchNumber, genderEn, awanaRole, position, contact, shirtSize], (err, result) => {
+  db.query(sql, [name, englishName, churchName, churchNumber, genderEn, contact, shirtSize], (err, result) => {
     if (err) {
       console.error('Error inserting YM data:', err);
       res.status(500).json({ error: 'Error inserting data', details: err.message });
@@ -159,12 +160,12 @@ app.post('/register/teacher', (req, res) => {
   // Convert Korean gender to English
   const genderEn = gender === '남자' ? 'male' : gender === '여자' ? 'female' : gender;
 
-  const sql = `INSERT INTO teachers (name, englishName, churchName, churchNumber, gender, awanaRole, position, contact, shirtSize)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const sql = `INSERT INTO teachers (koreanName, englishName, churchName, churchNumber, gender, phoneNumber, shirtSize)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
-  console.log('🔍 Executing teacher insert with params:', [name, englishName, churchName, churchNumber, genderEn, awanaRole, position, contact, shirtSize]);
+  console.log('🔍 Executing teacher insert with params:', [name, englishName, churchName, churchNumber, genderEn, contact, shirtSize]);
   
-  db.query(sql, [name, englishName, churchName, churchNumber, genderEn, awanaRole, position, contact, shirtSize], (err, result) => {
+  db.query(sql, [name, englishName, churchName, churchNumber, genderEn, contact, shirtSize], (err, result) => {
     if (err) {
       console.error('❌ Error inserting teacher data:', err);
       console.error('❌ SQL:', sql);
@@ -203,10 +204,10 @@ app.post('/register/staff', (req, res) => {
   // Convert Korean gender to English
   const genderEn = gender === '남자' ? 'male' : gender === '여자' ? 'female' : gender;
 
-  const sql = `INSERT INTO staff (name, englishName, churchName, churchNumber, gender, awanaRole, position, contact, shirtSize)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  const sql = `INSERT INTO staff (koreanName, englishName, churchName, churchNumber, gender, phoneNumber, shirtSize)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
-  db.query(sql, [name, englishName, churchName, churchNumber, genderEn, awanaRole, position, contact, shirtSize], (err, result) => {
+  db.query(sql, [name, englishName, churchName, churchNumber, genderEn, contact, shirtSize], (err, result) => {
     if (err) {
       console.error('Error inserting staff data:', err);
       res.status(500).json({ error: 'Error inserting data', details: err.message });
@@ -239,10 +240,10 @@ app.post('/register/staff', (req, res) => {
 app.post('/register/church', (req, res) => {
   const { churchName, name, contact, churchNumber } = req.body;
 
-  const sql = `INSERT INTO church (churchName, name, contact, churchNumber)
-               VALUES (?, ?, ?, ?)`;
+  const sql = `INSERT INTO church (churchName, churchContact, churchNumber)
+               VALUES (?, ?, ?)`;
 
-  db.query(sql, [churchName, name, contact, churchNumber], (err, result) => {
+  db.query(sql, [churchName, contact, churchNumber], (err, result) => {
     if (err) {
       console.error('Error inserting church data:', err);
       res.status(500).json({ error: 'Error inserting data' });
@@ -262,19 +263,19 @@ app.post('/checkUser', (req, res) => {
   
   switch (userType) {
     case 'teacher':
-      sql = 'SELECT id FROM teachers WHERE name = ? AND contact = ?';
+      sql = 'SELECT id FROM teachers WHERE koreanName = ? AND phoneNumber = ?';
       tableName = 'teachers';
       break;
     case 'staff':
-      sql = 'SELECT id FROM staff WHERE name = ? AND contact = ?';
+      sql = 'SELECT id FROM staff WHERE koreanName = ? AND phoneNumber = ?';
       tableName = 'staff';
       break;
     case 'ym':
-      sql = 'SELECT id FROM ym WHERE name = ? AND contact = ?';
+      sql = 'SELECT id FROM ym WHERE koreanName = ? AND phoneNumber = ?';
       tableName = 'ym';
       break;
     default: // student
-      sql = 'SELECT id FROM students WHERE koreanName = ? AND parentContact = ?';
+      sql = 'SELECT id FROM students WHERE koreanName = ? AND phoneNumber = ?';
       tableName = 'students';
   }
   
@@ -300,7 +301,12 @@ app.post('/checkUser', (req, res) => {
       } else {
         console.log('❌ No user found');
         // 디버깅을 위해 비슷한 데이터 조회
-        const debugSql = `SELECT name, contact FROM ${tableName} LIMIT 5`;
+        let debugSql;
+        if (tableName === 'students' || tableName === 'ym') {
+          debugSql = `SELECT koreanName, phoneNumber FROM ${tableName} LIMIT 5`;
+        } else {
+          debugSql = `SELECT koreanName, phoneNumber FROM ${tableName} LIMIT 5`;
+        }
         db.query(debugSql, [], (debugErr, debugResult) => {
           if (!debugErr) {
             console.log('🔍 Available data in table:', debugResult);
@@ -337,7 +343,7 @@ app.post('/checkchurch', (req, res) => {
     console.log('✅ Church found:', church);
     
     // 담당자 연락처 확인 (제공된 경우)
-    if (contact && church.contact !== contact) {
+    if (contact && church.churchContact !== contact) {
       console.log('❌ Contact mismatch');
       res.status(200).json({});
       return;
@@ -460,9 +466,9 @@ app.get('/teacher/:id', (req, res) => {
 // Update User Data
 app.put('/user/:id', (req, res) => {
   const { koreanName, englishName, churchName, churchNumber, parentContact, healthNotes, shirtSize, gender } = req.body;
-  const sql = `UPDATE students SET koreanName=?, englishName=?, churchName=?, churchNumber=?, parentContact=?, healthNotes=?, shirtSize=?, gender=? WHERE id=?`;
+  const sql = `UPDATE students SET koreanName=?, englishName=?, churchName=?, churchNumber=?, phoneNumber=?, shirtSize=?, gender=? WHERE id=?`;
   
-  db.query(sql, [koreanName, englishName, churchName, churchNumber, parentContact, healthNotes, shirtSize, gender, req.params.id], (err, result) => {
+  db.query(sql, [koreanName, englishName, churchName, churchNumber, parentContact, shirtSize, gender, req.params.id], (err, result) => {
     if (err) {
       console.error('Error updating user data:', err);
       res.status(500).json({ error: 'Error updating data' });
@@ -477,9 +483,9 @@ app.put('/staff/:id', (req, res) => {
   const { name, englishName, churchName, churchNumber, gender, awanaRole, position, contact, shirtSize } = req.body;
   const genderForDB = gender === '남자' ? 'male' : gender === '여자' ? 'female' : gender;
   
-  const sql = `UPDATE staff SET name=?, englishName=?, churchName=?, churchNumber=?, gender=?, awanaRole=?, position=?, contact=?, shirtSize=? WHERE id=?`;
+  const sql = `UPDATE staff SET koreanName=?, englishName=?, churchName=?, churchNumber=?, gender=?, phoneNumber=?, shirtSize=? WHERE id=?`;
   
-  db.query(sql, [name, englishName, churchName, churchNumber, genderForDB, awanaRole, position, contact, shirtSize, req.params.id], (err, result) => {
+  db.query(sql, [name, englishName, churchName, churchNumber, genderForDB, contact, shirtSize, req.params.id], (err, result) => {
     if (err) {
       console.error('Error updating staff data:', err);
       res.status(500).json({ error: 'Error updating data' });
@@ -501,9 +507,10 @@ app.put('/ym/:id', (req, res) => {
   const { name, englishName, churchName, churchNumber, gender, awanaRole, position, contact, shirtSize } = req.body;
   const genderForDB = gender === '남자' ? 'male' : gender === '여자' ? 'female' : gender;
   
-  const sql = `UPDATE ym SET name=?, englishName=?, churchName=?, churchNumber=?, gender=?, awanaRole=?, position=?, contact=?, shirtSize=? WHERE id=?`;
+  // Use correct column names matching database schema
+  const sql = `UPDATE ym SET koreanName=?, englishName=?, churchName=?, churchNumber=?, gender=?, phoneNumber=?, shirtSize=? WHERE id=?`;
   
-  db.query(sql, [name, englishName, churchName, churchNumber, genderForDB, awanaRole, position, contact, shirtSize, req.params.id], (err, result) => {
+  db.query(sql, [name, englishName, churchName, churchNumber, genderForDB, contact, shirtSize, req.params.id], (err, result) => {
     if (err) {
       console.error('Error updating YM data:', err);
       res.status(500).json({ error: 'Error updating data' });
@@ -525,9 +532,9 @@ app.put('/teacher/:id', (req, res) => {
   const { name, englishName, churchName, churchNumber, gender, awanaRole, position, contact, shirtSize } = req.body;
   const genderForDB = gender === '남자' ? 'male' : gender === '여자' ? 'female' : gender;
   
-  const sql = `UPDATE teachers SET name=?, englishName=?, churchName=?, churchNumber=?, gender=?, awanaRole=?, position=?, contact=?, shirtSize=? WHERE id=?`;
+  const sql = `UPDATE teachers SET koreanName=?, englishName=?, churchName=?, churchNumber=?, gender=?, phoneNumber=?, shirtSize=? WHERE id=?`;
   
-  db.query(sql, [name, englishName, churchName, churchNumber, genderForDB, awanaRole, position, contact, shirtSize, req.params.id], (err, result) => {
+  db.query(sql, [name, englishName, churchName, churchNumber, genderForDB, contact, shirtSize, req.params.id], (err, result) => {
     if (err) {
       console.error('Error updating teacher data:', err);
       res.status(500).json({ error: 'Error updating data' });
@@ -569,14 +576,9 @@ app.get('/admin/:type', (req, res) => {
   let params = [];
 
   if (search) {
-    if (type === 'students') {
-      sql += ` WHERE koreanName LIKE ? OR englishName LIKE ? OR churchName LIKE ?`;
-      params = [`%${search}%`, `%${search}%`, `%${search}%`];
-    } else {
-      // For staff, teachers, ym tables
-      sql += ` WHERE name LIKE ? OR englishName LIKE ? OR churchName LIKE ?`;
-      params = [`%${search}%`, `%${search}%`, `%${search}%`];
-    }
+    // All tables now use koreanName
+    sql += ` WHERE koreanName LIKE ? OR englishName LIKE ? OR churchName LIKE ?`;
+    params = [`%${search}%`, `%${search}%`, `%${search}%`];
   }
 
   if (limit !== 'all') {
