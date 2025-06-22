@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:16-alpine AS builder
 
 WORKDIR /app
 
@@ -7,6 +7,7 @@ WORKDIR /app
 ENV NODE_OPTIONS="--max_old_space_size=4096"
 ENV GENERATE_SOURCEMAP=false
 ENV CI=false
+ENV SKIP_PREFLIGHT_CHECK=true
 
 # Copy package files first for better caching
 COPY package*.json ./
@@ -14,9 +15,10 @@ COPY package*.json ./
 # Remove node_modules and package-lock.json to ensure clean install
 RUN rm -rf node_modules package-lock.json
 
-# Clear npm cache and install dependencies with specific options
+# Install compatible ajv version first, then other dependencies
 RUN npm cache clean --force && \
-    npm install --legacy-peer-deps --force --no-audit --no-fund
+    npm install ajv@6.12.6 ajv-keywords@3.5.2 --legacy-peer-deps && \
+    npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
