@@ -5,13 +5,18 @@ WORKDIR /app
 
 # Set memory limit for Node.js
 ENV NODE_OPTIONS="--max_old_space_size=4096"
+ENV GENERATE_SOURCEMAP=false
+ENV CI=false
 
 # Copy package files first for better caching
 COPY package*.json ./
 
+# Remove node_modules and package-lock.json to ensure clean install
+RUN rm -rf node_modules package-lock.json
+
 # Clear npm cache and install dependencies
 RUN npm cache clean --force && \
-    npm install
+    npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
