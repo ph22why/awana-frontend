@@ -27,6 +27,11 @@ COPY . .
 # Build the application using yarn
 RUN yarn build
 
+# Verify build was successful
+RUN ls -la /app/build/ && \
+    test -f /app/build/index.html && \
+    echo "Build successful!" || (echo "Build failed!" && exit 1)
+
 # Production stage
 FROM nginx:alpine
 
