@@ -18,12 +18,6 @@
     "react-transition-group": "^4.4.5",
     "web-vitals": "^2.1.4"
   },
-  "resolutions": {
-    "ajv": "^6.12.6",
-    "ajv-keywords": "^3.5.2",
-    "ajv-formats": "^1.6.1",
-    "schema-utils": "^3.3.0"
-  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",

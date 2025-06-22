@@ -1,5 +1,5 @@
-# Build stage
-FROM node:18-alpine AS builder
+# Development server (no build)
+FROM node:18-alpine
 
 WORKDIR /app
 
@@ -10,6 +10,8 @@ ENV CI=false
 ENV SKIP_PREFLIGHT_CHECK=true
 ENV DISABLE_ESLINT_PLUGIN=true
 ENV TSC_COMPILE_ON_ERROR=true
+ENV HOST=0.0.0.0
+ENV PORT=80
 
 # Copy package files first for better caching
 COPY package*.json ./
@@ -24,32 +26,8 @@ RUN yarn cache clean && \
 # Copy source code
 COPY . .
 
-# Build the application using yarn
-RUN yarn build
-
-# Verify build was successful
-RUN ls -la /app/build/ && \
-    test -f /app/build/index.html && \
-    echo "Build successful!" || (echo "Build failed!" && exit 1)
-
-# Production stage
-FROM nginx:alpine
-
-# Create nginx config for React app
-RUN echo 'server { \
-    listen 80; \
-    location / { \
-        root /usr/share/nginx/html; \
-        index index.html index.htm; \
-        try_files $uri $uri/ /index.html; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
-
-# Copy built application
-COPY --from=builder /app/build /usr/share/nginx/html
-
 # Expose port
 EXPOSE 80
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"] 
+# Start development server
+CMD ["yarn", "start"] 
