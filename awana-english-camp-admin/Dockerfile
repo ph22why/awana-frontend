@@ -11,9 +11,6 @@ ENV SKIP_PREFLIGHT_CHECK=true
 ENV DISABLE_ESLINT_PLUGIN=true
 ENV TSC_COMPILE_ON_ERROR=true
 
-# Install yarn globally
-RUN npm install -g yarn
-
 # Copy package files first for better caching
 COPY package*.json ./
 
