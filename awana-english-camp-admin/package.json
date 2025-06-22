@@ -7,16 +7,21 @@
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
     "@mui/material": "^5.15.20",
+    "@mui/icons-material": "^5.15.20",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "ajv": "^8.12.0",
+    "ajv-keywords": "^5.1.0",
+    "ajv-formats": "^2.1.1",
+    "schema-utils": "^4.2.0",
     "axios": "^1.7.2",
     "html5-qrcode": "^2.3.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-qr-scanner": "^1.0.0-alpha.11",
     "react-router-dom": "^6.23.1",
-    "react-scripts": "5.0.1",
+    "react-scripts": "^5.0.1",
     "web-vitals": "^2.1.4",
     "xlsx": "^0.18.5"
   },
@@ -43,27 +48,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "overrides": {
-    "ajv": "^6.12.6",
-    "ajv-keywords": "^3.5.2",
-    "ajv-formats": "^1.6.1",
-    "schema-utils": "^3.3.0",
-    "webpack": "^5.88.0",
-    "terser-webpack-plugin": "^5.3.7",
-    "css-minimizer-webpack-plugin": "^3.4.1",
-    "mini-css-extract-plugin": "^2.7.6",
-    "babel-loader": "^8.3.0"
-  },
-  "resolutions": {
-    "ajv": "^6.12.6",
-    "ajv-keywords": "^3.5.2",
-    "ajv-formats": "^1.6.1",
-    "schema-utils": "^3.3.0",
-    "webpack": "^5.88.0",
-    "terser-webpack-plugin": "^5.3.7",
-    "css-minimizer-webpack-plugin": "^3.4.1",
-    "mini-css-extract-plugin": "^2.7.6",
-    "babel-loader": "^8.3.0"
   }
 }

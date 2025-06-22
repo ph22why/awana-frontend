@@ -1,7 +1,40 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios"; // axios 임포트 추가
-import { BACKEND_URL } from "../config"; // config에서 BACKEND_URL 가져오기
+import axios from "axios";
+import {
+  Container,
+  Paper,
+  Typography,
+  Box,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Chip,
+  Grid,
+  Toolbar,
+  AppBar,
+  Stack,
+  Alert
+} from '@mui/material';
+import {
+  Search,
+  Download,
+  Home,
+  Refresh,
+  CheckCircle,
+  Cancel
+} from '@mui/icons-material';
+import { BACKEND_URL } from "../config";
 
 const AttendanceCheckAdminPage = () => {
   const [search, setSearch] = useState("");
@@ -11,11 +44,19 @@ const AttendanceCheckAdminPage = () => {
   const [team, setTeam] = useState("");
   const [attendanceData, setAttendanceData] = useState([]);
   const [attendanceSummary, setAttendanceSummary] = useState({});
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertSeverity, setAlertSeverity] = useState("success");
   const navigate = useNavigate();
 
   useEffect(() => {
     handleSearch();
   }, []);
+
+  const showAlert = (message, severity = "success") => {
+    setAlertMessage(message);
+    setAlertSeverity(severity);
+    setTimeout(() => setAlertMessage(""), 5000);
+  };
 
   const handleSearch = async () => {
     try {
@@ -26,6 +67,7 @@ const AttendanceCheckAdminPage = () => {
       calculateSummary(response.data);
     } catch (error) {
       console.error("Error fetching attendance data:", error);
+      showAlert("출석 데이터를 불러오는데 실패했습니다.", "error");
     }
   };
 
@@ -60,91 +102,266 @@ const AttendanceCheckAdminPage = () => {
     try {
       const response = await axios.get(`${BACKEND_URL}/download`, {
         params: { search, day, session, group, team },
-        responseType: 'blob' // 응답 데이터 형식 설정
+        responseType: 'blob'
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'attendance.xlsx'); // 다운로드할 파일 이름 설정
+      link.setAttribute('download', 'attendance.xlsx');
       document.body.appendChild(link);
       link.click();
+      showAlert("엑셀 파일이 다운로드되었습니다.");
     } catch (error) {
       console.error("Error downloading Excel file:", error);
+      showAlert("엑셀 다운로드 중 오류가 발생했습니다.", "error");
     }
   };
 
+  const getSummaryColumns = () => {
+    return Object.keys(attendanceSummary);
+  };
+
   return (
-    <div className="attendance-admin-page">
-      <h1 onClick={handleTitleClick} style={{ cursor: "pointer" }}>
-        Admin Page
-      </h1>
-      <div className="filters">
-        <input
-          type="text"
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Header */}
+      <AppBar position="static" elevation={0} sx={{ mb: 3, borderRadius: 2 }}>
+        <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            onClick={handleTitleClick}
+            sx={{ mr: 2 }}
+          >
+            <Home />
+          </IconButton>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            AWANA Camp 출석 관리
+          </Typography>
+          <Chip 
+            label={`총 ${attendanceData.length}명`} 
+            color="secondary" 
+            variant="outlined"
+            sx={{ color: 'white', borderColor: 'white' }}
+          />
+        </Toolbar>
+      </AppBar>
+
+      {/* Alert */}
+      {alertMessage && (
+        <Alert severity={alertSeverity} sx={{ mb: 2 }}>
+          {alertMessage}
+        </Alert>
+      )}
+
+      {/* Filters */}
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Search color="primary" />
+          검색 및 필터
+        </Typography>
+        
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              fullWidth
+              size="small"
           placeholder="한글/영어 이름 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          className="AttendanceSearchList"
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            />
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>그룹 선택</InputLabel>
+              <Select
           value={group}
+                label="그룹 선택"
           onChange={(e) => setGroup(e.target.value)}
         >
-          <option value="">그룹 선택</option>
-          <option value="KNOW">KNOW</option>
-          <option value="LOVE">LOVE</option>
-          <option value="SERVE">SERVE</option>
-          <option value="GLORY">GLORY</option>
-          <option value="HOLY">HOLY</option>
-          <option value="GRACE">GRACE</option>
-        </select>
-        <select
-          className="AttendanceSearchList"
+                <MenuItem value="">전체</MenuItem>
+                <MenuItem value="KNOW">KNOW</MenuItem>
+                <MenuItem value="LOVE">LOVE</MenuItem>
+                <MenuItem value="SERVE">SERVE</MenuItem>
+                <MenuItem value="GLORY">GLORY</MenuItem>
+                <MenuItem value="HOLY">HOLY</MenuItem>
+                <MenuItem value="GRACE">GRACE</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>조 선택</InputLabel>
+              <Select
           value={team}
+                label="조 선택"
           onChange={(e) => setTeam(e.target.value)}
         >
-          <option value="">조 선택</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-        </select>
-        <button onClick={handleSearch}>Search</button>
-        <button onClick={handleSearch}>새로고침</button>
-        <button onClick={downloadExcel}>Download Excel</button>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>학생 ID</th>
-            <th>한글 이름</th>
-            <th>영어 이름</th>
-            <th>그룹</th>
-            <th>조</th>
-            {Object.keys(attendanceSummary).map((key) => (
-              <th key={key}>
-                {key} <br /> {attendanceSummary[key].checked}/{attendanceSummary[key].total}
-              </th>
+                <MenuItem value="">전체</MenuItem>
+                <MenuItem value="1">1조</MenuItem>
+                <MenuItem value="2">2조</MenuItem>
+                <MenuItem value="3">3조</MenuItem>
+                <MenuItem value="4">4조</MenuItem>
+                <MenuItem value="5">5조</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} md={5}>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                variant="outlined"
+                startIcon={<Search />}
+                onClick={handleSearch}
+                size="small"
+              >
+                검색
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={handleSearch}
+                size="small"
+              >
+                새로고침
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={downloadExcel}
+                size="small"
+              >
+                엑셀 다운로드
+              </Button>
+            </Stack>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Summary Cards */}
+      {getSummaryColumns().length > 0 && (
+        <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom color="primary">
+            출석 현황 요약
+          </Typography>
+          <Grid container spacing={2}>
+            {getSummaryColumns().map((key) => (
+              <Grid item xs={12} sm={6} md={3} lg={2} key={key}>
+                <Paper 
+                  elevation={1} 
+                  sx={{ 
+                    p: 2, 
+                    textAlign: 'center',
+                    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    {key}
+                  </Typography>
+                  <Typography variant="h6" color="primary" fontWeight="bold">
+                    {attendanceSummary[key].checked}/{attendanceSummary[key].total}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    ({Math.round((attendanceSummary[key].checked / attendanceSummary[key].total) * 100)}%)
+                  </Typography>
+                </Paper>
+              </Grid>
             ))}
-          </tr>
-        </thead>
-        <tbody>
+          </Grid>
+        </Paper>
+      )}
+
+      {/* Attendance Table */}
+      <Paper elevation={2}>
+        <TableContainer sx={{ maxHeight: 600 }}>
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'primary.main', color: 'white' }}>
+                  학생 ID
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'primary.main', color: 'white' }}>
+                  한글 이름
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'primary.main', color: 'white' }}>
+                  영어 이름
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'primary.main', color: 'white' }}>
+                  그룹
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'primary.main', color: 'white' }}>
+                  조
+                </TableCell>
+                {getSummaryColumns().map((key) => (
+                  <TableCell 
+                    key={key} 
+                    sx={{ 
+                      fontWeight: 'bold', 
+                      backgroundColor: 'primary.main', 
+                      color: 'white',
+                      minWidth: 100
+                    }}
+                  >
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="body2" component="div">
+                        {key}
+                      </Typography>
+                      <Typography variant="caption" component="div">
+                        {attendanceSummary[key].checked}/{attendanceSummary[key].total}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+            ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
           {attendanceData.map((row) => (
-            <tr key={row.id}>
-              <td>{row.student_id}</td>
-              <td>{row.koreanName}</td>
-              <td>{row.englishName}</td>
-              <td>{row.studentGroup}</td>
-              <td>{row.team}</td>
-              {Object.keys(attendanceSummary).map((key) => (
-                <td key={key}>{row[key] ? "✔" : ""}</td>
+                <TableRow key={row.id} hover>
+                  <TableCell>{row.student_id}</TableCell>
+                  <TableCell sx={{ fontWeight: 'medium' }}>{row.koreanName}</TableCell>
+                  <TableCell>{row.englishName}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={row.studentGroup} 
+                      size="small" 
+                      color="primary"
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={`${row.team}조`} 
+                      size="small" 
+                      color="secondary"
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  {getSummaryColumns().map((key) => (
+                    <TableCell key={key} sx={{ textAlign: 'center' }}>
+                      {row[key] ? (
+                        <CheckCircle color="success" fontSize="small" />
+                      ) : (
+                        <Cancel color="disabled" fontSize="small" />
+                      )}
+                    </TableCell>
               ))}
-            </tr>
+                </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {attendanceData.length === 0 && (
+          <Box sx={{ p: 4, textAlign: 'center' }}>
+            <Typography variant="body1" color="text.secondary">
+              출석 데이터가 없습니다.
+            </Typography>
+          </Box>
+        )}
+      </Paper>
+    </Container>
   );
 };
 

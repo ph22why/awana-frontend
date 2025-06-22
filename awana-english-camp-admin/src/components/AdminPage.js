@@ -2,7 +2,48 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import * as XLSX from "xlsx";
-import "./AdminPage.css";
+import {
+  Container,
+  Paper,
+  Typography,
+  Box,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Chip,
+  Grid,
+  Card,
+  CardContent,
+  Toolbar,
+  AppBar,
+  Pagination,
+  Stack,
+  Alert
+} from '@mui/material';
+import {
+  Edit,
+  Delete,
+  Search,
+  Download,
+  Group,
+  EmojiEvents,
+  Home,
+  Refresh
+} from '@mui/icons-material';
 import { BACKEND_URL } from "../config";
 
 const AdminPage = () => {
@@ -13,6 +54,8 @@ const AdminPage = () => {
   const [page, setPage] = useState(1);
   const [editItem, setEditItem] = useState(null);
   const [editData, setEditData] = useState({});
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertSeverity, setAlertSeverity] = useState("success");
   const navigate = useNavigate();
 
   const fetchData = useCallback(() => {
@@ -30,11 +73,12 @@ const AdminPage = () => {
         params,
       })
       .then((response) => {
-        console.log("Fetched data:", response.data); // 콘솔에 데이터 출력
+        console.log("Fetched data:", response.data);
         setData(response.data);
       })
       .catch((error) => {
         console.error("Error fetching data:", error);
+        showAlert("데이터를 불러오는데 실패했습니다.", "error");
       });
   }, [type, search, limit, page]);
 
@@ -42,30 +86,36 @@ const AdminPage = () => {
     fetchData();
   }, [fetchData]);
 
+  const showAlert = (message, severity = "success") => {
+    setAlertMessage(message);
+    setAlertSeverity(severity);
+    setTimeout(() => setAlertMessage(""), 5000);
+  };
+
   const handleSearch = () => {
     setPage(1);
     fetchData();
   };
 
   const handleDelete = (id) => {
-    if (window.confirm("삭제하시겠습니까?")) {
+    if (window.confirm("정말로 삭제하시겠습니까?")) {
       axios
         .delete(`${BACKEND_URL}/admin/${type}/${id}`)
         .then(() => {
           fetchData();
+          showAlert("삭제가 완료되었습니다.");
         })
         .catch((error) => {
           console.error("Error deleting data:", error);
+          showAlert("삭제 중 오류가 발생했습니다.", "error");
         });
     }
   };
 
   const handleEdit = (item) => {
     console.log('🖊️ Edit button clicked for item:', item);
-    console.log('🖊️ Item ID type:', typeof item.id, 'Value:', item.id);
     setEditItem(item);
     
-    // gender 값을 프론트엔드 표시용으로 변환
     const editDataFormatted = { ...item };
     if (editDataFormatted.gender === 'male') {
       editDataFormatted.gender = '남자';
@@ -84,9 +134,6 @@ const AdminPage = () => {
   };
 
   const handleEditSubmit = () => {
-    console.log(`📤 Sending update for ${type}/${editItem.id}:`, editData);
-    
-    // gender 값을 백엔드 저장용으로 변환
     const dataToSend = { ...editData };
     if (dataToSend.gender === '남자') {
       dataToSend.gender = 'male';
@@ -94,19 +141,17 @@ const AdminPage = () => {
       dataToSend.gender = 'female';
     }
     
-    console.log(`📤 Data after conversion:`, dataToSend);
-    
     axios
       .put(`${BACKEND_URL}/admin/${type}/${editItem.id}`, dataToSend)
       .then((response) => {
         console.log('✅ Update successful:', response.data);
         setEditItem(null);
         fetchData();
-        alert('수정이 완료되었습니다.');
+        showAlert('수정이 완료되었습니다.');
       })
       .catch((error) => {
         console.error("❌ Error updating data:", error);
-        alert(`수정 중 오류가 발생했습니다: ${error.response?.data?.error || error.message}`);
+        showAlert(`수정 중 오류가 발생했습니다: ${error.response?.data?.error || error.message}`, "error");
       });
   };
 
@@ -120,7 +165,7 @@ const AdminPage = () => {
     setPage(1);
   };
 
-  const handlePageChange = (newPage) => {
+  const handlePageChange = (event, newPage) => {
     setPage(newPage);
   };
 
@@ -132,21 +177,21 @@ const AdminPage = () => {
   const handleAssignGroups = async () => {
     try {
       const response = await axios.post(`${BACKEND_URL}/admin/assign-groups`);
-      alert(response.data.message);
+      showAlert(response.data.message);
     } catch (error) {
       console.error("Error assigning groups:", error);
-      alert("Error assigning groups. Please try again.");
+      showAlert("그룹 배정 중 오류가 발생했습니다.", "error");
     }
   };
 
   const handleRankAssignment = async () => {
     try {
       const response = await axios.put(`${BACKEND_URL}/score/all-rank`);
-      alert(response.data.message);
-      fetchData(); // 데이터 갱신
+      showAlert(response.data.message);
+      fetchData();
     } catch (error) {
       console.error("Error assigning ranks:", error);
-      alert("Error assigning ranks. Please try again.");
+      showAlert("등급 부여 중 오류가 발생했습니다.", "error");
     }
   };
 
@@ -225,41 +270,12 @@ const AdminPage = () => {
         return [];
     }
   };
-
-  const renderTableHeader = () => {
-    const columns = getColumns();
-    return (
-      <tr>
-        {columns.map((column) => (
-          <th key={column.key}>{column.displayName}</th>
-        ))}
-        <th>Actions</th>
-      </tr>
-    );
-  };
-
-  const renderTableRows = () => {
-    const columns = getColumns();
-    console.log("Data for rows:", data); // 데이터가 올바르게 매핑되는지 확인
     
     const formatCellValue = (item, column) => {
       if (column.key === 'gender') {
         return item[column.key] === 'male' ? '남자' : item[column.key] === 'female' ? '여자' : item[column.key];
       }
       return item[column.key];
-    };
-    
-    return data.map((item) => (
-      <tr key={item.id}>
-        {columns.map((column) => (
-          <td key={column.key}>{formatCellValue(item, column)}</td>
-        ))}
-        <td>
-          <button onClick={() => handleEdit(item)}>Edit</button>
-          <button onClick={() => handleDelete(item.id)}>Delete</button>
-        </td>
-      </tr>
-    ));
   };
 
   const handleDownloadExcel = () => {
@@ -267,125 +283,314 @@ const AdminPage = () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
     XLSX.writeFile(workbook, `${type}_data.xlsx`);
+    showAlert("엑셀 파일이 다운로드되었습니다.");
+  };
+
+  const getTypeDisplayName = (type) => {
+    const typeNames = {
+      students: "학생",
+      ym: "YM",
+      teachers: "교사",
+      staff: "스태프",
+      attendance: "출석",
+      scores: "성적"
+    };
+    return typeNames[type] || type;
   };
 
   return (
-    <div className="admin-page">
-      <h1 onClick={handleTitleClick} style={{ cursor: "pointer" }}>
-        Admin Page
-      </h1>
-      <div className="controls">
-        <select onChange={handleTypeChange} value={type}>
-          <option value="students">Students</option>
-          <option value="ym">YM</option>
-          <option value="teachers">Teachers</option>
-          <option value="staff">Staff</option>
-          <option value="attendance">Attendance</option>
-          <option value="scores">Scores</option> {/* Scores 옵션 추가 */}
-        </select>
-        <input
-          type="text"
-          placeholder="Search..."
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      {/* Header */}
+      <AppBar position="static" elevation={0} sx={{ mb: 3, borderRadius: 2 }}>
+        <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            onClick={handleTitleClick}
+            sx={{ mr: 2 }}
+          >
+            <Home />
+          </IconButton>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            AWANA Camp 관리자 페이지
+          </Typography>
+          <Chip 
+            label={getTypeDisplayName(type)} 
+            color="secondary" 
+            variant="outlined"
+            sx={{ color: 'white', borderColor: 'white' }}
+          />
+        </Toolbar>
+      </AppBar>
+
+      {/* Alert */}
+      {alertMessage && (
+        <Alert severity={alertSeverity} sx={{ mb: 2 }}>
+          {alertMessage}
+        </Alert>
+      )}
+
+      {/* Controls */}
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>카테고리</InputLabel>
+              <Select
+                value={type}
+                label="카테고리"
+                onChange={handleTypeChange}
+              >
+                <MenuItem value="students">학생</MenuItem>
+                <MenuItem value="ym">YM</MenuItem>
+                <MenuItem value="teachers">교사</MenuItem>
+                <MenuItem value="staff">스태프</MenuItem>
+                <MenuItem value="attendance">출석</MenuItem>
+                <MenuItem value="scores">성적</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="검색..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-        />
-        <button onClick={handleSearch}>Search</button>
-        <button onClick={handleDownloadExcel}>Download Excel</button>
-        <button onClick={handleAssignGroups}>Assign Groups</button> {/* 그룹 배정 버튼 추가 */}
-        <button onClick={handleRankAssignment}>Assign Ranks</button> {/* 랭크 부여 버튼 추가 */}
-        <div className="pagination">
-          <button
-            onClick={() => handlePageChange(page - 1)}
-            disabled={page === 1}
-          >
-            Previous
-          </button>
-          <span>Page {page}</span>
-          <button onClick={() => handlePageChange(page + 1)}>Next</button>
-          <select onChange={handleLimitChange} value={limit}>
-            <option value={10}>10</option>
-            <option value={30}>30</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-            <option value={500}>500</option>
-            <option value={1000}>1000</option>
-          </select>
-        </div>
-      </div>
-      <table>
-        <thead>{renderTableHeader()}</thead>
-        <tbody>{renderTableRows()}</tbody>
-      </table>
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              InputProps={{
+                endAdornment: (
+                  <IconButton size="small" onClick={handleSearch}>
+                    <Search />
+                  </IconButton>
+                )
+              }}
+            />
+          </Grid>
 
-      {editItem && (
-        <div className="modal">
-          <h2>Edit {type}</h2>
+          <Grid item xs={12} sm={6} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>표시 개수</InputLabel>
+              <Select
+                value={limit}
+                label="표시 개수"
+                onChange={handleLimitChange}
+              >
+                <MenuItem value={10}>10개</MenuItem>
+                <MenuItem value={30}>30개</MenuItem>
+                <MenuItem value={50}>50개</MenuItem>
+                <MenuItem value={100}>100개</MenuItem>
+                <MenuItem value={500}>500개</MenuItem>
+                <MenuItem value={1000}>1000개</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} md={5}>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={fetchData}
+                size="small"
+              >
+                새로고침
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={handleDownloadExcel}
+                size="small"
+              >
+                엑셀 다운로드
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Group />}
+                onClick={handleAssignGroups}
+                size="small"
+              >
+                그룹 배정
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<EmojiEvents />}
+                onClick={handleRankAssignment}
+                size="small"
+              >
+                등급 부여
+              </Button>
+            </Stack>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Data Table */}
+      <Paper elevation={2}>
+        <TableContainer sx={{ maxHeight: 600 }}>
+          <Table stickyHeader>
+            <TableHead>
+              <TableRow>
+                {getColumns().map((column) => (
+                  <TableCell key={column.key} sx={{ fontWeight: 'bold', backgroundColor: 'grey.100' }}>
+                    {column.displayName}
+                  </TableCell>
+                ))}
+                <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'grey.100' }}>
+                  작업
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {data.map((item) => (
+                <TableRow key={item.id} hover>
+                  {getColumns().map((column) => (
+                    <TableCell key={column.key}>
+                      {formatCellValue(item, column)}
+                    </TableCell>
+                  ))}
+                  <TableCell>
+                    <Stack direction="row" spacing={1}>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleEdit(item)}
+                      >
+                        <Edit />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDelete(item.id)}
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {/* Pagination */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+          <Pagination
+            count={100}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
+      </Paper>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editItem} onClose={() => setEditItem(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {getTypeDisplayName(type)} 정보 수정
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1 }}>
+            <Grid container spacing={2}>
           {getColumns()
             .filter(column => !['created_at', 'updated_at', 'qrCode'].includes(column.key))
             .map((column) => (
-            <div key={column.key}>
-              <label>{column.displayName}</label>
+                  <Grid item xs={12} sm={6} key={column.key}>
               {column.key === 'gender' ? (
-                <select
+                      <FormControl fullWidth size="small">
+                        <InputLabel>{column.displayName}</InputLabel>
+                        <Select
                   name={column.key}
                   value={editData[column.key] || ""}
+                          label={column.displayName}
                   onChange={handleEditChange}
                 >
-                  <option value="">선택하세요</option>
-                  <option value="남자">남자</option>
-                  <option value="여자">여자</option>
-                </select>
+                          <MenuItem value="">선택하세요</MenuItem>
+                          <MenuItem value="남자">남자</MenuItem>
+                          <MenuItem value="여자">여자</MenuItem>
+                        </Select>
+                      </FormControl>
               ) : column.key === 'awanaRole' && (type === 'ym') ? (
-                <select
+                      <FormControl fullWidth size="small">
+                        <InputLabel>{column.displayName}</InputLabel>
+                        <Select
                   name={column.key}
                   value={editData[column.key] || ""}
+                          label={column.displayName}
                   onChange={handleEditChange}
                 >
-                  <option value="">선택하세요</option>
-                  <option value="TREK">TREK</option>
-                  <option value="JOURNEY">JOURNEY</option>
-                </select>
+                          <MenuItem value="">선택하세요</MenuItem>
+                          <MenuItem value="TREK">TREK</MenuItem>
+                          <MenuItem value="JOURNEY">JOURNEY</MenuItem>
+                        </Select>
+                      </FormControl>
               ) : column.key === 'position' && (type === 'ym') ? (
-                <select
+                      <FormControl fullWidth size="small">
+                        <InputLabel>{column.displayName}</InputLabel>
+                        <Select
                   name={column.key}
                   value={editData[column.key] || ""}
+                          label={column.displayName}
                   onChange={handleEditChange}
                 >
-                  <option value="">선택하세요</option>
-                  <option value="1학년">1학년</option>
-                  <option value="2학년">2학년</option>
-                  <option value="3학년">3학년</option>
-                </select>
+                          <MenuItem value="">선택하세요</MenuItem>
+                          <MenuItem value="1학년">1학년</MenuItem>
+                          <MenuItem value="2학년">2학년</MenuItem>
+                          <MenuItem value="3학년">3학년</MenuItem>
+                        </Select>
+                      </FormControl>
               ) : column.key === 'shirtSize' ? (
-                <select
+                      <FormControl fullWidth size="small">
+                        <InputLabel>{column.displayName}</InputLabel>
+                        <Select
                   name={column.key}
                   value={editData[column.key] || ""}
+                          label={column.displayName}
                   onChange={handleEditChange}
                 >
-                  <option value="">선택하세요</option>
-                  <option value="XS">XS</option>
-                  <option value="S">S</option>
-                  <option value="M">M</option>
-                  <option value="L">L</option>
-                  <option value="XL">XL</option>
-                  <option value="2XL">2XL</option>
-                  <option value="3XL">3XL</option>
-                </select>
+                          <MenuItem value="">선택하세요</MenuItem>
+                          <MenuItem value="XS">XS</MenuItem>
+                          <MenuItem value="S">S</MenuItem>
+                          <MenuItem value="M">M</MenuItem>
+                          <MenuItem value="L">L</MenuItem>
+                          <MenuItem value="XL">XL</MenuItem>
+                          <MenuItem value="2XL">2XL</MenuItem>
+                          <MenuItem value="3XL">3XL</MenuItem>
+                        </Select>
+                      </FormControl>
               ) : (
-                <input
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label={column.displayName}
                   name={column.key}
                   value={editData[column.key] || ""}
                   onChange={handleEditChange}
                   disabled={column.key === 'id' || column.readOnly}
                 />
               )}
-            </div>
+                  </Grid>
           ))}
-          <button onClick={() => setEditItem(null)}>Cancel</button>
-          <button onClick={handleEditSubmit}>Save</button>
-        </div>
-      )}
-    </div>
+            </Grid>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setEditItem(null)}>
+            취소
+          </Button>
+          <Button 
+            onClick={handleEditSubmit} 
+            variant="contained"
+            color="primary"
+          >
+            저장
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 };
 
