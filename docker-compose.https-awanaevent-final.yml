@@ -135,9 +135,9 @@ services:
     expose:
       - "80"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - REACT_APP_BACKEND_HOST=https://awanaevent.com
-      - PUBLIC_URL=/tntcamp
+      - WDS_SOCKET_PATH=/tntcamp/ws
     networks:
       - awana-network
     restart: unless-stopped
@@ -150,9 +150,9 @@ services:
     expose:
       - "80"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - REACT_APP_BACKEND_HOST=https://awanaevent.com
-      - PUBLIC_URL=/tntadmin
+      - WDS_SOCKET_PATH=/tntadmin/ws
     networks:
       - awana-network
     restart: unless-stopped
