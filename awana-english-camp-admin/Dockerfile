@@ -11,21 +11,24 @@ ENV SKIP_PREFLIGHT_CHECK=true
 ENV DISABLE_ESLINT_PLUGIN=true
 ENV TSC_COMPILE_ON_ERROR=true
 
+# Install yarn globally
+RUN npm install -g yarn
+
 # Copy package files first for better caching
 COPY package*.json ./
 
 # Remove node_modules and package-lock.json to ensure clean install
-RUN rm -rf node_modules package-lock.json
+RUN rm -rf node_modules package-lock.json yarn.lock
 
-# Install dependencies with force to ignore conflicts
-RUN npm cache clean --force && \
-    npm install --force --legacy-peer-deps
+# Use yarn instead of npm for better dependency resolution
+RUN yarn cache clean && \
+    yarn install --ignore-engines
 
 # Copy source code
 COPY . .
 
-# Build the application
-RUN npm run build
+# Build the application using yarn
+RUN yarn build
 
 # Production stage
 FROM nginx:alpine

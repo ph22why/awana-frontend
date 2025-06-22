@@ -21,6 +21,10 @@
     "web-vitals": "^2.1.4",
     "xlsx": "^0.18.5"
   },
+  "resolutions": {
+    "ajv": "^6.12.6",
+    "ajv-keywords": "^3.5.2"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
