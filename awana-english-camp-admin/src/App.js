@@ -10,7 +10,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-    <Router>
+    <Router basename="/tntadmin">
       <Routes>
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/" element={<MainPage />} />
