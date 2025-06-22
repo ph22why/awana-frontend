@@ -137,7 +137,9 @@ services:
     environment:
       - NODE_ENV=development
       - REACT_APP_BACKEND_HOST=https://awanaevent.com
-      - WDS_SOCKET_PATH=/tntcamp/ws
+      - FAST_REFRESH=false
+      - GENERATE_SOURCEMAP=false
+      - PUBLIC_URL=/
     networks:
       - awana-network
     restart: unless-stopped
@@ -152,7 +154,9 @@ services:
     environment:
       - NODE_ENV=development
       - REACT_APP_BACKEND_HOST=https://awanaevent.com
-      - WDS_SOCKET_PATH=/tntadmin/ws
+      - FAST_REFRESH=false
+      - GENERATE_SOURCEMAP=false
+      - PUBLIC_URL=/
     networks:
       - awana-network
     restart: unless-stopped
