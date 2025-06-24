@@ -4,7 +4,7 @@ import axios from 'axios';
 import './PrintPage.css';
 import { BACKEND_URL } from '../config';
 
-const staffImage = `${process.env.PUBLIC_URL}/staff.jpg`;
+const staffImage = "/staff.jpg";
 
 function PrintStaffPage() {
   const { id } = useParams();

@@ -75,7 +75,7 @@ function YMPage() {
   return (
     <div className="YM-page">
       <Link to="/">
-        <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="T&T Camp" className="register_logo" style={{marginTop: "40px"}}/>
+        <img src="/logo.png" alt="T&T Camp" className="register_logo" style={{marginTop: "40px"}}/>
       </Link>
       <h2 className="main_tcamp">YM 등록 페이지</h2>
       <form onSubmit={handleSubmit} className="form">
@@ -213,7 +213,7 @@ function YMPage() {
           {showImage && (
             <div className="image-container">
               <img
-                src={`${process.env.PUBLIC_URL}/staffsize.jpg`}
+                src="/staffsize.jpg"
                 alt="T&T Camp"
                 className="toggle_image"
               />

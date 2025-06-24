@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Footer from "./Footer";
 import "./DetailsPage.css";
 
-const staffImage = `${process.env.PUBLIC_URL}/staffImg.png`;
+const staffImage = "/staffImg.png";
 
 function EngDetails() {
   const userData = {
@@ -26,7 +26,7 @@ function EngDetails() {
   return (
     <div className="details-page">
       <Link to="/">
-        <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="T&T Camp" className="register_logo" />
+        <img src="/logo.png" alt="T&T Camp" className="register_logo" />
       </Link>
       <div className="info-card">
         <div className="infos" id="top_info">

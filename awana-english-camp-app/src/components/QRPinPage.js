@@ -28,7 +28,7 @@ const QRPinPage = () => {
 
     return (
         <div className="qr-pin-page">
-            <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="T&T Camp" className="logo" />
+            <img src="/logo.png" alt="T&T Camp" className="logo" />
             <h2>공지 발급 중입니다</h2>
             {/* <form onSubmit={handleSubmit}>
                 <input

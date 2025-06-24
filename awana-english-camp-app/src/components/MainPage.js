@@ -78,7 +78,7 @@ function MainPage() {
   return (  
     <div className="main-page">
       <Link to="/">
-        <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="T&T Camp" className="main_logo" />
+        <img src="/logo.png" alt="T&T Camp" className="main_logo" />
       </Link>
       <button
         className="main_btn"
