@@ -140,6 +140,7 @@ services:
       - FAST_REFRESH=false
       - GENERATE_SOURCEMAP=false
       - PUBLIC_URL=/tntcamp
+      - REACT_APP_CACHE_BUST=v2
     networks:
       - awana-network
     restart: unless-stopped
