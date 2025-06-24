@@ -186,7 +186,7 @@ const MainPage = () => {
       <Box sx={{ mt: 4, textAlign: 'center' }}>
         <Divider sx={{ my: 2 }} />
         <Typography variant="body2" color="text.secondary">
-          © 2024 AWANA English Camp Admin System
+          © 2025 AWANA English Camp Admin System
         </Typography>
       </Box>
     </Container>

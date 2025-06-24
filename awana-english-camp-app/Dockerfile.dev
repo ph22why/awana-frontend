@@ -3,10 +3,10 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json yarn.lock ./
 
 # Install dependencies with legacy peer deps to handle React version conflicts
-RUN npm install --legacy-peer-deps
+RUN yarn install
 
 # Copy source code
 COPY . .
@@ -18,4 +18,4 @@ EXPOSE 3000
 ENV NODE_ENV=development
 
 # Start the development server
-CMD ["npm", "start"] 
+CMD ["yarn", "start"]

@@ -12,6 +12,7 @@ ENV DISABLE_ESLINT_PLUGIN=true
 ENV TSC_COMPILE_ON_ERROR=true
 ENV HOST=0.0.0.0
 ENV PORT=80
+ENV PUBLIC_URL=/tntadmin
 
 # Copy package files first for better caching
 COPY package*.json ./

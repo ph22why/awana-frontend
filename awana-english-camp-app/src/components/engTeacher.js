@@ -26,7 +26,7 @@ function EngDetails() {
   return (
     <div className="details-page">
       <Link to="/">
-        <img src="/logo.png" alt="T&T Camp" className="register_logo" />
+        <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="T&T Camp" className="register_logo" />
       </Link>
       <div className="info-card">
         <div className="infos" id="top_info">

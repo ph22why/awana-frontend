@@ -4,7 +4,7 @@ import './Footer.css';
 function Footer() {
   return (
     <div className="footer">
-      <img src="/footer-image.png" alt="Footer" className="footer-image" />
+      <img src={`${process.env.PUBLIC_URL}/footer-image.png`} alt="Footer" className="footer-image" />
     </div>
   );
 }
