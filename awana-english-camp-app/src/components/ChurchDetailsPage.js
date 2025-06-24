@@ -45,7 +45,7 @@ function ChurchDetailsPage() {
   return (
     <div className="details-page">
       <Link to="/">
-        <img src="/tntcamp/logo.png" alt="T&T Camp" className="register_logo" />
+        <img src="https://awanaevent.com/tntcamp/logo.png" alt="T&T Camp" className="register_logo" />
       </Link>
       <h2 className="main_tcamp">교회별 등록 현황</h2>
       <div className="tabs">

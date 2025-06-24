@@ -4,7 +4,7 @@ import './Footer.css';
 function Footer() {
   return (
     <div className="footer">
-      <img src="/tntcamp/footer-image.png" alt="Footer" className="footer-image" />
+      <img src="https://awanaevent.com/tntcamp/footer-image.png" alt="Footer" className="footer-image" />
     </div>
   );
 }

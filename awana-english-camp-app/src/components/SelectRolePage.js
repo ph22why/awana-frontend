@@ -9,7 +9,7 @@ function SelectRolePage() {
   return (
     <div className="select-role-page">
       <Link to="/">
-        <img src="/tntcamp/logo.png" alt="T&T Camp" className="main_logo" />
+        <img src="https://awanaevent.com/tntcamp/logo.png" alt="T&T Camp" className="main_logo" />
       </Link>
       <h3 className='main_tcamp'>해당 버튼을 선택하세요</h3>
       <button className='select_btn' id="register" onClick={() => navigate('/register/student')}>T&T 클럽원</button>

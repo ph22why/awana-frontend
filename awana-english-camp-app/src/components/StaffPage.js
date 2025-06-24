@@ -75,7 +75,7 @@ function StaffPage() {
   return (
     <div className="register-page">
       <Link to="/">
-        <img src="/tntcamp/logo.png" alt="T&T Camp" className="register_logo" style={{marginTop: "40px"}}/>
+        <img src="https://awanaevent.com/tntcamp/logo.png" alt="T&T Camp" className="register_logo" style={{marginTop: "40px"}}/>
       </Link>
       <h2 className="main_tcamp">스탭 등록 페이지</h2>
       <form onSubmit={handleSubmit} className="form" id="staffForm">

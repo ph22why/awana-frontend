@@ -55,7 +55,7 @@ function ChurchPage() {
   return (
     <div className="Church-page">
       <Link to="/">
-        <img src="/tntcamp/logo.png" alt="T&T Camp" className="register_logo" />
+        <img src="https://awanaevent.com/tntcamp/logo.png" alt="T&T Camp" className="register_logo" />
       </Link>
       <h2 className="main_tcamp">교회 등록 페이지</h2>
       <form onSubmit={handleSubmit} className="form">
