@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 8080;
 
 // CORS 설정
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3100', 'http://localhost:3101'],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3100', 'http://localhost:3101', 'https://awanaevent.com'],
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
   preflightContinue: true,
@@ -85,8 +85,8 @@ app.post('/register/student', (req, res) => {
     const userId = result.insertId;
     console.log('✅ Student registered with ID:', userId);
 
-    // QR 코드 생성 (로컬 환경용)
-    const qrUrl = `http://localhost:3000/qr-pin?userId=${userId}`;
+    // QR 코드 생성 (프로덕션 환경용)
+    const qrUrl = `https://awanaevent.com/tntcamp/qr-pin?userId=${userId}`;
     QRCode.toDataURL(qrUrl, (err, url) => {
       if (err) {
         console.error('Error generating QR code:', err);
@@ -126,7 +126,7 @@ app.post('/register/ym', (req, res) => {
       console.log('✅ YM registered with ID:', ymId);
 
       // QR 코드 생성 (YM용)
-      const qrUrl = `http://localhost:3100/qr-pin?ymId=${ymId}&type=ym`;
+      const qrUrl = `https://awanaevent.com/tntcamp/qr-pin?ymId=${ymId}&type=ym`;
       QRCode.toDataURL(qrUrl, (err, url) => {
         if (err) {
           console.error('Error generating QR code:', err);
@@ -176,7 +176,7 @@ app.post('/register/teacher', (req, res) => {
       console.log('✅ Teacher registered with ID:', teacherId);
 
       // QR 코드 생성 (Teacher용)
-      const qrUrl = `http://localhost:3100/qr-pin?teacherId=${teacherId}&type=teacher`;
+      const qrUrl = `https://awanaevent.com/tntcamp/qr-pin?teacherId=${teacherId}&type=teacher`;
       QRCode.toDataURL(qrUrl, (err, url) => {
         if (err) {
           console.error('Error generating QR code:', err);
@@ -216,7 +216,7 @@ app.post('/register/staff', (req, res) => {
       console.log('✅ Staff registered with ID:', staffId);
 
       // QR 코드 생성 (Staff용)
-      const qrUrl = `http://localhost:3100/qr-pin?staffId=${staffId}&type=staff`;
+      const qrUrl = `https://awanaevent.com/tntcamp/qr-pin?staffId=${staffId}&type=staff`;
       QRCode.toDataURL(qrUrl, (err, url) => {
         if (err) {
           console.error('Error generating QR code:', err);
@@ -812,7 +812,7 @@ app.post('/update-qr-codes', (req, res) => {
         
         const promises = results.map(row => {
           return new Promise((resolveItem, rejectItem) => {
-            const qrUrl = `http://localhost:3100/qr-pin?ymId=${row.id}&type=ym`;
+            const qrUrl = `https://awanaevent.com/tntcamp/qr-pin?ymId=${row.id}&type=ym`;
             QRCode.toDataURL(qrUrl, (err, url) => {
               if (err) return rejectItem(err);
               
@@ -837,7 +837,7 @@ app.post('/update-qr-codes', (req, res) => {
         
         const promises = results.map(row => {
           return new Promise((resolveItem, rejectItem) => {
-            const qrUrl = `http://localhost:3100/qr-pin?teacherId=${row.id}&type=teacher`;
+            const qrUrl = `https://awanaevent.com/tntcamp/qr-pin?teacherId=${row.id}&type=teacher`;
             QRCode.toDataURL(qrUrl, (err, url) => {
               if (err) return rejectItem(err);
               
@@ -862,7 +862,7 @@ app.post('/update-qr-codes', (req, res) => {
         
         const promises = results.map(row => {
           return new Promise((resolveItem, rejectItem) => {
-            const qrUrl = `http://localhost:3100/qr-pin?staffId=${row.id}&type=staff`;
+            const qrUrl = `https://awanaevent.com/tntcamp/qr-pin?staffId=${row.id}&type=staff`;
             QRCode.toDataURL(qrUrl, (err, url) => {
               if (err) return rejectItem(err);
               
