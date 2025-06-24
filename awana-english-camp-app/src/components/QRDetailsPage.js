@@ -64,7 +64,7 @@ const QRDetailsPage = () => {
 
   return (
     <div className="qr-details-page">
-              <img src="/tntcamp/logo.png" alt="T&T Camp" className="logo" />
+      <img src="https://awanaevent.com/tntcamp/logo.png" alt="T&T Camp" className="logo" />
       <img src={userDetails.image} alt={userDetails.koreanName} className='qr_userimage' />
       <h2>{userDetails.koreanName} / {userDetails.englishName}</h2>
       <p>{userDetails.churchName}</p>

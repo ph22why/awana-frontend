@@ -80,7 +80,7 @@ function PrintStaffPage() {
   return (
     <div className="print-page">
       <div className="print-background">
-        <img src='/backimageqr.jpg' alt='background' className='background-image' onLoad={handleImageLoad} />
+        <img src="https://awanaevent.com/tntcamp/backimageqr.jpg" alt='background' className='background-image' onLoad={handleImageLoad} />
         <div className="print-content">
           <div className="p_user-info">
             <div className="p_church" translate="no" lang="ko">{userData.churchName}</div>

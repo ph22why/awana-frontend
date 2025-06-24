@@ -59,7 +59,7 @@ function PrintPage() {
   return (
     <div className="print-page">
       <div className="print-background">
-        <img src='/printImg.jpg' alt='background' className='background-image' onLoad={handleImageLoad} />
+        <img src="https://awanaevent.com/tntcamp/printImg.jpg" alt='background' className='background-image' onLoad={handleImageLoad} />
         <div className="print-content">
           <div className="p_qr-code">
             <img src={userData.qrCode} alt="QR Code" className="p_qr-image" />
