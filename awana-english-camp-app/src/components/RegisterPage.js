@@ -99,9 +99,9 @@ function RegisterPage() {
 
   return (
     <div className="register-page">
-      <Link to="/">
-        <img src="/logo.png" alt="T&T Camp" className="register_logo" id="logo_Reg" />
-      </Link>
+              <Link to="/">
+          <img src="/tntcamp/logo.png" alt="T&T Camp" className="register_logo" id="logo_Reg" />
+        </Link>
       <h2 className="main_tcamp" id="let_Reg">학생 등록 페이지</h2>
       <form onSubmit={handleSubmit} className="form">
         <div className="image-upload required">
@@ -111,7 +111,7 @@ function RegisterPage() {
             ) : (
               <div className="upload-placeholder">
                 <img
-                  src="/upload-icon.png"
+                  src="/tntcamp/upload-icon.png"
                   alt="Upload"
                   className="upload-icon"
                 />
@@ -241,7 +241,7 @@ function RegisterPage() {
           </h5>
           {showImage && (
             <div className="image-container">
-              <img src="/tntsize.jpg" alt="T&T Camp" className="toggle_image" />
+              <img src="/tntcamp/tntsize.jpg" alt="T&T Camp" className="toggle_image" />
             </div>
           )}
         </div>
