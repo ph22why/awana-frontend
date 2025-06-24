@@ -72,10 +72,10 @@ app.post('/register/student', (req, res) => {
   // Convert Korean gender to English
   const genderEn = gender === '남자' ? 'male' : gender === '여자' ? 'female' : gender;
 
-  const sql = `INSERT INTO students (koreanName, englishName, churchName, churchNumber, parentContact, shirtSize, gender)
-               VALUES (?, ?, ?, ?, ?, ?, ?)`;
+  const sql = `INSERT INTO students (koreanName, englishName, churchName, churchNumber, parentContact, healthNotes, shirtSize, gender, image)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-  db.query(sql, [koreanName, englishName, churchName, churchNumber, parentContact, shirtSize, genderEn], (err, result) => {
+  db.query(sql, [koreanName, englishName, churchName, churchNumber, parentContact, healthNotes, shirtSize, genderEn, image], (err, result) => {
     if (err) {
       console.error('Error inserting student data:', err);
       res.status(500).json({ error: 'Error inserting data', details: err.message });
@@ -493,10 +493,11 @@ app.get('/teacher/:id', (req, res) => {
 
 // Update User Data
 app.put('/user/:id', (req, res) => {
-  const { koreanName, englishName, churchName, churchNumber, parentContact, healthNotes, shirtSize, gender } = req.body;
-  const sql = `UPDATE students SET koreanName=?, englishName=?, churchName=?, churchNumber=?, parentContact=?, shirtSize=?, gender=? WHERE id=?`;
+  const { koreanName, englishName, churchName, churchNumber, parentContact, healthNotes, shirtSize, gender, image } = req.body;
+  const genderEn = gender === '남자' ? 'male' : gender === '여자' ? 'female' : gender;
+  const sql = `UPDATE students SET koreanName=?, englishName=?, churchName=?, churchNumber=?, parentContact=?, healthNotes=?, shirtSize=?, gender=?, image=? WHERE id=?`;
   
-  db.query(sql, [koreanName, englishName, churchName, churchNumber, parentContact, shirtSize, gender, req.params.id], (err, result) => {
+  db.query(sql, [koreanName, englishName, churchName, churchNumber, parentContact, healthNotes, shirtSize, genderEn, image, req.params.id], (err, result) => {
     if (err) {
       console.error('Error updating user data:', err);
       res.status(500).json({ error: 'Error updating data' });
