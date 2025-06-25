@@ -10,8 +10,7 @@ ENV NODE_OPTIONS="--max_old_space_size=8192"
 COPY package*.json ./
 
 # Clear npm cache and install dependencies with verbose logging
-RUN npm cache clean --force && \
-    npm ci --verbose
+RUN npm install
 
 # Copy source code
 COPY . .
