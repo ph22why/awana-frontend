@@ -67,10 +67,10 @@ D:\eventdb\
 - Receipt Service: http://localhost:3003
 
 ### 프로덕션 환경
-- Frontend: http://182.231.199.64:3000
-- Event Service: http://182.231.199.64:3001
-- Church Service: http://182.231.199.64:3002
-- Receipt Service: http://182.231.199.64:3003
+- Frontend: http://182.231.199.95:3000
+- Event Service: http://182.231.199.95:3001
+- Church Service: http://182.231.199.95:3002
+- Receipt Service: http://182.231.199.95:3003
 
 ## 유용한 명령어 (Useful Commands)
 

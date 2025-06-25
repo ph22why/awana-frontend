@@ -25,6 +25,6 @@ echo.
 echo Church Service 재시작 완료!
 echo.
 echo 포트 3002가 노출되었는지 확인해보세요.
-echo Church Service URL: http://182.231.199.64:3002
+echo Church Service URL: http://182.231.199.95:3002
 
 pause 

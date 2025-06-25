@@ -14,10 +14,10 @@ docker logs --tail 20 awana-church-service-1
 
 echo.
 echo 3. Church Service API 응답 테스트:
-echo GET http://182.231.199.64:3002/api/churches?page=1^&limit=15
+echo GET http://182.231.199.95:3002/api/churches?page=1^&limit=15
 echo.
 
-curl -s -w "HTTP Status: %%{http_code}\n" "http://182.231.199.64:3002/api/churches?page=1&limit=15" || echo "연결 실패"
+curl -s -w "HTTP Status: %%{http_code}\n" "http://182.231.199.95:3002/api/churches?page=1&limit=15" || echo "연결 실패"
 
 echo.
 echo 4. 로컬호스트에서도 테스트:

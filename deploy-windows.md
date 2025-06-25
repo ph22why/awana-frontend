@@ -102,14 +102,14 @@ netstat -an | findstr :3003
 ### 프로덕션 환경 변수
 ```cmd
 set NODE_ENV=production
-set SERVER_IP=182.231.199.64
+set SERVER_IP=182.231.199.95
 ```
 
 ### 프론트엔드 API 설정
 프로덕션 환경에서는 자동으로 IP 주소를 사용합니다:
-- Event API: `http://182.231.199.64:3001`
-- Church API: `http://182.231.199.64:3002`
-- Receipt API: `http://182.231.199.64:3003`
+- Event API: `http://182.231.199.95:3001`
+- Church API: `http://182.231.199.95:3002`
+- Receipt API: `http://182.231.199.95:3003`
 
 ## MongoDB 데이터 관리
 
