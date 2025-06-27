@@ -14,7 +14,7 @@ const app = express();
 // CORS 설정
 const allowedOrigins = process.env.NODE_ENV === 'development' 
   ? ['http://localhost:3000']
-  : ['http://182.231.199.95:3000', 'http://localhost:3000', 'http://awanaevent.com', 'https://awanaevent.com'];
+  : ['http://112.145.65.29:3000', 'http://localhost:3000', 'http://awanaevent.com', 'https://awanaevent.com'];
 
 app.use(cors({
   origin: allowedOrigins,

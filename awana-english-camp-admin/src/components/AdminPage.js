@@ -279,7 +279,12 @@ const AdminPage = () => {
   };
 
   const handleDownloadExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(data);
+    // 긴 텍스트 컬럼 제외
+    const downloadData = data.map(row => {
+      const { image, qrCode, healthNotes, ...rest } = row;
+      return rest;
+    });
+    const worksheet = XLSX.utils.json_to_sheet(downloadData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
     XLSX.writeFile(workbook, `${type}_data.xlsx`);

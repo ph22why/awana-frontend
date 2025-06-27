@@ -74,7 +74,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - SERVER_IP=182.231.199.95
+      - SERVER_IP=112.145.65.29
     depends_on:
       - event-service
       - church-service
