@@ -34,7 +34,7 @@ RUN yarn build
 FROM nginx:alpine
 
 COPY nginx.conf /etc/nginx/nginx.conf
-COPY --from=builder /app/build /usr/share/nginx/html
+COPY --from=builder /app/build /usr/share/nginx/html/tntcamp
 
 EXPOSE 80
 
