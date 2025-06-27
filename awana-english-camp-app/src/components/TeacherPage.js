@@ -189,7 +189,7 @@ function TeacherPage() {
           {showImage && (
             <div className="image-container">
               <img
-                src="/staffsize.jpg"
+                src="https://awanaevent.com/tntcamp/staffsize.jpg"
                 alt="T&T Camp"
                 className="toggle_image"
               />
