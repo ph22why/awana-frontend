@@ -82,6 +82,9 @@ function PrintStaffPage() {
       <div className="print-background">
         <img src="https://awanaevent.com/tntcamp/backimageqr.jpg" alt='background' className='background-image' onLoad={handleImageLoad} />
         <div className="print-content">
+          <div className="p_qr-code">
+            <img src={userData.qrCode} alt="QR Code" className="p_qr-image" />
+          </div>
           <div className="p_user-info">
             <div className="p_church" translate="no" lang="ko">{userData.churchName}</div>
             <div className="p_name" translate="no" lang="ko">{userData.name}</div>

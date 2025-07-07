@@ -30,7 +30,15 @@ function DetailsPage() {
         console.log("User Data:", response.data);
         if (response.data.length > 0) {
           setUserData(response.data[0]);
-          setFormData(response.data[0]);
+          setFormData({
+            ...response.data[0],
+            gender:
+              response.data[0].gender === "female"
+                ? "여자"
+                : response.data[0].gender === "male"
+                ? "남자"
+                : response.data[0].gender,
+          });
         } else {
           setUserData(null);
         }

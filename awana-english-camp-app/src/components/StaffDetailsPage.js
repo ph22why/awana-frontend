@@ -75,7 +75,12 @@ function StaffDetailsPage() {
             contact: userData.contact || "",
             position: userData.position || "",
             awanaRole: userData.awanaRole || "",
-            gender: userData.gender || "",
+            gender:
+              userData.gender === "female"
+                ? "여자"
+                : userData.gender === "male"
+                ? "남자"
+                : userData.gender || "",
             shirtSize: userData.shirtSize || ""
           });
         } else {
