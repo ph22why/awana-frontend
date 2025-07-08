@@ -68,37 +68,32 @@ const AdminPage = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${BACKEND_URL}/admin/${type}`, {
-        params: { search, limit: 10000 } // 충분히 큰 limit으로 전체 데이터 가져오기
+        params: { search, limit: 10000 }
       });
-      
       let fetchedData = [];
-      if (response.data && Array.isArray(response.data)) {
+      if (Array.isArray(response.data)) {
         fetchedData = response.data;
-      } else if (response.data && response.data.data) {
+      } else if (Array.isArray(response.data?.data)) {
         fetchedData = response.data.data;
+      } else {
+        fetchedData = [];
       }
-      
       setAllData(fetchedData);
       setTotalCount(fetchedData.length);
-      
-      // 페이지네이션 계산
       const itemsPerPage = limit === 'all' ? fetchedData.length : limit;
       const calculatedTotalPages = Math.ceil(fetchedData.length / itemsPerPage);
       setTotalPages(calculatedTotalPages);
-      
-      // 현재 페이지 데이터 계산
       const startIndex = (page - 1) * itemsPerPage;
       const endIndex = startIndex + itemsPerPage;
       const currentPageData = fetchedData.slice(startIndex, endIndex);
       setData(currentPageData);
-      
     } catch (error) {
       console.error("Error fetching data:", error);
       showAlert("데이터를 불러오는데 실패했습니다.", "error");
     } finally {
       setLoading(false);
     }
-  }, [type, search]);
+  }, [type, search, limit, page]);
 
   // 페이지나 limit이 변경될 때 현재 페이지 데이터만 업데이트
   const updateCurrentPageData = useCallback(() => {
@@ -329,16 +324,15 @@ const AdminPage = () => {
     return item[column.key];
   };
 
+  // 엑셀 다운로드 함수 개선: 전체 컬럼 포함
   const handleDownloadExcel = async () => {
     try {
       showAlert("전체 데이터를 다운로드 중입니다...", "info");
-      
       // 전체 데이터를 가져오기 위한 별도 API 호출
       const response = await axios.get(`${BACKEND_URL}/admin/${type}/export`, {
         params: { search },
         responseType: 'blob'
       });
-      
       // 파일 다운로드
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
@@ -348,15 +342,22 @@ const AdminPage = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
       showAlert("엑셀 파일이 다운로드되었습니다.");
     } catch (error) {
       console.error("Error downloading Excel:", error);
-      
-      // 백엔드에서 export API가 없는 경우, 전체 데이터로 다운로드
+      // 백엔드에서 export API가 없는 경우, 전체 데이터의 모든 필드로 다운로드
+      if (allData.length === 0) {
+        showAlert("다운로드할 데이터가 없습니다.", "error");
+        return;
+      }
+      // 모든 필드 추출 (학생 데이터의 모든 컬럼)
+      const allKeys = Array.from(new Set(allData.flatMap(obj => Object.keys(obj))));
       const downloadData = allData.map(row => {
-        const { image, qrCode, healthNotes, ...rest } = row;
-        return rest;
+        const rowObj = {};
+        allKeys.forEach(key => {
+          rowObj[key] = row[key];
+        });
+        return rowObj;
       });
       const worksheet = XLSX.utils.json_to_sheet(downloadData);
       const workbook = XLSX.utils.book_new();
