@@ -49,6 +49,7 @@ import { BACKEND_URL } from "../config";
 
 const AdminPage = () => {
   const [data, setData] = useState([]);
+  const [allData, setAllData] = useState([]); // 전체 데이터 저장
   const [type, setType] = useState("students");
   const [search, setSearch] = useState("");
   const [limit, setLimit] = useState(50);
@@ -62,41 +63,67 @@ const AdminPage = () => {
   const [alertSeverity, setAlertSeverity] = useState("success");
   const navigate = useNavigate();
 
-  const fetchData = useCallback(async () => {
+  // 전체 데이터를 가져오는 함수
+  const fetchAllData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {
-        search,
-        page,
-        limit: limit === 'all' ? 1000 : limit, // all일 때도 적절한 limit 설정
-      };
-
-      const response = await axios.get(`${BACKEND_URL}/admin/${type}`, { params });
+      const response = await axios.get(`${BACKEND_URL}/admin/${type}`, {
+        params: { search, limit: 10000 } // 충분히 큰 limit으로 전체 데이터 가져오기
+      });
       
+      let fetchedData = [];
       if (response.data && Array.isArray(response.data)) {
-        setData(response.data);
-        // 백엔드에서 totalPages와 totalCount를 제공한다면 사용
-        // 현재는 임시로 계산
-        const total = response.data.length;
-        setTotalCount(total);
-        setTotalPages(Math.ceil(total / (limit === 'all' ? total : limit)));
+        fetchedData = response.data;
       } else if (response.data && response.data.data) {
-        // 백엔드에서 { data: [...], totalPages: number, totalCount: number } 형태로 응답하는 경우
-        setData(response.data.data);
-        setTotalPages(response.data.totalPages || 1);
-        setTotalCount(response.data.totalCount || 0);
+        fetchedData = response.data.data;
       }
+      
+      setAllData(fetchedData);
+      setTotalCount(fetchedData.length);
+      
+      // 페이지네이션 계산
+      const itemsPerPage = limit === 'all' ? fetchedData.length : limit;
+      const calculatedTotalPages = Math.ceil(fetchedData.length / itemsPerPage);
+      setTotalPages(calculatedTotalPages);
+      
+      // 현재 페이지 데이터 계산
+      const startIndex = (page - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const currentPageData = fetchedData.slice(startIndex, endIndex);
+      setData(currentPageData);
+      
     } catch (error) {
       console.error("Error fetching data:", error);
       showAlert("데이터를 불러오는데 실패했습니다.", "error");
     } finally {
       setLoading(false);
     }
-  }, [type, search, limit, page]);
+  }, [type, search]);
 
+  // 페이지나 limit이 변경될 때 현재 페이지 데이터만 업데이트
+  const updateCurrentPageData = useCallback(() => {
+    if (allData.length === 0) return;
+    
+    const itemsPerPage = limit === 'all' ? allData.length : limit;
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const currentPageData = allData.slice(startIndex, endIndex);
+    setData(currentPageData);
+    
+    // 페이지네이션 재계산
+    const calculatedTotalPages = Math.ceil(allData.length / itemsPerPage);
+    setTotalPages(calculatedTotalPages);
+  }, [allData, page, limit]);
+
+  // 전체 데이터가 변경되면 현재 페이지 데이터 업데이트
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    updateCurrentPageData();
+  }, [updateCurrentPageData]);
+
+  // 검색이나 타입이 변경되면 전체 데이터 다시 가져오기
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   const showAlert = (message, severity = "success") => {
     setAlertMessage(message);
@@ -106,7 +133,7 @@ const AdminPage = () => {
 
   const handleSearch = () => {
     setPage(1);
-    fetchData();
+    fetchAllData();
   };
 
   const handleDelete = (id) => {
@@ -114,7 +141,7 @@ const AdminPage = () => {
       axios
         .delete(`${BACKEND_URL}/admin/${type}/${id}`)
         .then(() => {
-          fetchData();
+          fetchAllData(); // 전체 데이터 다시 가져오기
           showAlert("삭제가 완료되었습니다.");
         })
         .catch((error) => {
@@ -158,7 +185,7 @@ const AdminPage = () => {
       .then((response) => {
         console.log('✅ Update successful:', response.data);
         setEditItem(null);
-        fetchData();
+        fetchAllData(); // 전체 데이터 다시 가져오기
         showAlert('수정이 완료되었습니다.');
       })
       .catch((error) => {
@@ -190,6 +217,7 @@ const AdminPage = () => {
     try {
       const response = await axios.post(`${BACKEND_URL}/admin/assign-groups`);
       showAlert(response.data.message);
+      fetchAllData(); // 전체 데이터 다시 가져오기
     } catch (error) {
       console.error("Error assigning groups:", error);
       showAlert("그룹 배정 중 오류가 발생했습니다.", "error");
@@ -200,7 +228,7 @@ const AdminPage = () => {
     try {
       const response = await axios.put(`${BACKEND_URL}/score/all-rank`);
       showAlert(response.data.message);
-      fetchData();
+      fetchAllData(); // 전체 데이터 다시 가져오기
     } catch (error) {
       console.error("Error assigning ranks:", error);
       showAlert("등급 부여 중 오류가 발생했습니다.", "error");
@@ -325,8 +353,8 @@ const AdminPage = () => {
     } catch (error) {
       console.error("Error downloading Excel:", error);
       
-      // 백엔드에서 export API가 없는 경우, 현재 데이터로 다운로드
-      const downloadData = data.map(row => {
+      // 백엔드에서 export API가 없는 경우, 전체 데이터로 다운로드
+      const downloadData = allData.map(row => {
         const { image, qrCode, healthNotes, ...rest } = row;
         return rest;
       });
@@ -334,7 +362,7 @@ const AdminPage = () => {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
       XLSX.writeFile(workbook, `${type}_data_${new Date().toISOString().split('T')[0]}.xlsx`);
-      showAlert("현재 페이지 데이터가 엑셀로 다운로드되었습니다.");
+      showAlert("전체 데이터가 엑셀로 다운로드되었습니다.");
     }
   };
 
@@ -446,7 +474,7 @@ const AdminPage = () => {
               <Button
                 variant="outlined"
                 startIcon={<Refresh />}
-                onClick={fetchData}
+                onClick={fetchAllData}
                 size="small"
                 disabled={loading}
               >
@@ -556,10 +584,10 @@ const AdminPage = () => {
         </TableContainer>
 
         {/* Pagination */}
-        {!loading && data.length > 0 && (
+        {!loading && allData.length > 0 && (
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
             <Typography variant="body2" color="text.secondary">
-              총 {totalCount}개 중 {((page - 1) * (limit === 'all' ? totalCount : limit)) + 1}-{Math.min(page * (limit === 'all' ? totalCount : limit), totalCount)}개 표시
+              총 {totalCount}개 중 {limit === 'all' ? `1-${totalCount}` : `${((page - 1) * limit) + 1}-${Math.min(page * limit, totalCount)}`}개 표시
             </Typography>
             <Pagination
               count={totalPages}
