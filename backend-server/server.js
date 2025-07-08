@@ -603,33 +603,43 @@ app.get('/admin/:type', (req, res) => {
   let { search, page = 1, limit = 50 } = req.query;
   page = page === undefined ? 1 : Number(page);
   limit = limit === undefined || limit === 'all' ? limit : Number(limit);
-  
-  let sql = `SELECT * FROM ${type}`;
+
+  let baseSql = `FROM ${type}`;
+  let whereSql = '';
   let params = [];
 
   if (search) {
-    // Different name columns for different tables
     if (type === 'students') {
-      sql += ` WHERE koreanName LIKE ? OR englishName LIKE ? OR churchName LIKE ?`;
+      whereSql = ` WHERE koreanName LIKE ? OR englishName LIKE ? OR churchName LIKE ?`;
     } else {
-      // ym, teachers, staff tables use 'name' column
-      sql += ` WHERE name LIKE ? OR englishName LIKE ? OR churchName LIKE ?`;
+      whereSql = ` WHERE name LIKE ? OR englishName LIKE ? OR churchName LIKE ?`;
     }
-      params = [`%${search}%`, `%${search}%`, `%${search}%`];
+    params = [`%${search}%`, `%${search}%`, `%${search}%`];
   }
 
-  if (limit !== 'all') {
-    const offset = (page - 1) * limit;
-    sql += ` LIMIT ${limit} OFFSET ${offset}`;
-  }
-
-  db.query(sql, params, (err, results) => {
-    if (err) {
-      console.error('Error fetching admin data:', err);
-      res.status(500).json({ error: err.message });
-    } else {
-      res.status(200).json(results);
+  // 1. 전체 개수 쿼리
+  const countSql = `SELECT COUNT(*) as totalCount ${baseSql}${whereSql}`;
+  db.query(countSql, params, (countErr, countResult) => {
+    if (countErr) {
+      console.error('Error fetching admin count:', countErr);
+      return res.status(500).json({ error: countErr.message });
     }
+    const totalCount = countResult[0]?.totalCount || 0;
+
+    // 2. 실제 데이터 쿼리
+    let dataSql = `SELECT * ${baseSql}${whereSql}`;
+    if (limit !== 'all') {
+      const offset = (page - 1) * limit;
+      dataSql += ` LIMIT ${limit} OFFSET ${offset}`;
+    }
+    db.query(dataSql, params, (err, results) => {
+      if (err) {
+        console.error('Error fetching admin data:', err);
+        res.status(500).json({ error: err.message });
+      } else {
+        res.status(200).json({ data: results, totalCount });
+      }
+    });
   });
 });
 
