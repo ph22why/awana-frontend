@@ -32,7 +32,8 @@ import {
   AppBar,
   Pagination,
   Stack,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import {
   Edit,
@@ -52,34 +53,45 @@ const AdminPage = () => {
   const [search, setSearch] = useState("");
   const [limit, setLimit] = useState(50);
   const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [editData, setEditData] = useState({});
   const [alertMessage, setAlertMessage] = useState("");
   const [alertSeverity, setAlertSeverity] = useState("success");
   const navigate = useNavigate();
 
-  const fetchData = useCallback(() => {
-    const params = {
-      search,
-      page,
-    };
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {
+        search,
+        page,
+        limit: limit === 'all' ? 1000 : limit, // all일 때도 적절한 limit 설정
+      };
 
-    if (limit !== 'all') {
-      params.limit = limit;
-    }
-
-    axios
-      .get(`${BACKEND_URL}/admin/${type}`, {
-        params,
-      })
-      .then((response) => {
-        console.log("Fetched data:", response.data);
+      const response = await axios.get(`${BACKEND_URL}/admin/${type}`, { params });
+      
+      if (response.data && Array.isArray(response.data)) {
         setData(response.data);
-      })
-      .catch((error) => {
-        console.error("Error fetching data:", error);
-        showAlert("데이터를 불러오는데 실패했습니다.", "error");
-      });
+        // 백엔드에서 totalPages와 totalCount를 제공한다면 사용
+        // 현재는 임시로 계산
+        const total = response.data.length;
+        setTotalCount(total);
+        setTotalPages(Math.ceil(total / (limit === 'all' ? total : limit)));
+      } else if (response.data && response.data.data) {
+        // 백엔드에서 { data: [...], totalPages: number, totalCount: number } 형태로 응답하는 경우
+        setData(response.data.data);
+        setTotalPages(response.data.totalPages || 1);
+        setTotalCount(response.data.totalCount || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      showAlert("데이터를 불러오는데 실패했습니다.", "error");
+    } finally {
+      setLoading(false);
+    }
   }, [type, search, limit, page]);
 
   useEffect(() => {
@@ -250,6 +262,17 @@ const AdminPage = () => {
           { displayName: "연락처", key: "contact" },
           { displayName: "옷사이즈", key: "shirtSize" },
         ];
+      case "churches":
+        return [
+          { displayName: "ID", key: "id", readOnly: true },
+          { displayName: "교회명", key: "name" },
+          { displayName: "교회등록번호", key: "churchNumber" },
+          { displayName: "담당자명", key: "contactPerson" },
+          { displayName: "연락처", key: "contact" },
+          { displayName: "이메일", key: "email" },
+          { displayName: "주소", key: "address" },
+          { displayName: "등록일", key: "created_at" },
+        ];
       case "scores":
         return [
           { displayName: "ID", key: "id" },
@@ -271,24 +294,48 @@ const AdminPage = () => {
     }
   };
     
-    const formatCellValue = (item, column) => {
-      if (column.key === 'gender') {
-        return item[column.key] === 'male' ? '남자' : item[column.key] === 'female' ? '여자' : item[column.key];
-      }
-      return item[column.key];
+  const formatCellValue = (item, column) => {
+    if (column.key === 'gender') {
+      return item[column.key] === 'male' ? '남자' : item[column.key] === 'female' ? '여자' : item[column.key];
+    }
+    return item[column.key];
   };
 
-  const handleDownloadExcel = () => {
-    // 긴 텍스트 컬럼 제외
-    const downloadData = data.map(row => {
-      const { image, qrCode, healthNotes, ...rest } = row;
-      return rest;
-    });
-    const worksheet = XLSX.utils.json_to_sheet(downloadData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-    XLSX.writeFile(workbook, `${type}_data.xlsx`);
-    showAlert("엑셀 파일이 다운로드되었습니다.");
+  const handleDownloadExcel = async () => {
+    try {
+      showAlert("전체 데이터를 다운로드 중입니다...", "info");
+      
+      // 전체 데이터를 가져오기 위한 별도 API 호출
+      const response = await axios.get(`${BACKEND_URL}/admin/${type}/export`, {
+        params: { search },
+        responseType: 'blob'
+      });
+      
+      // 파일 다운로드
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${type}_data_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      showAlert("엑셀 파일이 다운로드되었습니다.");
+    } catch (error) {
+      console.error("Error downloading Excel:", error);
+      
+      // 백엔드에서 export API가 없는 경우, 현재 데이터로 다운로드
+      const downloadData = data.map(row => {
+        const { image, qrCode, healthNotes, ...rest } = row;
+        return rest;
+      });
+      const worksheet = XLSX.utils.json_to_sheet(downloadData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+      XLSX.writeFile(workbook, `${type}_data_${new Date().toISOString().split('T')[0]}.xlsx`);
+      showAlert("현재 페이지 데이터가 엑셀로 다운로드되었습니다.");
+    }
   };
 
   const getTypeDisplayName = (type) => {
@@ -297,6 +344,7 @@ const AdminPage = () => {
       ym: "YM",
       teachers: "교사",
       staff: "스태프",
+      churches: "교회",
       attendance: "출석",
       scores: "성적"
     };
@@ -350,6 +398,7 @@ const AdminPage = () => {
                 <MenuItem value="ym">YM</MenuItem>
                 <MenuItem value="teachers">교사</MenuItem>
                 <MenuItem value="staff">스태프</MenuItem>
+                <MenuItem value="churches">교회</MenuItem>
                 <MenuItem value="attendance">출석</MenuItem>
                 <MenuItem value="scores">성적</MenuItem>
               </Select>
@@ -361,8 +410,8 @@ const AdminPage = () => {
               fullWidth
               size="small"
               placeholder="검색..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               InputProps={{
                 endAdornment: (
@@ -399,6 +448,7 @@ const AdminPage = () => {
                 startIcon={<Refresh />}
                 onClick={fetchData}
                 size="small"
+                disabled={loading}
               >
                 새로고침
               </Button>
@@ -407,25 +457,32 @@ const AdminPage = () => {
                 startIcon={<Download />}
                 onClick={handleDownloadExcel}
                 size="small"
+                disabled={loading}
               >
                 엑셀 다운로드
               </Button>
-              <Button
-                variant="outlined"
-                startIcon={<Group />}
-                onClick={handleAssignGroups}
-                size="small"
-              >
-                그룹 배정
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<EmojiEvents />}
-                onClick={handleRankAssignment}
-                size="small"
-              >
-                등급 부여
-              </Button>
+              {type === "students" && (
+                <>
+                  <Button
+                    variant="outlined"
+                    startIcon={<Group />}
+                    onClick={handleAssignGroups}
+                    size="small"
+                    disabled={loading}
+                  >
+                    그룹 배정
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EmojiEvents />}
+                    onClick={handleRankAssignment}
+                    size="small"
+                    disabled={loading}
+                  >
+                    등급 부여
+                  </Button>
+                </>
+              )}
             </Stack>
           </Grid>
         </Grid>
@@ -448,48 +505,73 @@ const AdminPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {data.map((item) => (
-                <TableRow key={item.id} hover>
-                  {getColumns().map((column) => (
-                    <TableCell key={column.key}>
-                      {formatCellValue(item, column)}
-                    </TableCell>
-                  ))}
-                  <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleEdit(item)}
-                      >
-                        <Edit />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Stack>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={getColumns().length + 1} sx={{ textAlign: 'center', py: 4 }}>
+                    <CircularProgress />
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      데이터를 불러오는 중...
+                    </Typography>
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : data.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={getColumns().length + 1} sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      데이터가 없습니다.
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                data.map((item) => (
+                  <TableRow key={item.id} hover>
+                    {getColumns().map((column) => (
+                      <TableCell key={column.key}>
+                        {formatCellValue(item, column)}
+                      </TableCell>
+                    ))}
+                    <TableCell>
+                      <Stack direction="row" spacing={1}>
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleEdit(item)}
+                        >
+                          <Edit />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </TableContainer>
 
         {/* Pagination */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-          <Pagination
-            count={100}
-            page={page}
-            onChange={handlePageChange}
-            color="primary"
-            showFirstButton
-            showLastButton
-          />
-        </Box>
+        {!loading && data.length > 0 && (
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              총 {totalCount}개 중 {((page - 1) * (limit === 'all' ? totalCount : limit)) + 1}-{Math.min(page * (limit === 'all' ? totalCount : limit), totalCount)}개 표시
+            </Typography>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+              showFirstButton
+              showLastButton
+              disabled={loading}
+            />
+          </Box>
+        )}
       </Paper>
 
       {/* Edit Dialog */}
@@ -500,62 +582,62 @@ const AdminPage = () => {
         <DialogContent>
           <Box sx={{ pt: 1 }}>
             <Grid container spacing={2}>
-          {getColumns()
-            .filter(column => !['created_at', 'updated_at', 'qrCode'].includes(column.key))
-            .map((column) => (
+              {getColumns()
+                .filter(column => !['created_at', 'updated_at', 'qrCode'].includes(column.key))
+                .map((column) => (
                   <Grid item xs={12} sm={6} key={column.key}>
-              {column.key === 'gender' ? (
+                    {column.key === 'gender' ? (
                       <FormControl fullWidth size="small">
                         <InputLabel>{column.displayName}</InputLabel>
                         <Select
-                  name={column.key}
-                  value={editData[column.key] || ""}
+                          name={column.key}
+                          value={editData[column.key] || ""}
                           label={column.displayName}
-                  onChange={handleEditChange}
-                >
+                          onChange={handleEditChange}
+                        >
                           <MenuItem value="">선택하세요</MenuItem>
                           <MenuItem value="남자">남자</MenuItem>
                           <MenuItem value="여자">여자</MenuItem>
                         </Select>
                       </FormControl>
-              ) : column.key === 'awanaRole' && (type === 'ym') ? (
+                    ) : column.key === 'awanaRole' && (type === 'ym') ? (
                       <FormControl fullWidth size="small">
                         <InputLabel>{column.displayName}</InputLabel>
                         <Select
-                  name={column.key}
-                  value={editData[column.key] || ""}
+                          name={column.key}
+                          value={editData[column.key] || ""}
                           label={column.displayName}
-                  onChange={handleEditChange}
-                >
+                          onChange={handleEditChange}
+                        >
                           <MenuItem value="">선택하세요</MenuItem>
                           <MenuItem value="TREK">TREK</MenuItem>
                           <MenuItem value="JOURNEY">JOURNEY</MenuItem>
                         </Select>
                       </FormControl>
-              ) : column.key === 'position' && (type === 'ym') ? (
+                    ) : column.key === 'position' && (type === 'ym') ? (
                       <FormControl fullWidth size="small">
                         <InputLabel>{column.displayName}</InputLabel>
                         <Select
-                  name={column.key}
-                  value={editData[column.key] || ""}
+                          name={column.key}
+                          value={editData[column.key] || ""}
                           label={column.displayName}
-                  onChange={handleEditChange}
-                >
+                          onChange={handleEditChange}
+                        >
                           <MenuItem value="">선택하세요</MenuItem>
                           <MenuItem value="1학년">1학년</MenuItem>
                           <MenuItem value="2학년">2학년</MenuItem>
                           <MenuItem value="3학년">3학년</MenuItem>
                         </Select>
                       </FormControl>
-              ) : column.key === 'shirtSize' ? (
+                    ) : column.key === 'shirtSize' ? (
                       <FormControl fullWidth size="small">
                         <InputLabel>{column.displayName}</InputLabel>
                         <Select
-                  name={column.key}
-                  value={editData[column.key] || ""}
+                          name={column.key}
+                          value={editData[column.key] || ""}
                           label={column.displayName}
-                  onChange={handleEditChange}
-                >
+                          onChange={handleEditChange}
+                        >
                           <MenuItem value="">선택하세요</MenuItem>
                           <MenuItem value="XS">XS</MenuItem>
                           <MenuItem value="S">S</MenuItem>
@@ -566,19 +648,19 @@ const AdminPage = () => {
                           <MenuItem value="3XL">3XL</MenuItem>
                         </Select>
                       </FormControl>
-              ) : (
+                    ) : (
                       <TextField
                         fullWidth
                         size="small"
                         label={column.displayName}
-                  name={column.key}
-                  value={editData[column.key] || ""}
-                  onChange={handleEditChange}
-                  disabled={column.key === 'id' || column.readOnly}
-                />
-              )}
+                        name={column.key}
+                        value={editData[column.key] || ""}
+                        onChange={handleEditChange}
+                        disabled={column.key === 'id' || column.readOnly}
+                      />
+                    )}
                   </Grid>
-          ))}
+                ))}
             </Grid>
           </Box>
         </DialogContent>
