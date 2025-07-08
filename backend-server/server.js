@@ -691,6 +691,32 @@ app.put('/admin/:type/:id', (req, res) => {
   });
 });
 
+// Export students Excel (only selected columns)
+app.get('/admin/students/export', (req, res) => {
+  const { search } = req.query;
+  let sql = `SELECT koreanName, englishName, churchName, churchNumber, parentContact, shirtSize, gender FROM students`;
+  let params = [];
+  if (search) {
+    sql += ` WHERE koreanName LIKE ? OR englishName LIKE ? OR churchName LIKE ?`;
+    params = [`%${search}%`, `%${search}%`, `%${search}%`];
+  }
+  db.query(sql, params, (err, results) => {
+    if (err) {
+      console.error('Error exporting students:', err);
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    // Excel 파일 생성
+    const worksheet = XLSX.utils.json_to_sheet(results);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', 'attachment; filename=students_export.xlsx');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  });
+});
+
 // Attendance
 app.get('/attendance', (req, res) => {
   const { search, day, session, group, team } = req.query;

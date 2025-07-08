@@ -49,7 +49,6 @@ import { BACKEND_URL } from "../config";
 
 const AdminPage = () => {
   const [data, setData] = useState([]);
-  const [allData, setAllData] = useState([]); // 전체 데이터 저장
   const [type, setType] = useState("students");
   const [search, setSearch] = useState("");
   const [limit, setLimit] = useState(10);
@@ -63,37 +62,34 @@ const AdminPage = () => {
   const [alertSeverity, setAlertSeverity] = useState("success");
   const navigate = useNavigate();
 
-  // 전체 데이터를 받아와서 페이지네이션 처리
-  const fetchAllData = useCallback(async () => {
+  // 현재 페이지 데이터만 받아오기
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const response = await axios.get(`${BACKEND_URL}/admin/${type}`, {
-        params: { search, limit: 10000 }
+        params: { search, limit, page }
       });
       let fetchedData = [];
+      let total = 0;
       if (Array.isArray(response.data)) {
         fetchedData = response.data;
+        total = response.data.length;
       } else if (Array.isArray(response.data?.data)) {
         fetchedData = response.data.data;
+        total = response.data.totalCount || response.data.total || fetchedData.length;
       } else {
         fetchedData = [];
+        total = 0;
       }
       // 대용량 필드 제거
       const filteredData = fetchedData.map(row => {
         const { image, qrCode, ...rest } = row;
         return rest;
       });
-      setAllData(filteredData);
-      setTotalCount(filteredData.length);
-      const itemsPerPage = limit === 'all' ? filteredData.length : limit;
-      const calculatedTotalPages = Math.ceil(filteredData.length / itemsPerPage);
-      setTotalPages(calculatedTotalPages);
-      // 현재 페이지 데이터 계산
-      const startIndex = (page - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-      setData(filteredData.slice(startIndex, endIndex));
+      setData(filteredData);
+      setTotalCount(total);
+      setTotalPages(Math.ceil(total / (limit === 'all' ? total : limit)));
     } catch (error) {
-      setAllData([]);
       setData([]);
       setTotalCount(0);
       setTotalPages(1);
@@ -103,20 +99,9 @@ const AdminPage = () => {
     }
   }, [type, search, limit, page]);
 
-  // 페이지, limit 변경 시 현재 페이지 데이터만 업데이트
   useEffect(() => {
-    if (allData.length === 0) return;
-    const itemsPerPage = limit === 'all' ? allData.length : limit;
-    const startIndex = (page - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    setData(allData.slice(startIndex, endIndex));
-    setTotalPages(Math.ceil(allData.length / itemsPerPage));
-  }, [allData, page, limit]);
-
-  // 검색, 타입 변경 시 전체 데이터 다시 받아오기
-  useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
+    fetchData();
+  }, [fetchData]);
 
   const showAlert = (message, severity = "success") => {
     setAlertMessage(message);
@@ -126,7 +111,7 @@ const AdminPage = () => {
 
   const handleSearch = () => {
     setPage(1);
-    fetchAllData();
+    fetchData();
   };
 
   const handleDelete = (id) => {
@@ -134,7 +119,7 @@ const AdminPage = () => {
       axios
         .delete(`${BACKEND_URL}/admin/${type}/${id}`)
         .then(() => {
-          fetchAllData();
+          fetchData();
           showAlert("삭제가 완료되었습니다.");
         })
         .catch((error) => {
@@ -172,7 +157,7 @@ const AdminPage = () => {
       .put(`${BACKEND_URL}/admin/${type}/${editItem.id}`, dataToSend)
       .then((response) => {
         setEditItem(null);
-        fetchAllData();
+        fetchData();
         showAlert('수정이 완료되었습니다.');
       })
       .catch((error) => {
@@ -203,7 +188,7 @@ const AdminPage = () => {
     try {
       const response = await axios.post(`${BACKEND_URL}/admin/assign-groups`);
       showAlert(response.data.message);
-      fetchAllData();
+      fetchData();
     } catch (error) {
       showAlert("그룹 배정 중 오류가 발생했습니다.", "error");
     }
@@ -213,13 +198,13 @@ const AdminPage = () => {
     try {
       const response = await axios.put(`${BACKEND_URL}/score/all-rank`);
       showAlert(response.data.message);
-      fetchAllData();
+      fetchData();
     } catch (error) {
       showAlert("등급 부여 중 오류가 발생했습니다.", "error");
     }
   };
 
-  // 엑셀 다운로드: export API 실패시 프론트에서 전체 학생 데이터(특정 컬럼만) 다운로드
+  // 엑셀 다운로드는 export API만 시도, 실패 시 안내
   const handleDownloadExcel = async () => {
     try {
       showAlert("전체 데이터를 다운로드 중입니다...", "info");
@@ -237,27 +222,7 @@ const AdminPage = () => {
       window.URL.revokeObjectURL(url);
       showAlert("엑셀 파일이 다운로드되었습니다.");
     } catch (error) {
-      // 프론트에서 직접 엑셀 생성 (학생 컬럼만)
-      if (allData.length === 0) {
-        showAlert("다운로드할 데이터가 없습니다.", "error");
-        return;
-      }
-      // 필요한 컬럼만 추출
-      const studentColumns = [
-        'koreanName', 'englishName', 'churchName', 'churchNumber', 'parentContact', 'shirtSize', 'gender'
-      ];
-      const downloadData = allData.map(row => {
-        const obj = {};
-        studentColumns.forEach(col => {
-          obj[col] = row[col];
-        });
-        return obj;
-      });
-      const worksheet = XLSX.utils.json_to_sheet(downloadData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-      XLSX.writeFile(workbook, `${type}_data_${new Date().toISOString().split('T')[0]}.xlsx`);
-      showAlert("전체 학생 데이터가 엑셀로 다운로드되었습니다.");
+      showAlert("엑셀 다운로드는 관리자에게 문의하세요.", "error");
     }
   };
 
@@ -463,7 +428,7 @@ const AdminPage = () => {
               <Button
                 variant="outlined"
                 startIcon={<Refresh />}
-                onClick={fetchAllData}
+                onClick={fetchData}
                 size="small"
                 disabled={loading}
               >
