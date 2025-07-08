@@ -599,7 +599,10 @@ app.post('/update-level', (req, res) => {
 // Admin endpoints
 app.get('/admin/:type', (req, res) => {
   const type = req.params.type;
-  const { search, page = 1, limit = 50 } = req.query;
+  // Parse page and limit as numbers
+  let { search, page = 1, limit = 50 } = req.query;
+  page = page === undefined ? 1 : Number(page);
+  limit = limit === undefined || limit === 'all' ? limit : Number(limit);
   
   let sql = `SELECT * FROM ${type}`;
   let params = [];
