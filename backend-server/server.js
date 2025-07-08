@@ -730,6 +730,81 @@ app.get('/admin/students/export', (req, res) => {
   });
 });
 
+// Export YM Excel (only selected columns)
+app.get('/admin/ym/export', (req, res) => {
+  const { search } = req.query;
+  let sql = `SELECT name, englishName, churchName, churchNumber, contact, shirtSize, gender, awanaRole, position FROM ym`;
+  let params = [];
+  if (search) {
+    sql += ` WHERE name LIKE ? OR englishName LIKE ? OR churchName LIKE ?`;
+    params = [`%${search}%`, `%${search}%`, `%${search}%`];
+  }
+  db.query(sql, params, (err, results) => {
+    if (err) {
+      console.error('Error exporting ym:', err);
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    const worksheet = XLSX.utils.json_to_sheet(results);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'YM');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', 'attachment; filename=ym_export.xlsx');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  });
+});
+
+// Export Teachers Excel (only selected columns)
+app.get('/admin/teachers/export', (req, res) => {
+  const { search } = req.query;
+  let sql = `SELECT name, englishName, churchName, churchNumber, contact, shirtSize, gender, awanaRole, position FROM teachers`;
+  let params = [];
+  if (search) {
+    sql += ` WHERE name LIKE ? OR englishName LIKE ? OR churchName LIKE ?`;
+    params = [`%${search}%`, `%${search}%`, `%${search}%`];
+  }
+  db.query(sql, params, (err, results) => {
+    if (err) {
+      console.error('Error exporting teachers:', err);
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    const worksheet = XLSX.utils.json_to_sheet(results);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Teachers');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', 'attachment; filename=teachers_export.xlsx');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  });
+});
+
+// Export Staff Excel (only selected columns)
+app.get('/admin/staff/export', (req, res) => {
+  const { search } = req.query;
+  let sql = `SELECT name, englishName, churchName, churchNumber, contact, shirtSize, gender, awanaRole, position FROM staff`;
+  let params = [];
+  if (search) {
+    sql += ` WHERE name LIKE ? OR englishName LIKE ? OR churchName LIKE ?`;
+    params = [`%${search}%`, `%${search}%`, `%${search}%`];
+  }
+  db.query(sql, params, (err, results) => {
+    if (err) {
+      console.error('Error exporting staff:', err);
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    const worksheet = XLSX.utils.json_to_sheet(results);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Staff');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Disposition', 'attachment; filename=staff_export.xlsx');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  });
+});
+
 // Attendance
 app.get('/attendance', (req, res) => {
   const { search, day, session, group, team } = req.query;
