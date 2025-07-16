@@ -913,79 +913,106 @@ app.get('/attendance', (req, res) => {
   });
 });
 
-// Get session attendance with all students and their attendance status
+// Get session attendance with filtered user types for better performance
 app.get('/attendance/:sessionId', (req, res) => {
   const { sessionId } = req.params;
-  console.log(`📋 Fetching attendance for session: ${sessionId}`);
+  const { userTypes } = req.query; // 쿼리 매개변수로 사용자 타입 받기
   
-  // 모든 사용자 조회 (학생 + YM + 교사 + 스태프)
-  const sql = `
-    SELECT 
-      'student' as user_type,
-      s.id,
-      s.student_id as user_id,
-      s.koreanName as name,
-      s.englishName,
-      s.churchName,
-      s.studentGroup,
-      s.team,
-      CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
-      sa.attended_at as attendedAt
-    FROM students s
-    LEFT JOIN session_attendance sa ON s.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'student'
-    
-    UNION ALL
-    
-    SELECT 
-      'ym' as user_type,
-      y.id,
-      y.id as user_id,
-      y.name,
-      y.englishName,
-      y.churchName,
-      y.awanaRole as studentGroup,
-      y.position as team,
-      CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
-      sa.attended_at as attendedAt
-    FROM ym y
-    LEFT JOIN session_attendance sa ON y.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'ym'
-    
-    UNION ALL
-    
-    SELECT 
-      'teacher' as user_type,
-      t.id,
-      t.id as user_id,
-      t.name,
-      t.englishName,
-      t.churchName,
-      t.awanaRole as studentGroup,
-      t.position as team,
-      CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
-      sa.attended_at as attendedAt
-    FROM teachers t
-    LEFT JOIN session_attendance sa ON t.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'teacher'
-    
-    UNION ALL
-    
-    SELECT 
-      'staff' as user_type,
-      st.id,
-      st.id as user_id,
-      st.name,
-      st.englishName,
-      st.churchName,
-      st.awanaRole as studentGroup,
-      st.position as team,
-      CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
-      sa.attended_at as attendedAt
-    FROM staff st
-    LEFT JOIN session_attendance sa ON st.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'staff'
-    
-    ORDER BY user_type, name
-  `;
+  // userTypes가 문자열이면 배열로 변환, 없으면 모든 타입 포함
+  let allowedTypes = ['student', 'ym', 'teacher', 'staff'];
+  if (userTypes) {
+    allowedTypes = Array.isArray(userTypes) ? userTypes : userTypes.split(',');
+  }
   
-  db.query(sql, [sessionId, sessionId, sessionId, sessionId], (err, results) => {
+  console.log(`📋 Fetching attendance for session: ${sessionId}, types: ${allowedTypes.join(', ')}`);
+  
+  // 필요한 사용자 타입만 조회하도록 동적 쿼리 생성
+  const queries = [];
+  const params = [];
+  
+  if (allowedTypes.includes('student')) {
+    queries.push(`
+      SELECT 
+        'student' as user_type,
+        s.id,
+        s.student_id as user_id,
+        s.koreanName as name,
+        s.englishName,
+        s.churchName,
+        s.studentGroup,
+        s.team,
+        CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
+        sa.attended_at as attendedAt
+      FROM students s
+      LEFT JOIN session_attendance sa ON s.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'student'
+    `);
+    params.push(sessionId);
+  }
+  
+  if (allowedTypes.includes('ym')) {
+    queries.push(`
+      SELECT 
+        'ym' as user_type,
+        y.id,
+        y.id as user_id,
+        y.name,
+        y.englishName,
+        y.churchName,
+        y.awanaRole as studentGroup,
+        y.position as team,
+        CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
+        sa.attended_at as attendedAt
+      FROM ym y
+      LEFT JOIN session_attendance sa ON y.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'ym'
+    `);
+    params.push(sessionId);
+  }
+  
+  if (allowedTypes.includes('teacher')) {
+    queries.push(`
+      SELECT 
+        'teacher' as user_type,
+        t.id,
+        t.id as user_id,
+        t.name,
+        t.englishName,
+        t.churchName,
+        t.awanaRole as studentGroup,
+        t.position as team,
+        CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
+        sa.attended_at as attendedAt
+      FROM teachers t
+      LEFT JOIN session_attendance sa ON t.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'teacher'
+    `);
+    params.push(sessionId);
+  }
+  
+  if (allowedTypes.includes('staff')) {
+    queries.push(`
+      SELECT 
+        'staff' as user_type,
+        st.id,
+        st.id as user_id,
+        st.name,
+        st.englishName,
+        st.churchName,
+        st.awanaRole as studentGroup,
+        st.position as team,
+        CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
+        sa.attended_at as attendedAt
+      FROM staff st
+      LEFT JOIN session_attendance sa ON st.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'staff'
+    `);
+    params.push(sessionId);
+  }
+  
+  if (queries.length === 0) {
+    return res.status(200).json([]);
+  }
+  
+  const sql = queries.join(' UNION ALL ') + ' ORDER BY user_type, name';
+  
+  db.query(sql, params, (err, results) => {
     if (err) {
       console.error('Error fetching session attendance:', err);
       res.status(500).json({ error: err.message });

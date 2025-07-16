@@ -32,7 +32,9 @@ import {
   Switch,
   FormControlLabel,
   useMediaQuery,
-  useTheme
+  useTheme,
+  CircularProgress,
+  LinearProgress
 } from '@mui/material';
 import {
   Home,
@@ -60,6 +62,9 @@ const AttendancePage = () => {
   const [cameraError, setCameraError] = useState("");
   const [scanBuffer, setScanBuffer] = useState("");
   const [scanTimeStamp, setScanTimeStamp] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showAbsentOnly, setShowAbsentOnly] = useState(false);
   const webcamRef = useRef(null);
   const codeReader = useRef(null);
   const barcodeInputRef = useRef(null);
@@ -68,51 +73,52 @@ const AttendancePage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // 시간표 데이터
+  // 시간표 데이터 - 세션 타입에 따른 사용자 필터링
   const scheduleData = {
     "첫째날": [
-      { id: "day1_interview", name: "인터뷰", time: "오전", type: "special" },
-      { id: "day1_dinner", name: "저녁식사", time: "저녁", type: "meal" }
+      { id: "day1_interview", name: "인터뷰", time: "오전", type: "special", userTypes: ["student"] },
+      { id: "day1_dinner", name: "저녁식사", time: "저녁", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] }
     ],
     "둘째날": [
-      { id: "day2_qt", name: "QT", time: "아침", type: "activity" },
-      { id: "day2_eng1", name: "영어수업 S1", time: "오전", type: "class" },
-      { id: "day2_eng2", name: "영어수업 S2", time: "오전", type: "class" },
-      { id: "day2_eng3", name: "영어수업 S3", time: "오전", type: "class" },
-      { id: "day2_eng4", name: "영어수업 S4", time: "오후", type: "class" },
-      { id: "day2_eng5", name: "영어수업 S5", time: "오후", type: "class" },
-      { id: "day2_lunch", name: "점심식사", time: "점심", type: "meal" },
-      { id: "day2_dinner", name: "저녁식사", time: "저녁", type: "meal" }
+      { id: "day2_qt", name: "QT", time: "아침", type: "activity", userTypes: ["student"] },
+      { id: "day2_eng1", name: "영어수업 S1", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day2_eng2", name: "영어수업 S2", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day2_eng3", name: "영어수업 S3", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day2_eng4", name: "영어수업 S4", time: "오후", type: "class", userTypes: ["student"] },
+      { id: "day2_eng5", name: "영어수업 S5", time: "오후", type: "class", userTypes: ["student"] },
+      { id: "day2_lunch", name: "점심식사", time: "점심", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] },
+      { id: "day2_dinner", name: "저녁식사", time: "저녁", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] }
     ],
     "셋째날": [
-      { id: "day3_qt", name: "QT", time: "아침", type: "activity" },
-      { id: "day3_eng1", name: "영어수업 S1", time: "오전", type: "class" },
-      { id: "day3_eng2", name: "영어수업 S2", time: "오전", type: "class" },
-      { id: "day3_eng3", name: "영어수업 S3", time: "오전", type: "class" },
-      { id: "day3_eng4", name: "영어수업 S4", time: "오후", type: "class" },
-      { id: "day3_eng5", name: "영어수업 S5", time: "오후", type: "class" },
-      { id: "day3_lunch", name: "점심식사", time: "점심", type: "meal" },
-      { id: "day3_waterpark", name: "워터파크", time: "오후", type: "special" },
-      { id: "day3_dinner", name: "저녁식사", time: "저녁", type: "meal" }
+      { id: "day3_qt", name: "QT", time: "아침", type: "activity", userTypes: ["student"] },
+      { id: "day3_eng1", name: "영어수업 S1", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day3_eng2", name: "영어수업 S2", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day3_eng3", name: "영어수업 S3", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day3_eng4", name: "영어수업 S4", time: "오후", type: "class", userTypes: ["student"] },
+      { id: "day3_eng5", name: "영어수업 S5", time: "오후", type: "class", userTypes: ["student"] },
+      { id: "day3_lunch", name: "점심식사", time: "점심", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] },
+      { id: "day3_waterpark", name: "워터파크 입장", time: "오후", type: "special", userTypes: ["student", "ym", "teacher", "staff"] },
+      { id: "day3_waterpark_exit", name: "워터파크 퇴장", time: "오후", type: "special", userTypes: ["student", "ym", "teacher", "staff"] },
+      { id: "day3_dinner", name: "저녁식사", time: "저녁", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] }
     ],
     "넷째날": [
-      { id: "day4_qt", name: "QT", time: "아침", type: "activity" },
-      { id: "day4_eng1", name: "영어수업 S1", time: "오전", type: "class" },
-      { id: "day4_eng2", name: "영어수업 S2", time: "오전", type: "class" },
-      { id: "day4_eng3", name: "영어수업 S3", time: "오전", type: "class" },
-      { id: "day4_eng4", name: "영어수업 S4", time: "오후", type: "class" },
-      { id: "day4_eng5", name: "영어수업 S5", time: "오후", type: "class" },
-      { id: "day4_lunch", name: "점심식사", time: "점심", type: "meal" },
-      { id: "day4_dinner", name: "저녁식사", time: "저녁", type: "meal" }
+      { id: "day4_qt", name: "QT", time: "아침", type: "activity", userTypes: ["student"] },
+      { id: "day4_eng1", name: "영어수업 S1", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day4_eng2", name: "영어수업 S2", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day4_eng3", name: "영어수업 S3", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day4_eng4", name: "영어수업 S4", time: "오후", type: "class", userTypes: ["student"] },
+      { id: "day4_eng5", name: "영어수업 S5", time: "오후", type: "class", userTypes: ["student"] },
+      { id: "day4_lunch", name: "점심식사", time: "점심", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] },
+      { id: "day4_dinner", name: "저녁식사", time: "저녁", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] }
     ],
     "다섯째날": [
-      { id: "day5_qt", name: "QT", time: "아침", type: "activity" },
-      { id: "day5_eng1", name: "영어수업 S1", time: "오전", type: "class" },
-      { id: "day5_eng2", name: "영어수업 S2", time: "오전", type: "class" },
-      { id: "day5_eng3", name: "영어수업 S3", time: "오전", type: "class" },
-      { id: "day5_eng4", name: "영어수업 S4", time: "오후", type: "class" },
-      { id: "day5_eng5", name: "영어수업 S5", time: "오후", type: "class" },
-      { id: "day5_lunch", name: "점심식사", time: "점심", type: "meal" }
+      { id: "day5_qt", name: "QT", time: "아침", type: "activity", userTypes: ["student"] },
+      { id: "day5_eng1", name: "영어수업 S1", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day5_eng2", name: "영어수업 S2", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day5_eng3", name: "영어수업 S3", time: "오전", type: "class", userTypes: ["student"] },
+      { id: "day5_eng4", name: "영어수업 S4", time: "오후", type: "class", userTypes: ["student"] },
+      { id: "day5_eng5", name: "영어수업 S5", time: "오후", type: "class", userTypes: ["student"] },
+      { id: "day5_lunch", name: "점심식사", time: "점심", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] }
     ]
   };
 
@@ -189,12 +195,16 @@ const AttendancePage = () => {
     }
   }, [isMobile, attendanceDialog, scanBuffer, scanTimeStamp]);
 
-  // 출석 다이얼로그가 열릴 때 입력 필드에 자동 포커스
+  // 출석 다이얼로그가 열릴 때 입력 필드에 자동 포커스 (안전하게)
   useEffect(() => {
-    if (attendanceDialog && barcodeInputRef.current && !isMobile) {
+    if (attendanceDialog && !isMobile) {
       setTimeout(() => {
-        barcodeInputRef.current.focus();
-      }, 500);
+        try {
+          barcodeInputRef.current?.focus();
+        } catch (err) {
+          console.warn("Focus error (safely handled):", err);
+        }
+      }, 300);
     }
   }, [attendanceDialog, isMobile]);
 
@@ -204,8 +214,13 @@ const AttendancePage = () => {
     setTimeout(() => setAlertMessage(""), 5000);
   };
 
-  const getSessionColor = (type) => {
-    switch (type) {
+  const getSessionColor = (session) => {
+    // 워터파크 관련 세션은 특별히 구분
+    if (session.id.includes('waterpark')) {
+      return session.name.includes('입장') ? 'info' : 'secondary';
+    }
+    
+    switch (session.type) {
       case "class": return "primary";
       case "meal": return "warning";
       case "activity": return "success";
@@ -216,17 +231,26 @@ const AttendancePage = () => {
 
   const handleSessionClick = async (session, day) => {
     setSelectedSession({ ...session, day });
-    await fetchAttendanceData(session.id);
+    setShowAbsentOnly(false); // 새 세션 선택 시 필터링 초기화
     setAttendanceDialog(true);
+    await fetchAttendanceData(session.id, session.userTypes);
   };
 
-  const fetchAttendanceData = async (sessionId) => {
+  const fetchAttendanceData = async (sessionId, allowedUserTypes = ["student", "ym", "teacher", "staff"]) => {
     try {
-      const response = await axios.get(`${BACKEND_URL}/attendance/${sessionId}`);
+      setLoading(true);
+      
+      // 백엔드에 사용자 타입을 쿼리 매개변수로 전달
+      const userTypesParam = allowedUserTypes.join(',');
+      const response = await axios.get(`${BACKEND_URL}/attendance/${sessionId}?userTypes=${userTypesParam}`);
+      
       setAttendanceList(response.data);
     } catch (error) {
       console.error("Error fetching attendance data:", error);
       setAttendanceList([]);
+      showAlert("출석 데이터 로드 중 오류가 발생했습니다.", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -236,48 +260,65 @@ const AttendancePage = () => {
       return;
     }
 
+    if (submitting) return; // 중복 제출 방지
+
     try {
+      setSubmitting(true);
       const response = await axios.post(`${BACKEND_URL}/attendance/check`, {
         sessionId: selectedSession.id,
         studentId: barcodeInput.trim()
       });
 
       if (response.data.success) {
-        showAlert(`${response.data.userName} 출석 처리 완료`, "success");
+        showAlert(`✅ ${response.data.userName} 출석 완료!`, "success");
         setBarcodeInput("");
         setScanBuffer(""); // 스캔 버퍼 초기화
-        await fetchAttendanceData(selectedSession.id);
+        await fetchAttendanceData(selectedSession.id, selectedSession.userTypes);
         
-        // PC에서는 다시 입력 필드에 포커스
+        // PC에서는 다시 입력 필드에 포커스 (안전하게)
         if (!isMobile && barcodeInputRef.current) {
           setTimeout(() => {
-            barcodeInputRef.current.focus();
-          }, 500);
+            try {
+              barcodeInputRef.current?.focus();
+            } catch (err) {
+              console.warn("Focus error (safely handled):", err);
+            }
+          }, 100);
         }
       } else {
         showAlert(response.data.message || "출석 처리 실패", "error");
         setBarcodeInput("");
         setScanBuffer(""); // 스캔 버퍼 초기화
         
-        // 실패해도 포커스 복원
+        // 실패해도 포커스 복원 (안전하게)
         if (!isMobile && barcodeInputRef.current) {
           setTimeout(() => {
-            barcodeInputRef.current.focus();
-          }, 500);
+            try {
+              barcodeInputRef.current?.focus();
+            } catch (err) {
+              console.warn("Focus error (safely handled):", err);
+            }
+          }, 100);
         }
       }
     } catch (error) {
       console.error("Error checking attendance:", error);
-      showAlert("출석 처리 중 오류가 발생했습니다.", "error");
+      showAlert("❌ 출석 처리 중 오류가 발생했습니다.", "error");
       setBarcodeInput("");
       setScanBuffer(""); // 스캔 버퍼 초기화
       
-      // 오류 시에도 포커스 복원
+      // 오류 시에도 포커스 복원 (안전하게)
       if (!isMobile && barcodeInputRef.current) {
         setTimeout(() => {
-          barcodeInputRef.current.focus();
-        }, 500);
+          try {
+            barcodeInputRef.current?.focus();
+          } catch (err) {
+            console.warn("Focus error (safely handled):", err);
+          }
+        }, 100);
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -376,6 +417,7 @@ const AttendancePage = () => {
     setAttendanceDialog(false);
     setSelectedSession(null);
     setAttendanceList([]);
+    setShowAbsentOnly(false); // 다이얼로그 닫을 때 필터링 초기화
   };
 
   const handleCloseScannerDialog = () => {
@@ -440,7 +482,7 @@ const AttendancePage = () => {
                   <Button
                     key={session.id}
                     variant="contained"
-                    color={getSessionColor(session.type)}
+                    color={getSessionColor(session)}
                     onClick={() => handleSessionClick(session, day)}
                     sx={{
                       p: 1.5,
@@ -516,23 +558,25 @@ const AttendancePage = () => {
                 placeholder={isMobile ? "바코드를 스캔하세요" : "USB 스캐너로 스캔하거나 직접 입력하세요"}
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleBarcodeSubmit()}
+                onKeyPress={(e) => e.key === 'Enter' && !submitting && handleBarcodeSubmit()}
                 autoFocus={!isMobile}
                 size="large"
                 sx={{ mb: 2 }}
                 inputRef={barcodeInputRef}
                 variant="outlined"
                 helperText={!isMobile ? "💡 입력 필드를 클릭한 후 바코드를 스캔하세요" : ""}
+                disabled={submitting}
               />
               
               <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
                 <Button
                   variant="contained"
                   onClick={handleBarcodeSubmit}
-                  startIcon={<Check />}
-                  disabled={!barcodeInput.trim()}
+                  startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <Check />}
+                  disabled={!barcodeInput.trim() || submitting}
+                  size="large"
                 >
-                  출석 처리
+                  {submitting ? "처리중..." : "출석 처리"}
                 </Button>
                 
                 <Button
@@ -557,7 +601,13 @@ const AttendancePage = () => {
                     
                     <Button
                       variant="text"
-                      onClick={() => barcodeInputRef.current?.focus()}
+                      onClick={() => {
+                        try {
+                          barcodeInputRef.current?.focus();
+                        } catch (err) {
+                          console.warn("Focus error (safely handled):", err);
+                        }
+                      }}
                       size="small"
                     >
                       🎯 입력 필드 포커스
@@ -575,11 +625,47 @@ const AttendancePage = () => {
           {/* 출석 현황 */}
           <Paper elevation={1}>
             <Box sx={{ p: 2, backgroundColor: 'primary.main', color: 'white' }}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Person />
-                출석 현황 ({attendanceList.filter(item => item.attended).length}/{attendanceList.length})
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Person />
+                  {showAbsentOnly ? (
+                    <>
+                      결시자 현황 ({attendanceList.filter(item => !item.attended).length}명)
+                      <Chip 
+                        label="결시자만 표시" 
+                        size="small" 
+                        color="warning" 
+                        sx={{ ml: 1, backgroundColor: 'rgba(255,193,7,0.8)', color: 'white' }}
+                      />
+                    </>
+                  ) : (
+                    <>출석 현황 ({attendanceList.filter(item => item.attended).length}/{attendanceList.length})</>
+                  )}
+                  {loading && <CircularProgress size={16} color="inherit" />}
+                </Typography>
+                
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={showAbsentOnly}
+                      onChange={(e) => setShowAbsentOnly(e.target.checked)}
+                      sx={{ 
+                        '& .MuiSwitch-switchBase': { color: 'white' },
+                        '& .MuiSwitch-track': { backgroundColor: 'rgba(255,255,255,0.3)' }
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" sx={{ color: 'white' }}>
+                      🔍 결시자만 보기
+                    </Typography>
+                  }
+                />
+              </Box>
             </Box>
+            
+            {/* 로딩 프로그레스 바 */}
+            {loading && <LinearProgress />}
             
             <TableContainer sx={{ maxHeight: 400 }}>
               <Table stickyHeader size="small">
@@ -595,7 +681,43 @@ const AttendancePage = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {attendanceList.map((user, index) => (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                        <CircularProgress size={24} />
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                          출석 데이터 로딩 중...
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : attendanceList.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          대상자가 없습니다.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    (() => {
+                      // 필터링 적용
+                      const filteredList = showAbsentOnly 
+                        ? attendanceList.filter(user => !user.attended)
+                        : attendanceList;
+                      
+                      if (filteredList.length === 0) {
+                        return (
+                          <TableRow>
+                            <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                {showAbsentOnly ? "🎉 모든 대상자가 출석했습니다!" : "대상자가 없습니다."}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+                      
+                      return filteredList.map((user, index) => (
                     <TableRow key={`${user.user_type}-${user.id}`}>
                       <TableCell>
                         <Chip 
@@ -649,7 +771,9 @@ const AttendancePage = () => {
                         )}
                       </TableCell>
                     </TableRow>
-                  ))}
+                      ));
+                    })()
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
