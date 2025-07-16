@@ -264,11 +264,14 @@ const LevelTestPage = () => {
   };
 
   const handleNewStudent = () => {
+    // 🔄 다음 학생을 위해 초기 상태로 완전 리셋
     setStudent(null);
     setTestStarted(false);
     setTestCompleted(false);
     setCurrentQuestion(0);
     setScores({});
+    setBarcodeInput("");
+    showAlert("다음 학생의 QR코드를 스캔해주세요.", "info");
   };
 
   const openScannerDialog = () => {

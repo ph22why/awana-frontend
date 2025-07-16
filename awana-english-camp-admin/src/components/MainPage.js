@@ -18,7 +18,8 @@ import {
   AdminPanelSettings,
   CheckCircle,
   Lock,
-  School
+  School,
+  Inventory
 } from '@mui/icons-material';
 
 const MainPage = () => {
@@ -47,6 +48,11 @@ const MainPage = () => {
   const handleLevelTestSubmit = (e) => {
     e.preventDefault();
     navigate('/level-test');
+  };
+
+  const handleItemDistributionSubmit = (e) => {
+    e.preventDefault();
+    navigate('/item-distribution');
   };
 
   return (
@@ -232,6 +238,56 @@ const MainPage = () => {
                   }}
                 >
                   Level Test 시작
+                </Button>
+              </Paper>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Item Distribution Card */}
+        <Grid item xs={12} md={4}>
+          <Card 
+            elevation={4}
+            sx={{ 
+              height: '100%',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white'
+            }}
+          >
+            <CardContent sx={{ textAlign: 'center', py: 4 }}>
+              <Inventory sx={{ fontSize: 60, mb: 2, opacity: 0.9 }} />
+              <Typography variant="h5" component="h2" gutterBottom fontWeight="bold">
+                물품 수령 확인
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 3, opacity: 0.9 }}>
+                학생들의 물품 전달 여부를 확인하고 관리합니다
+              </Typography>
+              
+              <Paper 
+                component="form" 
+                onSubmit={handleItemDistributionSubmit}
+                elevation={2}
+                sx={{ 
+                  p: 3,
+                  backgroundColor: 'rgba(255,255,255,0.95)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <Typography variant="body1" color="text.primary" sx={{ mb: 3 }} fontWeight="medium">
+                  물품 전달 현황을 관리합니다
+                </Typography>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  size="large"
+                  sx={{
+                    background: 'linear-gradient(45deg, #9C27B0 30%, #673AB7 90%)',
+                    fontWeight: 'bold',
+                    py: 1.5
+                  }}
+                >
+                  물품 수령 관리
                 </Button>
               </Paper>
             </CardContent>

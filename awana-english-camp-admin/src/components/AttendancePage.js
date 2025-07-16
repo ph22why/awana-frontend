@@ -137,7 +137,7 @@ const AttendancePage = () => {
     };
   }, [useCameraScanner, scannerDialog]);
 
-  // PC 바코드 스캐너를 위한 키보드 이벤트 리스너
+  // PC 바코드 스캐너를 위한 키보드 이벤트 리스너 (최적화)
   useEffect(() => {
     if (!isMobile && attendanceDialog) {
       const handleKeyPress = (event) => {
@@ -145,8 +145,8 @@ const AttendancePage = () => {
         if (barcodeInputRef.current && document.activeElement === barcodeInputRef.current) {
           const currentTime = Date.now();
           
-          // 빠른 연속 입력 감지 (바코드 스캐너 특성)
-          if (currentTime - scanTimeStamp > 100) {
+          // 빠른 연속 입력 감지 (바코드 스캐너 특성) - 50ms로 단축
+          if (currentTime - scanTimeStamp > 50) {
             setScanBuffer("");
           }
           
@@ -157,16 +157,14 @@ const AttendancePage = () => {
             if (scanBuffer.length > 0) {
               setBarcodeInput(scanBuffer);
               setScanBuffer("");
-              // 자동으로 출석 처리
-              setTimeout(() => {
-                handleBarcodeSubmit();
-              }, 100);
+              // 즉시 출석 처리 (지연 제거)
+              handleBarcodeSubmit();
             }
           } else if (event.key.length === 1) {
             // 일반 문자 입력
             setScanBuffer(prev => prev + event.key);
             
-            // 타이머 설정 - 500ms 후에 스캔 완료로 간주
+            // 타이머 설정 - 200ms로 단축하여 빠른 처리
             if (scanTimeoutRef.current) {
               clearTimeout(scanTimeoutRef.current);
             }
@@ -175,12 +173,10 @@ const AttendancePage = () => {
               if (scanBuffer.length > 3) { // 최소 길이 체크
                 setBarcodeInput(scanBuffer);
                 setScanBuffer("");
-                // 자동으로 출석 처리
-                setTimeout(() => {
-                  handleBarcodeSubmit();
-                }, 100);
+                // 즉시 출석 처리 (지연 제거)
+                handleBarcodeSubmit();
               }
-            }, 500);
+            }, 200);
           }
         }
       };
@@ -307,7 +303,12 @@ const AttendancePage = () => {
           }, 100);
         }
       } else {
-        showAlert(response.data.message || "출석 처리 실패", "error");
+        // 중복 출석 등 실패 시 경고 표시
+        const isDuplicate = response.data.message?.includes("이미 출석");
+        showAlert(
+          isDuplicate ? `⚠️ ${response.data.message}` : response.data.message || "출석 처리 실패", 
+          isDuplicate ? "warning" : "error"
+        );
         setBarcodeInput("");
         setScanBuffer(""); // 스캔 버퍼 초기화
         

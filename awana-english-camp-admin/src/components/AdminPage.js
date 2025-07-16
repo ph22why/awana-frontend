@@ -51,7 +51,7 @@ const AdminPage = () => {
   const [data, setData] = useState([]);
   const [type, setType] = useState("students");
   const [search, setSearch] = useState("");
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(30);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -413,7 +413,6 @@ const AdminPage = () => {
                 label="표시 개수"
                 onChange={handleLimitChange}
               >
-                <MenuItem value={10}>10개</MenuItem>
                 <MenuItem value={30}>30개</MenuItem>
                 <MenuItem value={50}>50개</MenuItem>
                 <MenuItem value={100}>100개</MenuItem>
