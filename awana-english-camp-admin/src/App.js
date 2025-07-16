@@ -5,6 +5,7 @@ import theme from './theme';
 import AdminPage from './components/AdminPage';
 import MainPage from './components/MainPage';
 import AttendancePage from './components/AttendancePage';
+import LevelTestPage from './components/LevelTestPage';
 
 function App() {
   return (
@@ -14,7 +15,8 @@ function App() {
       <Routes>
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/" element={<MainPage />} />
-          <Route path='/attendance' element={<AttendancePage />} />
+        <Route path='/attendance' element={<AttendancePage />} />
+        <Route path='/level-test' element={<LevelTestPage />} />
       </Routes>
     </Router>
     </ThemeProvider>

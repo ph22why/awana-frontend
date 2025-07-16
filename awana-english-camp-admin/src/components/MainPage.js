@@ -17,7 +17,8 @@ import {
 import {
   AdminPanelSettings,
   CheckCircle,
-  Lock
+  Lock,
+  School
 } from '@mui/icons-material';
 
 const MainPage = () => {
@@ -43,8 +44,13 @@ const MainPage = () => {
     navigate('/attendance');
   };
 
+  const handleLevelTestSubmit = (e) => {
+    e.preventDefault();
+    navigate('/level-test');
+  };
+
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ textAlign: 'center', mb: 4 }}>
         <Typography variant="h3" component="h1" gutterBottom color="primary" fontWeight="bold">
           AWANA Camp Admin
@@ -56,7 +62,7 @@ const MainPage = () => {
 
       <Grid container spacing={3} justifyContent="center">
         {/* Admin Access Card */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={4}>
           <Card 
             elevation={4}
             sx={{ 
@@ -133,7 +139,7 @@ const MainPage = () => {
         </Grid>
 
         {/* Attendance Check Card */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={4}>
           <Card 
             elevation={4}
             sx={{ 
@@ -176,6 +182,56 @@ const MainPage = () => {
                   }}
                 >
                   출석 관리 페이지
+                </Button>
+              </Paper>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Level Test Card */}
+        <Grid item xs={12} md={4}>
+          <Card 
+            elevation={4}
+            sx={{ 
+              height: '100%',
+              background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+              color: 'text.primary'
+            }}
+          >
+            <CardContent sx={{ textAlign: 'center', py: 4 }}>
+              <School sx={{ fontSize: 60, mb: 2, color: 'primary.main', opacity: 0.9 }} />
+              <Typography variant="h5" component="h2" gutterBottom fontWeight="bold" color="primary.main">
+                영어 레벨테스트
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+                원어민 선생님용 학생 영어 레벨 테스트
+              </Typography>
+              
+              <Paper 
+                component="form" 
+                onSubmit={handleLevelTestSubmit}
+                elevation={2}
+                sx={{ 
+                  p: 3,
+                  backgroundColor: 'rgba(255,255,255,0.95)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <Typography variant="body1" color="text.primary" sx={{ mb: 3 }} fontWeight="medium">
+                  Native Teacher Level Test
+                </Typography>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  size="large"
+                  sx={{
+                    background: 'linear-gradient(45deg, #4CAF50 30%, #8BC34A 90%)',
+                    fontWeight: 'bold',
+                    py: 1.5
+                  }}
+                >
+                  Level Test 시작
                 </Button>
               </Paper>
             </CardContent>

@@ -58,6 +58,80 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'TNT Camp Backend is running' });
 });
 
+// Initialize database tables for session attendance
+app.post('/init-session-attendance', (req, res) => {
+  console.log('🔧 Initializing session attendance table...');
+  
+  const createTableSql = `
+    CREATE TABLE IF NOT EXISTS session_attendance (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      session_id VARCHAR(255) NOT NULL,
+      student_id INT NOT NULL,
+      attended_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_session_student (session_id, student_id),
+      INDEX idx_session_id (session_id),
+      INDEX idx_student_id (student_id),
+      FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `;
+  
+  db.query(createTableSql, (err, result) => {
+    if (err) {
+      console.error('❌ Error creating session_attendance table:', err);
+      res.status(500).json({ error: 'Error creating table', details: err.message });
+    } else {
+      console.log('✅ Session attendance table initialized successfully');
+      
+      // Add student_id column to students table if it doesn't exist
+      const addStudentIdSql = `
+        ALTER TABLE students 
+        ADD COLUMN IF NOT EXISTS student_id VARCHAR(50) UNIQUE,
+        ADD COLUMN IF NOT EXISTS studentGroup VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS team INT
+      `;
+      
+      db.query(addStudentIdSql, (err2, result2) => {
+        if (err2 && !err2.message.includes('Duplicate column name')) {
+          console.error('⚠️ Warning: Could not add student_id column:', err2.message);
+        }
+        
+        // Update existing students with auto-generated student IDs if they don't have one
+        const updateStudentIdSql = `
+          UPDATE students 
+          SET 
+            student_id = CONCAT('STU', LPAD(id, 4, '0')),
+            studentGroup = CASE 
+              WHEN id % 7 = 1 THEN 'KNOW'
+              WHEN id % 7 = 2 THEN 'LOVE' 
+              WHEN id % 7 = 3 THEN 'SERVE'
+              WHEN id % 7 = 4 THEN 'GLORY'
+              WHEN id % 7 = 5 THEN 'HOLY'
+              WHEN id % 7 = 6 THEN 'GRACE'
+              ELSE 'HOPE'
+            END,
+            team = ((id - 1) % 5) + 1
+          WHERE student_id IS NULL OR student_id = ''
+        `;
+        
+        db.query(updateStudentIdSql, (err3, result3) => {
+          if (err3) {
+            console.error('⚠️ Warning: Could not update student IDs:', err3.message);
+          } else {
+            console.log(`✅ Updated ${result3.changedRows} students with auto-generated IDs`);
+          }
+          
+          res.status(200).json({ 
+            message: 'Session attendance system initialized successfully',
+            tablesCreated: true,
+            studentsUpdated: result3 ? result3.changedRows : 0
+          });
+        });
+      });
+    }
+  });
+});
+
 // Test endpoint
 app.post('/test-check', (req, res) => {
   console.log('🧪 Test check request received:', req.body);
@@ -833,6 +907,322 @@ app.get('/attendance', (req, res) => {
       res.status(500).json({ error: err.message });
     } else {
       res.status(200).json(results);
+    }
+  });
+});
+
+// Get session attendance with all students and their attendance status
+app.get('/attendance/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  console.log(`📋 Fetching attendance for session: ${sessionId}`);
+  
+  // Get all students with their attendance status for this session
+  const sql = `
+    SELECT 
+      s.id,
+      s.student_id,
+      s.koreanName,
+      s.englishName,
+      s.churchName,
+      s.studentGroup,
+      s.team,
+      CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
+      sa.attended_at as attendedAt
+    FROM students s
+    LEFT JOIN session_attendance sa ON s.id = sa.student_id AND sa.session_id = ?
+    ORDER BY s.koreanName
+  `;
+  
+  db.query(sql, [sessionId], (err, results) => {
+    if (err) {
+      console.error('Error fetching session attendance:', err);
+      res.status(500).json({ error: err.message });
+    } else {
+      console.log(`✅ Found ${results.length} students for session ${sessionId}`);
+      res.status(200).json(results);
+    }
+  });
+});
+
+// Check attendance for a session
+app.post('/attendance/check', (req, res) => {
+  const { sessionId, studentId } = req.body;
+  console.log(`✅ Checking attendance: Session ${sessionId}, Student ID ${studentId}`);
+  
+  // First check if student exists
+  const checkStudentSql = `
+    SELECT id, koreanName, englishName, student_id 
+    FROM students 
+    WHERE student_id = ? OR id = ?
+  `;
+  
+  db.query(checkStudentSql, [studentId, studentId], (err, studentResult) => {
+    if (err) {
+      console.error('Error checking student:', err);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    
+    if (studentResult.length === 0) {
+      console.log(`❌ Student not found: ${studentId}`);
+      return res.status(400).json({ 
+        success: false, 
+        message: '등록되지 않은 학생입니다.' 
+      });
+    }
+    
+    const student = studentResult[0];
+    console.log(`👤 Found student: ${student.koreanName} (${student.englishName})`);
+    
+    // Check if already attended this session
+    const checkAttendanceSql = `
+      SELECT id FROM session_attendance 
+      WHERE session_id = ? AND student_id = ?
+    `;
+    
+    db.query(checkAttendanceSql, [sessionId, student.id], (err, attendanceResult) => {
+      if (err) {
+        console.error('Error checking existing attendance:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      if (attendanceResult.length > 0) {
+        console.log(`⚠️ Student already attended: ${student.koreanName}`);
+        return res.status(400).json({ 
+          success: false, 
+          message: '이미 출석 처리된 학생입니다.' 
+        });
+      }
+      
+      // Record attendance
+      const insertAttendanceSql = `
+        INSERT INTO session_attendance (session_id, student_id, attended_at)
+        VALUES (?, ?, NOW())
+      `;
+      
+      db.query(insertAttendanceSql, [sessionId, student.id], (err, insertResult) => {
+        if (err) {
+          console.error('Error recording attendance:', err);
+          return res.status(500).json({ error: 'Error recording attendance' });
+        }
+        
+        console.log(`✅ Attendance recorded: ${student.koreanName} for session ${sessionId}`);
+        res.status(200).json({
+          success: true,
+          studentName: `${student.koreanName} (${student.englishName})`,
+          studentId: student.student_id,
+          sessionId: sessionId,
+          attendedAt: new Date()
+        });
+      });
+    });
+  });
+});
+
+// Level Test APIs
+// Submit level test results
+app.post('/level-test/submit', (req, res) => {
+  const { studentId, scores, totalScore, maxScore, percentage } = req.body;
+  console.log(`📝 Level test submission for student ${studentId}: ${totalScore}/${maxScore} (${percentage}%)`);
+  
+  // Create level_tests table if it doesn't exist
+  const createTableSql = `
+    CREATE TABLE IF NOT EXISTS level_tests (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      student_id INT NOT NULL,
+      scores JSON NOT NULL,
+      total_score INT NOT NULL,
+      max_score INT NOT NULL,
+      percentage DECIMAL(5,2) NOT NULL,
+      test_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+      INDEX idx_student_id (student_id),
+      INDEX idx_total_score (total_score DESC)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `;
+  
+  db.query(createTableSql, (err, createResult) => {
+    if (err) {
+      console.error('❌ Error creating level_tests table:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    // Check if student already has a test
+    const checkExistingSql = 'SELECT id FROM level_tests WHERE student_id = ?';
+    
+    db.query(checkExistingSql, [studentId], (err, existingResult) => {
+      if (err) {
+        console.error('Error checking existing test:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      if (existingResult.length > 0) {
+        // Update existing test
+        const updateSql = `
+          UPDATE level_tests 
+          SET scores = ?, total_score = ?, max_score = ?, percentage = ?, test_date = NOW()
+          WHERE student_id = ?
+        `;
+        
+        db.query(updateSql, [JSON.stringify(scores), totalScore, maxScore, percentage, studentId], (err, updateResult) => {
+          if (err) {
+            console.error('Error updating level test:', err);
+            return res.status(500).json({ error: 'Error updating test' });
+          }
+          
+          console.log(`✅ Level test updated for student ${studentId}`);
+          redistributeStudentsByLevel(() => {
+            res.status(200).json({ 
+              success: true, 
+              message: 'Level test updated and students redistributed',
+              testId: existingResult[0].id
+            });
+          });
+        });
+      } else {
+        // Insert new test
+        const insertSql = `
+          INSERT INTO level_tests (student_id, scores, total_score, max_score, percentage)
+          VALUES (?, ?, ?, ?, ?)
+        `;
+        
+        db.query(insertSql, [studentId, JSON.stringify(scores), totalScore, maxScore, percentage], (err, insertResult) => {
+          if (err) {
+            console.error('Error inserting level test:', err);
+            return res.status(500).json({ error: 'Error saving test' });
+          }
+          
+          console.log(`✅ Level test saved for student ${studentId}`);
+          redistributeStudentsByLevel(() => {
+            res.status(200).json({ 
+              success: true, 
+              message: 'Level test saved and students redistributed',
+              testId: insertResult.insertId
+            });
+          });
+        });
+      }
+    });
+  });
+});
+
+// Get level test results
+app.get('/level-test/results', (req, res) => {
+  const sql = `
+    SELECT 
+      lt.*,
+      s.koreanName,
+      s.englishName,
+      s.churchName,
+      s.studentGroup,
+      s.team
+    FROM level_tests lt
+    JOIN students s ON lt.student_id = s.id
+    ORDER BY lt.total_score DESC, lt.test_date DESC
+  `;
+  
+  db.query(sql, [], (err, results) => {
+    if (err) {
+      console.error('Error fetching level test results:', err);
+      res.status(500).json({ error: err.message });
+    } else {
+      res.status(200).json(results);
+    }
+  });
+});
+
+// Redistribute students by level test scores
+function redistributeStudentsByLevel(callback) {
+  console.log('🔄 Redistributing students based on level test scores...');
+  
+  // Get all students with level test scores, ordered by score
+  const getStudentsWithScoresSql = `
+    SELECT 
+      s.id,
+      s.koreanName,
+      s.englishName,
+      lt.total_score,
+      lt.percentage
+    FROM students s
+    JOIN level_tests lt ON s.id = lt.student_id
+    ORDER BY lt.total_score DESC
+  `;
+  
+  db.query(getStudentsWithScoresSql, [], (err, students) => {
+    if (err) {
+      console.error('Error getting students with scores:', err);
+      if (callback) callback(err);
+      return;
+    }
+    
+    if (students.length === 0) {
+      console.log('No students with level test scores found');
+      if (callback) callback();
+      return;
+    }
+    
+    // Group assignment logic - corrected for proper level distribution
+    const groups = ['KNOW', 'LOVE', 'SERVE', 'GLORY', 'HOLY', 'GRACE', 'HOPE'];
+    const teams = [1, 2, 3, 4, 5];
+    const totalStudents = students.length;
+    const studentsPerTeam = Math.ceil(totalStudents / teams.length); // 각 조당 학생 수
+    
+    const updates = [];
+    
+    students.forEach((student, index) => {
+      // Calculate team based on overall ranking percentile
+      // Top 20% go to team 1, next 20% to team 2, etc.
+      const teamIndex = Math.floor(index / studentsPerTeam);
+      const assignedTeam = Math.min(teamIndex + 1, teams.length); // 1~5조
+      
+      // Within each team level, distribute across groups evenly
+      const positionInTeam = index % studentsPerTeam;
+      const groupIndex = positionInTeam % groups.length;
+      const assignedGroup = groups[groupIndex];
+      
+      updates.push([assignedGroup, assignedTeam, student.id]);
+      
+      console.log(`📊 Student ${student.koreanName} (Rank: ${index + 1}/${totalStudents}, Score: ${student.total_score}) -> ${assignedGroup} Team ${assignedTeam}`);
+    });
+    
+    if (updates.length === 0) {
+      if (callback) callback();
+      return;
+    }
+    
+    // Batch update students
+    const updateSql = 'UPDATE students SET studentGroup = ?, team = ? WHERE id = ?';
+    
+    let completed = 0;
+    let hasError = false;
+    
+    updates.forEach(update => {
+      db.query(updateSql, update, (err, result) => {
+        completed++;
+        
+        if (err && !hasError) {
+          hasError = true;
+          console.error('Error updating student group/team:', err);
+          if (callback) callback(err);
+          return;
+        }
+        
+        if (completed === updates.length && !hasError) {
+          console.log(`✅ Successfully redistributed ${updates.length} students based on level test scores`);
+          console.log(`📈 Team distribution: Team 1 (Top ${Math.round(100/teams.length)}%) = ${Math.min(studentsPerTeam, totalStudents)} students per team`);
+          if (callback) callback();
+        }
+      });
+    });
+  });
+}
+
+// Manual redistribution endpoint
+app.post('/level-test/redistribute', (req, res) => {
+  redistributeStudentsByLevel((err) => {
+    if (err) {
+      res.status(500).json({ error: 'Error redistributing students', details: err.message });
+    } else {
+      res.status(200).json({ success: true, message: 'Students redistributed successfully' });
     }
   });
 });
