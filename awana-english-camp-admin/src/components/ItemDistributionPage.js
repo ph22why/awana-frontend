@@ -74,11 +74,14 @@ const ItemDistributionPage = () => {
 
   const fetchProgressData = async () => {
     try {
+      // STU(학생) 총 인원수 조회
       const response = await axios.get(`${BACKEND_URL}/admin/students?limit=all`);
       const students = response.data.data || [];
       setTotalStudents(students.length);
       
-      // 물품 수령 완료 상태 조회 (임시로 로컬스토리지 사용)
+      console.log(`📊 총 학생 수: ${students.length}명`);
+      
+      // 물품 수령 완료 상태 조회 (로컬스토리지 사용)
       const completed = JSON.parse(localStorage.getItem('distributedItems') || '[]');
       setCompletedCount(completed.length);
       setDistributedItems(new Set(completed));
@@ -100,8 +103,17 @@ const ItemDistributionPage = () => {
     }
 
     try {
+      const qrCode = barcodeInput.trim();
+      
+      // 학생이 아닌 QR 코드 체크
+      if (qrCode.includes('ymId=') || qrCode.includes('teacherId=') || qrCode.includes('staffId=')) {
+        showAlert("❌ 물품 수령은 학생(STU)만 가능합니다. 학생 QR코드를 스캔해주세요.", "warning");
+        setBarcodeInput("");
+        return;
+      }
+      
       // QR 코드에서 학생 ID 추출
-      let studentId = barcodeInput.trim();
+      let studentId = qrCode;
       if (studentId.includes('userId=')) {
         studentId = studentId.split('userId=')[1].split('&')[0];
       }
@@ -115,7 +127,7 @@ const ItemDistributionPage = () => {
         setScannerDialog(false);
         showAlert(`${studentData.koreanName} 학생 정보를 불러왔습니다.`, "success");
       } else {
-        showAlert("학생을 찾을 수 없습니다.", "error");
+        showAlert("등록된 학생을 찾을 수 없습니다. 학생 QR코드인지 확인해주세요.", "error");
       }
     } catch (error) {
       console.error("Error fetching student:", error);
@@ -238,7 +250,7 @@ const ItemDistributionPage = () => {
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             <Inventory sx={{ mr: 1, verticalAlign: 'middle' }} />
-            물품 수령 확인
+            학생(STU) 물품 수령 확인
           </Typography>
           <Chip 
             label={`진행률 ${Math.round(progressPercentage)}%`}
@@ -261,7 +273,10 @@ const ItemDistributionPage = () => {
         <Grid container spacing={3} alignItems="center">
           <Grid item xs={12} md={8}>
             <Typography variant="h5" gutterBottom>
-              물품 전달 진행 상황
+              학생 물품 전달 진행 상황
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2, opacity: 0.8 }}>
+              전체 학생(STU) 대상 물품 수령 현황
             </Typography>
             <LinearProgress 
               variant="determinate" 
@@ -276,13 +291,13 @@ const ItemDistributionPage = () => {
               }} 
             />
             <Typography variant="body1" sx={{ mt: 1 }}>
-              {completedCount} / {totalStudents} 명 완료 ({Math.round(progressPercentage)}%)
+              학생 {completedCount} / {totalStudents} 명 완료 ({Math.round(progressPercentage)}%)
             </Typography>
           </Grid>
           <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
             <CheckCircle sx={{ fontSize: 60, mb: 1, opacity: 0.9 }} />
             <Typography variant="h6">
-              {totalStudents - completedCount} 명 남음
+              학생 {totalStudents - completedCount} 명 남음
             </Typography>
           </Grid>
         </Grid>
@@ -351,20 +366,24 @@ const ItemDistributionPage = () => {
         <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
           <Inventory sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
           <Typography variant="h4" gutterBottom color="primary">
-            물품 수령 확인
+            학생 물품 수령 확인
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-            학생의 QR코드를 스캔하여 물품 전달을 확인하세요
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            학생(STU)의 QR코드를 스캔하여 물품 전달을 확인하세요
+          </Typography>
+          <Typography variant="body2" color="warning.main" sx={{ mb: 4, fontWeight: 'bold' }}>
+            ⚠️ 학생만 물품 수령 대상입니다 (YM, 교사, 스태프 제외)
           </Typography>
           
           <Stack spacing={3} alignItems="center">
             <TextField
-              placeholder="학생 QR코드를 스캔하거나 입력하세요"
+              placeholder="학생(STU) QR코드를 스캔하거나 입력하세요"
               value={barcodeInput}
               onChange={(e) => setBarcodeInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleBarcodeSubmit()}
               sx={{ width: 400, maxWidth: '100%' }}
               size="large"
+              helperText="💡 학생 QR코드만 스캔 가능합니다"
             />
             
             <Stack direction="row" spacing={2}>
