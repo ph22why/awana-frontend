@@ -243,7 +243,7 @@ const AttendancePage = () => {
       });
 
       if (response.data.success) {
-        showAlert(`${response.data.studentName} 출석 처리 완료`, "success");
+        showAlert(`${response.data.userName} 출석 처리 완료`, "success");
         setBarcodeInput("");
         setScanBuffer(""); // 스캔 버퍼 초기화
         await fetchAttendanceData(selectedSession.id);
@@ -278,6 +278,28 @@ const AttendancePage = () => {
           barcodeInputRef.current.focus();
         }, 500);
       }
+    }
+  };
+
+  // 사용자 타입별 한국어 변환
+  const getKoreanUserType = (userType) => {
+    switch (userType) {
+      case 'student': return '학생';
+      case 'ym': return 'YM';
+      case 'teacher': return '교사';
+      case 'staff': return '스태프';
+      default: return '사용자';
+    }
+  };
+
+  // 사용자 타입별 색상
+  const getUserTypeColor = (userType) => {
+    switch (userType) {
+      case 'student': return 'primary';
+      case 'ym': return 'success';
+      case 'teacher': return 'warning';
+      case 'staff': return 'error';
+      default: return 'default';
     }
   };
 
@@ -563,30 +585,64 @@ const AttendancePage = () => {
               <Table stickyHeader size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>학생 ID</TableCell>
+                    <TableCell>타입</TableCell>
+                    <TableCell>ID</TableCell>
                     <TableCell>이름</TableCell>
-                    <TableCell>그룹</TableCell>
-                    <TableCell>조</TableCell>
+                    <TableCell>그룹/역할</TableCell>
+                    <TableCell>조/직책</TableCell>
                     <TableCell>출석 시간</TableCell>
                     <TableCell>상태</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {attendanceList.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell>{student.student_id}</TableCell>
-                      <TableCell>{student.koreanName}</TableCell>
+                  {attendanceList.map((user, index) => (
+                    <TableRow key={`${user.user_type}-${user.id}`}>
                       <TableCell>
-                        <Chip label={student.studentGroup} size="small" color="primary" variant="outlined" />
+                        <Chip 
+                          label={getKoreanUserType(user.user_type)} 
+                          size="small" 
+                          color={getUserTypeColor(user.user_type)}
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell>{user.user_id}</TableCell>
+                      <TableCell>
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {user.name}
+                          </Typography>
+                          {user.englishName && (
+                            <Typography variant="caption" color="text.secondary">
+                              {user.englishName}
+                            </Typography>
+                          )}
+                        </Box>
                       </TableCell>
                       <TableCell>
-                        <Chip label={`${student.team}조`} size="small" color="secondary" variant="outlined" />
+                        {user.studentGroup && (
+                          <Chip 
+                            label={user.studentGroup} 
+                            size="small" 
+                            color="primary" 
+                            variant="outlined" 
+                          />
+                        )}
                       </TableCell>
                       <TableCell>
-                        {student.attendedAt ? new Date(student.attendedAt).toLocaleTimeString() : '-'}
+                        {user.team && (
+                          <Chip 
+                            label={user.user_type === 'student' ? `${user.team}조` : user.team} 
+                            size="small" 
+                            color="secondary" 
+                            variant="outlined" 
+                          />
+                        )}
                       </TableCell>
                       <TableCell>
-                        {student.attended ? (
+                        {user.attendedAt ? new Date(user.attendedAt).toLocaleTimeString() : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {user.attended ? (
                           <Chip label="출석" color="success" size="small" />
                         ) : (
                           <Chip label="미출석" color="default" size="small" />

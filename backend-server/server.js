@@ -66,13 +66,15 @@ app.post('/init-session-attendance', (req, res) => {
     CREATE TABLE IF NOT EXISTS session_attendance (
       id INT AUTO_INCREMENT PRIMARY KEY,
       session_id VARCHAR(255) NOT NULL,
-      student_id INT NOT NULL,
+      user_id INT NOT NULL,
+      user_type VARCHAR(50) NOT NULL,
+      user_name VARCHAR(255) NOT NULL,
       attended_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_session_student (session_id, student_id),
+      INDEX idx_session_user (session_id, user_id, user_type),
       INDEX idx_session_id (session_id),
-      INDEX idx_student_id (student_id),
-      FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+      INDEX idx_user_id (user_id),
+      FOREIGN KEY (user_id) REFERENCES students(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `;
   
@@ -916,12 +918,13 @@ app.get('/attendance/:sessionId', (req, res) => {
   const { sessionId } = req.params;
   console.log(`📋 Fetching attendance for session: ${sessionId}`);
   
-  // Get all students with their attendance status for this session
+  // 모든 사용자 조회 (학생 + YM + 교사 + 스태프)
   const sql = `
     SELECT 
+      'student' as user_type,
       s.id,
-      s.student_id,
-      s.koreanName,
+      s.student_id as user_id,
+      s.koreanName as name,
       s.englishName,
       s.churchName,
       s.studentGroup,
@@ -929,16 +932,65 @@ app.get('/attendance/:sessionId', (req, res) => {
       CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
       sa.attended_at as attendedAt
     FROM students s
-    LEFT JOIN session_attendance sa ON s.id = sa.student_id AND sa.session_id = ?
-    ORDER BY s.koreanName
+    LEFT JOIN session_attendance sa ON s.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'student'
+    
+    UNION ALL
+    
+    SELECT 
+      'ym' as user_type,
+      y.id,
+      y.id as user_id,
+      y.name,
+      y.englishName,
+      y.churchName,
+      y.awanaRole as studentGroup,
+      y.position as team,
+      CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
+      sa.attended_at as attendedAt
+    FROM ym y
+    LEFT JOIN session_attendance sa ON y.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'ym'
+    
+    UNION ALL
+    
+    SELECT 
+      'teacher' as user_type,
+      t.id,
+      t.id as user_id,
+      t.name,
+      t.englishName,
+      t.churchName,
+      t.awanaRole as studentGroup,
+      t.position as team,
+      CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
+      sa.attended_at as attendedAt
+    FROM teachers t
+    LEFT JOIN session_attendance sa ON t.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'teacher'
+    
+    UNION ALL
+    
+    SELECT 
+      'staff' as user_type,
+      st.id,
+      st.id as user_id,
+      st.name,
+      st.englishName,
+      st.churchName,
+      st.awanaRole as studentGroup,
+      st.position as team,
+      CASE WHEN sa.id IS NOT NULL THEN 1 ELSE 0 END as attended,
+      sa.attended_at as attendedAt
+    FROM staff st
+    LEFT JOIN session_attendance sa ON st.id = sa.user_id AND sa.session_id = ? AND sa.user_type = 'staff'
+    
+    ORDER BY user_type, name
   `;
   
-  db.query(sql, [sessionId], (err, results) => {
+  db.query(sql, [sessionId, sessionId, sessionId, sessionId], (err, results) => {
     if (err) {
       console.error('Error fetching session attendance:', err);
       res.status(500).json({ error: err.message });
     } else {
-      console.log(`✅ Found ${results.length} students for session ${sessionId}`);
+      console.log(`✅ Found ${results.length} total users for session ${sessionId}`);
       res.status(200).json(results);
     }
   });
@@ -947,69 +999,121 @@ app.get('/attendance/:sessionId', (req, res) => {
 // Check attendance for a session
 app.post('/attendance/check', (req, res) => {
   const { sessionId, studentId } = req.body;
-  console.log(`✅ Checking attendance: Session ${sessionId}, Student ID ${studentId}`);
+  console.log(`✅ Checking attendance: Session ${sessionId}, ID ${studentId}`);
   
-  // First check if student exists
-  const checkStudentSql = `
-    SELECT id, koreanName, englishName, student_id 
-    FROM students 
-    WHERE student_id = ? OR id = ?
-  `;
+  // QR 코드에서 사용자 타입과 ID 추출
+  let userId, userType, tableName;
   
-  db.query(checkStudentSql, [studentId, studentId], (err, studentResult) => {
+  if (studentId.includes('userId=')) {
+    // 학생 QR 코드: userId=123
+    userId = studentId.split('userId=')[1].split('&')[0];
+    userType = 'student';
+    tableName = 'students';
+  } else if (studentId.includes('ymId=')) {
+    // YM QR 코드: ymId=123&type=ym
+    userId = studentId.split('ymId=')[1].split('&')[0];
+    userType = 'ym';
+    tableName = 'ym';
+  } else if (studentId.includes('teacherId=')) {
+    // 교사 QR 코드: teacherId=123&type=teacher
+    userId = studentId.split('teacherId=')[1].split('&')[0];
+    userType = 'teacher';
+    tableName = 'teachers';
+  } else if (studentId.includes('staffId=')) {
+    // 스태프 QR 코드: staffId=123&type=staff
+    userId = studentId.split('staffId=')[1].split('&')[0];
+    userType = 'staff';
+    tableName = 'staff';
+  } else {
+    // 직접 입력된 ID (학생 ID로 가정)
+    userId = studentId.trim();
+    userType = 'student';
+    tableName = 'students';
+  }
+  
+  console.log(`👤 Extracted: Type=${userType}, ID=${userId}, Table=${tableName}`);
+  
+  // 사용자 존재 확인을 위한 쿼리 구성
+  let checkUserSql;
+  let nameFields;
+  
+  if (userType === 'student') {
+    checkUserSql = `
+      SELECT id, koreanName, englishName, student_id 
+      FROM students 
+      WHERE student_id = ? OR id = ?
+    `;
+    nameFields = ['koreanName', 'englishName'];
+  } else {
+    checkUserSql = `
+      SELECT id, name, englishName 
+      FROM ${tableName} 
+      WHERE id = ?
+    `;
+    nameFields = ['name', 'englishName'];
+  }
+  
+  const queryParams = userType === 'student' ? [userId, userId] : [userId];
+  
+  db.query(checkUserSql, queryParams, (err, userResult) => {
     if (err) {
-      console.error('Error checking student:', err);
+      console.error('Error checking user:', err);
       return res.status(500).json({ error: 'Database error', details: err.message });
     }
     
-    if (studentResult.length === 0) {
-      console.log(`❌ Student not found: ${studentId}`);
+    if (userResult.length === 0) {
+      console.log(`❌ User not found: ${userId} (${userType})`);
       return res.status(400).json({ 
         success: false, 
-        message: '등록되지 않은 학생입니다.' 
+        message: `등록되지 않은 ${getKoreanUserType(userType)}입니다.` 
       });
     }
     
-    const student = studentResult[0];
-    console.log(`👤 Found student: ${student.koreanName} (${student.englishName})`);
+    const user = userResult[0];
+    const userName = userType === 'student' 
+      ? `${user.koreanName} (${user.englishName})` 
+      : `${user.name}${user.englishName ? ' (' + user.englishName + ')' : ''}`;
     
-    // Check if already attended this session
+    console.log(`👤 Found ${userType}: ${userName}`);
+    
+    // 이미 출석했는지 확인
     const checkAttendanceSql = `
       SELECT id FROM session_attendance 
-      WHERE session_id = ? AND student_id = ?
+      WHERE session_id = ? AND user_id = ? AND user_type = ?
     `;
     
-    db.query(checkAttendanceSql, [sessionId, student.id], (err, attendanceResult) => {
+    db.query(checkAttendanceSql, [sessionId, user.id, userType], (err, attendanceResult) => {
       if (err) {
         console.error('Error checking existing attendance:', err);
         return res.status(500).json({ error: 'Database error' });
       }
       
       if (attendanceResult.length > 0) {
-        console.log(`⚠️ Student already attended: ${student.koreanName}`);
+        console.log(`⚠️ User already attended: ${userName}`);
         return res.status(400).json({ 
           success: false, 
-          message: '이미 출석 처리된 학생입니다.' 
+          message: `이미 출석 처리된 ${getKoreanUserType(userType)}입니다.` 
         });
       }
       
-      // Record attendance
+      // 출석 기록
       const insertAttendanceSql = `
-        INSERT INTO session_attendance (session_id, student_id, attended_at)
-        VALUES (?, ?, NOW())
+        INSERT INTO session_attendance (session_id, user_id, user_type, user_name, attended_at)
+        VALUES (?, ?, ?, ?, NOW())
       `;
       
-      db.query(insertAttendanceSql, [sessionId, student.id], (err, insertResult) => {
+      db.query(insertAttendanceSql, [sessionId, user.id, userType, userName], (err, insertResult) => {
         if (err) {
           console.error('Error recording attendance:', err);
           return res.status(500).json({ error: 'Error recording attendance' });
         }
         
-        console.log(`✅ Attendance recorded: ${student.koreanName} for session ${sessionId}`);
+        console.log(`✅ Attendance recorded: ${userName} (${userType}) for session ${sessionId}`);
         res.status(200).json({
           success: true,
-          studentName: `${student.koreanName} (${student.englishName})`,
-          studentId: student.student_id,
+          userName: userName,
+          userType: userType,
+          userId: userType === 'student' ? user.student_id || user.id : user.id,
           sessionId: sessionId,
           attendedAt: new Date()
         });
@@ -1017,6 +1121,17 @@ app.post('/attendance/check', (req, res) => {
     });
   });
 });
+
+// 사용자 타입의 한국어 변환 함수
+function getKoreanUserType(userType) {
+  switch(userType) {
+    case 'student': return '학생';
+    case 'ym': return 'YM';
+    case 'teacher': return '교사';
+    case 'staff': return '스태프';
+    default: return '사용자';
+  }
+}
 
 // Level Test APIs
 // Submit level test results
