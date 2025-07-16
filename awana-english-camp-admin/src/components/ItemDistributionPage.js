@@ -74,19 +74,33 @@ const ItemDistributionPage = () => {
 
   const fetchProgressData = async () => {
     try {
-      // STU(학생) 총 인원수 조회
-      const response = await axios.get(`${BACKEND_URL}/admin/students?limit=all`);
-      const students = response.data.data || [];
-      setTotalStudents(students.length);
+      // 물품 수령 진행 현황 조회 (DB 연동)
+      const response = await axios.get(`${BACKEND_URL}/item-distribution/progress`);
+      const { totalStudents, completedCount } = response.data;
       
-      console.log(`📊 총 학생 수: ${students.length}명`);
+      setTotalStudents(totalStudents);
+      setCompletedCount(completedCount);
       
-      // 물품 수령 완료 상태 조회 (로컬스토리지 사용)
-      const completed = JSON.parse(localStorage.getItem('distributedItems') || '[]');
-      setCompletedCount(completed.length);
-      setDistributedItems(new Set(completed));
+      console.log(`📊 총 학생 수: ${totalStudents}명, 완료: ${completedCount}명`);
+      
+      // 완료된 학생 목록 조회
+      const completedResponse = await axios.get(`${BACKEND_URL}/item-distribution/completed`);
+      const completedStudents = completedResponse.data.map(item => item.student_id);
+      setDistributedItems(new Set(completedStudents));
     } catch (error) {
       console.error("Error fetching progress data:", error);
+      // 실패 시 백업으로 로컬스토리지 사용
+      try {
+        const studentsResponse = await axios.get(`${BACKEND_URL}/admin/students?limit=all`);
+        const students = studentsResponse.data.data || [];
+        setTotalStudents(students.length);
+        
+        const completed = JSON.parse(localStorage.getItem('distributedItems') || '[]');
+        setCompletedCount(completed.length);
+        setDistributedItems(new Set(completed));
+      } catch (fallbackError) {
+        console.error("Fallback error:", fallbackError);
+      }
     }
   };
 
@@ -135,24 +149,56 @@ const ItemDistributionPage = () => {
     }
   };
 
-  const handleItemDistribution = () => {
+  const handleItemDistribution = async () => {
     if (!student) return;
 
-    const updatedDistributed = new Set(distributedItems);
-    updatedDistributed.add(student.id);
-    setDistributedItems(updatedDistributed);
-    
-    // 로컬스토리지에 저장
-    localStorage.setItem('distributedItems', JSON.stringify([...updatedDistributed]));
-    
-    setCompletedCount(updatedDistributed.size);
-    showAlert(`${student.koreanName} 학생의 물품 전달이 완료되었습니다!`, "success");
-    
-    // 다음 학생을 위해 초기화
-    setTimeout(() => {
-      setStudent(null);
-      showAlert("다음 학생의 QR코드를 스캔해주세요.", "info");
-    }, 2000);
+    try {
+      // DB에 물품 수령 완료 기록
+      const response = await axios.post(`${BACKEND_URL}/item-distribution/complete`, {
+        studentId: student.id
+      });
+
+      if (response.data.success) {
+        // 상태 업데이트
+        const updatedDistributed = new Set(distributedItems);
+        updatedDistributed.add(student.id);
+        setDistributedItems(updatedDistributed);
+        setCompletedCount(updatedDistributed.size);
+        
+        showAlert(`✅ ${response.data.studentName} 물품 전달 완료!`, "success");
+        
+        // 다음 학생을 위해 초기화
+        setTimeout(() => {
+          setStudent(null);
+          showAlert("다음 학생의 QR코드를 스캔해주세요.", "info");
+        }, 2000);
+      } else {
+        showAlert(response.data.message || "물품 전달 기록 실패", "error");
+      }
+    } catch (error) {
+      console.error("Error recording item distribution:", error);
+      
+      if (error.response?.status === 400) {
+        showAlert("⚠️ 이미 물품을 수령한 학생입니다.", "warning");
+      } else {
+        showAlert("물품 전달 기록 중 오류가 발생했습니다.", "error");
+        
+        // 오류 시 로컬스토리지 백업 사용
+        const updatedDistributed = new Set(distributedItems);
+        updatedDistributed.add(student.id);
+        setDistributedItems(updatedDistributed);
+        localStorage.setItem('distributedItems', JSON.stringify([...updatedDistributed]));
+        setCompletedCount(updatedDistributed.size);
+        
+        showAlert(`${student.koreanName} 학생의 물품 전달이 기록되었습니다 (로컬 저장).`, "warning");
+      }
+      
+      // 다음 학생을 위해 초기화
+      setTimeout(() => {
+        setStudent(null);
+        showAlert("다음 학생의 QR코드를 스캔해주세요.", "info");
+      }, 2000);
+    }
   };
 
   const startCameraScanner = async () => {

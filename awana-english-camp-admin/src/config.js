@@ -9,8 +9,8 @@ if (isDevelopment) {
   // Development environment - use environment variable or default
   backendUrl = process.env.REACT_APP_BACKEND_HOST || 'http://localhost:8080';
 } else if (isProduction) {
-  // Production environment 
-  backendUrl = process.env.REACT_APP_BACKEND_HOST || 'https://awanaevent.com:8080';
+  // Production environment - use nginx proxy
+  backendUrl = process.env.REACT_APP_BACKEND_HOST || 'https://awanaevent.com';
 } else {
   // Fallback
   backendUrl = 'http://localhost:8080';

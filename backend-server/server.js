@@ -1374,6 +1374,186 @@ app.post('/level-test/redistribute', (req, res) => {
   });
 });
 
+// Item Distribution APIs
+// Initialize item distribution table
+app.post('/init-item-distribution', (req, res) => {
+  console.log('🔧 Initializing item distribution table...');
+  
+  const createTableSql = `
+    CREATE TABLE IF NOT EXISTS item_distribution (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      student_id INT NOT NULL,
+      distributed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_student_distribution (student_id),
+      FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+      INDEX idx_student_id (student_id),
+      INDEX idx_distributed_at (distributed_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `;
+  
+  db.query(createTableSql, (err, result) => {
+    if (err) {
+      console.error('❌ Error creating item_distribution table:', err);
+      res.status(500).json({ error: 'Error creating table', details: err.message });
+    } else {
+      console.log('✅ Item distribution table initialized successfully');
+      res.status(200).json({ 
+        message: 'Item distribution system initialized successfully',
+        tablesCreated: true
+      });
+    }
+  });
+});
+
+// Get item distribution progress
+app.get('/item-distribution/progress', (req, res) => {
+  console.log('📊 Fetching item distribution progress...');
+  
+  // 전체 학생 수와 물품 수령 완료 수 조회
+  const sql = `
+    SELECT 
+      (SELECT COUNT(*) FROM students) as total_students,
+      (SELECT COUNT(*) FROM item_distribution) as completed_count
+  `;
+  
+  db.query(sql, [], (err, results) => {
+    if (err) {
+      console.error('Error fetching distribution progress:', err);
+      res.status(500).json({ error: err.message });
+    } else {
+      const { total_students, completed_count } = results[0];
+      console.log(`📊 Progress: ${completed_count}/${total_students} students completed`);
+      res.status(200).json({
+        totalStudents: total_students,
+        completedCount: completed_count,
+        percentage: total_students > 0 ? Math.round((completed_count / total_students) * 100) : 0
+      });
+    }
+  });
+});
+
+// Check if student has received items
+app.get('/item-distribution/check/:studentId', (req, res) => {
+  const { studentId } = req.params;
+  
+  const sql = 'SELECT * FROM item_distribution WHERE student_id = ?';
+  
+  db.query(sql, [studentId], (err, results) => {
+    if (err) {
+      console.error('Error checking item distribution:', err);
+      res.status(500).json({ error: err.message });
+    } else {
+      res.status(200).json({
+        hasReceived: results.length > 0,
+        distributedAt: results.length > 0 ? results[0].distributed_at : null
+      });
+    }
+  });
+});
+
+// Record item distribution
+app.post('/item-distribution/complete', (req, res) => {
+  const { studentId } = req.body;
+  console.log(`📦 Recording item distribution for student ${studentId}`);
+  
+  if (!studentId) {
+    return res.status(400).json({ error: 'Student ID is required' });
+  }
+  
+  // 학생 존재 확인
+  const checkStudentSql = 'SELECT id, koreanName, englishName FROM students WHERE id = ?';
+  
+  db.query(checkStudentSql, [studentId], (err, studentResult) => {
+    if (err) {
+      console.error('Error checking student:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    if (studentResult.length === 0) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+    
+    const student = studentResult[0];
+    
+    // 이미 수령했는지 확인
+    const checkDistributionSql = 'SELECT id FROM item_distribution WHERE student_id = ?';
+    
+    db.query(checkDistributionSql, [studentId], (err, distributionResult) => {
+      if (err) {
+        console.error('Error checking existing distribution:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      if (distributionResult.length > 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: '이미 물품을 수령한 학생입니다.' 
+        });
+      }
+      
+      // 물품 수령 기록
+      const insertSql = `
+        INSERT INTO item_distribution (student_id, distributed_at)
+        VALUES (?, NOW())
+      `;
+      
+      db.query(insertSql, [studentId], (err, insertResult) => {
+        if (err) {
+          console.error('Error recording item distribution:', err);
+          return res.status(500).json({ error: 'Error recording distribution' });
+        }
+        
+        console.log(`✅ Item distribution recorded for ${student.koreanName} (${student.englishName})`);
+        res.status(200).json({
+          success: true,
+          message: `${student.koreanName} 학생의 물품 전달이 완료되었습니다.`,
+          studentName: `${student.koreanName} (${student.englishName})`,
+          distributedAt: new Date()
+        });
+      });
+    });
+  });
+});
+
+// Get completed distributions list
+app.get('/item-distribution/completed', (req, res) => {
+  const sql = `
+    SELECT 
+      id.id,
+      id.student_id,
+      id.distributed_at,
+      s.koreanName,
+      s.englishName,
+      s.churchName,
+      s.studentGroup,
+      s.team
+    FROM item_distribution id
+    JOIN students s ON id.student_id = s.id
+    ORDER BY id.distributed_at DESC
+  `;
+  
+  db.query(sql, [], (err, results) => {
+    if (err) {
+      console.error('Error fetching completed distributions:', err);
+      res.status(500).json({ error: err.message });
+    } else {
+      res.status(200).json(results);
+    }
+  });
+});
+
+// Helper function for Korean user type
+function getKoreanUserType(userType) {
+  switch (userType) {
+    case 'student': return '학생';
+    case 'ym': return 'YM';
+    case 'teacher': return '교사';
+    case 'staff': return '스태프';
+    default: return '사용자';
+  }
+}
+
 app.post('/attendance', (req, res) => {
   const { qrCode } = req.body;
   
