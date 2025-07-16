@@ -22,16 +22,19 @@ app.use(cors({
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-// MySQL 설정 (Mac 로컬 환경)
+// MySQL 설정 (성능 최적화)
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'tntcamp',
   charset: 'utf8mb4',
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true
+  acquireTimeout: 10000,   // 10초로 단축
+  timeout: 10000,          // 10초로 단축
+  reconnect: true,
+  connectionLimit: 20,     // 커넥션 풀 크기 증가
+  idleTimeout: 300000,     // 5분
+  queueLimit: 0
 };
 
 let db;
@@ -1103,11 +1106,12 @@ app.post('/attendance/check', (req, res) => {
     
     console.log(`👤 Found ${userType}: ${userName}`);
     
-    // 이미 출석했는지 확인
-    const checkAttendanceSql = `
-      SELECT id FROM session_attendance 
-      WHERE session_id = ? AND user_id = ? AND user_type = ?
-    `;
+      // 이미 출석했는지 확인 (인덱스 최적화)
+  const checkAttendanceSql = `
+    SELECT id FROM session_attendance 
+    WHERE session_id = ? AND user_id = ? AND user_type = ?
+    LIMIT 1
+  `;
     
     db.query(checkAttendanceSql, [sessionId, user.id, userType], (err, attendanceResult) => {
       if (err) {
@@ -1141,6 +1145,7 @@ app.post('/attendance/check', (req, res) => {
           userName: userName,
           userType: userType,
           userId: userType === 'student' ? user.student_id || user.id : user.id,
+          internalId: user.id, // 내부 DB ID
           sessionId: sessionId,
           attendedAt: new Date()
         });

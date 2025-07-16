@@ -34,7 +34,8 @@ import {
   useMediaQuery,
   useTheme,
   CircularProgress,
-  LinearProgress
+  LinearProgress,
+  Backdrop
 } from '@mui/material';
 import {
   Home,
@@ -264,16 +265,36 @@ const AttendancePage = () => {
 
     try {
       setSubmitting(true);
+      
+      // 명확한 로딩 표시
+      const startTime = Date.now();
+      console.log(`🔄 Starting attendance check at ${new Date().toLocaleTimeString()}`);
+      
       const response = await axios.post(`${BACKEND_URL}/attendance/check`, {
         sessionId: selectedSession.id,
         studentId: barcodeInput.trim()
       });
+      
+      const endTime = Date.now();
+      console.log(`✅ Attendance check completed in ${endTime - startTime}ms`);
 
       if (response.data.success) {
         showAlert(`✅ ${response.data.userName} 출석 완료!`, "success");
         setBarcodeInput("");
         setScanBuffer(""); // 스캔 버퍼 초기화
-        await fetchAttendanceData(selectedSession.id, selectedSession.userTypes);
+        
+        // 🚀 성능 최적화: 전체 재조회 대신 로컬 상태만 업데이트
+        setAttendanceList(prevList => 
+          prevList.map(user => {
+            // 내부 ID로 정확하게 매칭
+            const userMatches = user.user_type === response.data.userType && 
+                               user.id == response.data.internalId;
+            
+            return userMatches 
+              ? { ...user, attended: true, attendedAt: response.data.attendedAt }
+              : user;
+          })
+        );
         
         // PC에서는 다시 입력 필드에 포커스 (안전하게)
         if (!isMobile && barcodeInputRef.current) {
@@ -780,6 +801,25 @@ const AttendancePage = () => {
           </Paper>
         </DialogContent>
       </Dialog>
+
+      {/* 출석 처리 로딩 백드롭 */}
+      <Backdrop
+        sx={{ 
+          color: '#fff', 
+          zIndex: (theme) => theme.zIndex.modal + 1,
+          flexDirection: 'column',
+          gap: 2
+        }}
+        open={submitting}
+      >
+        <CircularProgress color="inherit" size={60} />
+        <Typography variant="h6" color="inherit">
+          출석 처리 중...
+        </Typography>
+        <Typography variant="body2" color="inherit" sx={{ opacity: 0.8 }}>
+          잠시만 기다려주세요
+        </Typography>
+      </Backdrop>
 
       {/* 스캐너 다이얼로그 */}
       <Dialog open={scannerDialog} onClose={handleCloseScannerDialog} maxWidth="sm" fullWidth>
