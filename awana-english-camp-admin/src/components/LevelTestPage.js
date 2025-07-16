@@ -70,26 +70,26 @@ const LevelTestPage = () => {
 
   // 질문 데이터
   const questions = [
-    // Easy Questions (1-5 points)
-    { id: 1, question: "What is your name?", difficulty: "easy", points: [1, 2, 3, 4, 5] },
-    { id: 2, question: "What is your favorite color?", difficulty: "easy", points: [1, 2, 3, 4, 5] },
-    { id: 3, question: "What is your favorite animal?", difficulty: "easy", points: [1, 2, 3, 4, 5] },
-    { id: 4, question: "What is your favorite food?", difficulty: "easy", points: [1, 2, 3, 4, 5] },
-    { id: 5, question: "Do you know Jesus in your heart?", difficulty: "easy", points: [1, 2, 3, 4, 5] },
+    // Easy Questions (0, 1-5 points)
+    { id: 1, question: "What is your name?", difficulty: "easy", points: [0, 1, 2, 3, 4, 5] },
+    { id: 2, question: "What is your favorite color?", difficulty: "easy", points: [0, 1, 2, 3, 4, 5] },
+    { id: 3, question: "What is your favorite animal?", difficulty: "easy", points: [0, 1, 2, 3, 4, 5] },
+    { id: 4, question: "What is your favorite food?", difficulty: "easy", points: [0, 1, 2, 3, 4, 5] },
+    { id: 5, question: "Do you know Jesus in your heart?", difficulty: "easy", points: [0, 1, 2, 3, 4, 5] },
     
-    // Medium Questions (2-6 points)
-    { id: 6, question: "Do you have any siblings?", difficulty: "medium", points: [2, 3, 4, 5, 6] },
-    { id: 7, question: "What is your favorite subject in school?", difficulty: "medium", points: [2, 3, 4, 5, 6] },
-    { id: 8, question: "What is your favorite thing to do?", difficulty: "medium", points: [2, 3, 4, 5, 6] },
-    { id: 9, question: "What is your favorite holiday?", difficulty: "medium", points: [2, 3, 4, 5, 6] },
-    { id: 10, question: "What is your favorite season?", difficulty: "medium", points: [2, 3, 4, 5, 6] },
+    // Medium Questions (0, 2-6 points)
+    { id: 6, question: "Do you have any siblings?", difficulty: "medium", points: [0, 2, 3, 4, 5, 6] },
+    { id: 7, question: "What is your favorite subject in school?", difficulty: "medium", points: [0, 2, 3, 4, 5, 6] },
+    { id: 8, question: "What is your favorite thing to do?", difficulty: "medium", points: [0, 2, 3, 4, 5, 6] },
+    { id: 9, question: "What is your favorite holiday?", difficulty: "medium", points: [0, 2, 3, 4, 5, 6] },
+    { id: 10, question: "What is your favorite season?", difficulty: "medium", points: [0, 2, 3, 4, 5, 6] },
     
-    // Hard Questions (3-7 points)
-    { id: 11, question: "What do you want to be when you grow up?", difficulty: "hard", points: [3, 4, 5, 6, 7] },
-    { id: 12, question: "Tell me about your family", difficulty: "hard", points: [3, 4, 5, 6, 7] },
-    { id: 13, question: "Tell me about your favorite vacation", difficulty: "hard", points: [3, 4, 5, 6, 7] },
-    { id: 14, question: "If you could have any superpower what would it be?", difficulty: "hard", points: [3, 4, 5, 6, 7] },
-    { id: 15, question: "What is your favorite part of church?", difficulty: "hard", points: [3, 4, 5, 6, 7] }
+    // Hard Questions (0, 3-7 points)
+    { id: 11, question: "What do you want to be when you grow up?", difficulty: "hard", points: [0, 3, 4, 5, 6, 7] },
+    { id: 12, question: "Tell me about your family", difficulty: "hard", points: [0, 3, 4, 5, 6, 7] },
+    { id: 13, question: "Tell me about your favorite vacation", difficulty: "hard", points: [0, 3, 4, 5, 6, 7] },
+    { id: 14, question: "If you could have any superpower what would it be?", difficulty: "hard", points: [0, 3, 4, 5, 6, 7] },
+    { id: 15, question: "What is your favorite part of church?", difficulty: "hard", points: [0, 3, 4, 5, 6, 7] }
   ];
 
   useEffect(() => {
@@ -438,7 +438,11 @@ const LevelTestPage = () => {
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
             There are 15 questions divided into 3 difficulty levels.
             <br />
-            Easy (1-5 points) • Medium (2-6 points) • Hard (3-7 points)
+            Easy (0, 1-5 points) • Medium (0, 2-6 points) • Hard (0, 3-7 points)
+            <br />
+            <span style={{ color: '#f57c00', fontWeight: 'bold', fontSize: '14px' }}>
+              ⭐ 0 points = No response or completely silent
+            </span>
           </Typography>
           
           <Button
@@ -496,9 +500,9 @@ const LevelTestPage = () => {
                 ))}
               </Stack>
               <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                {questions[currentQuestion].difficulty === 'easy' && "1 = No response, 3 = Basic answer, 5 = Clear answer"}
-                {questions[currentQuestion].difficulty === 'medium' && "2 = Poor response, 4 = Good answer, 6 = Excellent answer"}
-                {questions[currentQuestion].difficulty === 'hard' && "3 = Minimal response, 5 = Detailed answer, 7 = Outstanding response"}
+                {questions[currentQuestion].difficulty === 'easy' && "0 = No response, 1 = Very poor, 3 = Basic answer, 5 = Clear answer"}
+                {questions[currentQuestion].difficulty === 'medium' && "0 = No response, 2 = Poor response, 4 = Good answer, 6 = Excellent answer"}
+                {questions[currentQuestion].difficulty === 'hard' && "0 = No response, 3 = Minimal response, 5 = Detailed answer, 7 = Outstanding response"}
               </Typography>
             </Box>
 
