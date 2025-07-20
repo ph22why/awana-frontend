@@ -1410,10 +1410,13 @@ app.post('/init-item-distribution', (req, res) => {
 app.get('/item-distribution/progress', (req, res) => {
   console.log('📊 Fetching item distribution progress...');
   
-  // 전체 학생 수와 물품 수령 완료 수 조회
+  // 전체 학생 수(출석체크 기준)와 물품 수령 완료 수 조회
   const sql = `
     SELECT 
-      (SELECT COUNT(*) FROM students) as total_students,
+      (SELECT COUNT(DISTINCT user_id) 
+       FROM session_attendance 
+       WHERE user_type = 'student' 
+       AND session_id = 'session1') as total_students,
       (SELECT COUNT(*) FROM item_distribution) as completed_count
   `;
   
@@ -1527,7 +1530,8 @@ app.get('/item-distribution/completed', (req, res) => {
       s.englishName,
       s.churchName,
       s.studentGroup,
-      s.team
+      s.team,
+      s.student_id as student_code
     FROM item_distribution id
     JOIN students s ON id.student_id = s.id
     ORDER BY id.distributed_at DESC

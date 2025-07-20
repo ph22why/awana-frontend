@@ -1,18 +1,50 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
-  Container, Paper, Typography, Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Stack, Switch, FormControlLabel, CircularProgress, Toolbar, AppBar, IconButton, Alert
+  Container,
+  Paper,
+  Typography,
+  Box,
+  TextField,
+  Button,
+  Grid,
+  Toolbar,
+  AppBar,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Chip,
+  FormControlLabel,
+  Switch,
+  InputAdornment,
+  CircularProgress,
+  Alert
 } from '@mui/material';
-import { ArrowBack, Inventory, CheckCircle, Cancel } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import { BACKEND_URL } from '../config';
+import {
+  Home,
+  Search,
+  Inventory,
+  CheckCircle,
+  Cancel
+} from '@mui/icons-material';
+import { BACKEND_URL } from "../config";
 
 const ItemDistributionListPage = () => {
   const [students, setStudents] = useState([]);
-  const [distributedMap, setDistributedMap] = useState({}); // { student_id: distributed_at }
   const [loading, setLoading] = useState(true);
-  const [showUndistributedOnly, setShowUndistributedOnly] = useState(false);
-  const [alert, setAlert] = useState(null);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showOnlyPending, setShowOnlyPending] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,116 +52,215 @@ const ItemDistributionListPage = () => {
   }, []);
 
   const fetchData = async () => {
-    setLoading(true);
     try {
-      // Fetch all students
-      const studentsRes = await axios.get(`${BACKEND_URL}/admin/students?limit=all`);
-      const studentsData = studentsRes.data.data || [];
-      // Fetch all distributed
-      const distributedRes = await axios.get(`${BACKEND_URL}/item-distribution/completed`);
-      const distributedList = distributedRes.data || [];
-      // Map student_id to distributed_at
-      const distributed = {};
-      distributedList.forEach(item => {
-        distributed[item.student_id] = item.distributed_at;
-      });
-      setStudents(studentsData);
-      setDistributedMap(distributed);
+      setLoading(true);
+      setError(null);
+
+      // 전체 학생 목록 조회 (출석체크 테이블 기준)
+      const studentsResponse = await axios.get(`${BACKEND_URL}/attendance/session1?userTypes=student`);
+      const allStudents = studentsResponse.data;
+      
+      // 물품 수령 완료 학생 조회
+      const completedResponse = await axios.get(`${BACKEND_URL}/item-distribution/completed`);
+      const completedStudents = new Set(completedResponse.data.map(item => item.student_id));
+      
+      // 학생 데이터와 물품 수령 상태 결합
+      const studentsWithStatus = allStudents.map(student => ({
+        ...student,
+        hasReceivedItems: completedStudents.has(student.id)
+      }));
+
+      setStudents(studentsWithStatus);
+      setTotalStudents(studentsWithStatus.length);
+      setCompletedCount(completedStudents.size);
       setLoading(false);
     } catch (err) {
-      setAlert({ type: 'error', message: '데이터를 불러오는 중 오류가 발생했습니다.' });
+      console.error('Error fetching data:', err);
+      setError('데이터를 불러오는데 실패했습니다.');
       setLoading(false);
     }
   };
 
-  const filteredStudents = showUndistributedOnly
-    ? students.filter(stu => !distributedMap[stu.id])
-    : students;
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+    setPage(0);
+  };
+
+  const handleShowPendingChange = (event) => {
+    setShowOnlyPending(event.target.checked);
+    setPage(0);
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const filteredStudents = students.filter(student => {
+    const matchesSearch = 
+      (student.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (student.englishName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (student.churchName || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (showOnlyPending) {
+      return matchesSearch && !student.hasReceivedItems;
+    }
+    return matchesSearch;
+  });
+
+  const progressPercentage = totalStudents > 0 ? (completedCount / totalStudents) * 100 : 0;
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }}>
+      {/* Header */}
       <AppBar position="static" elevation={0} sx={{ mb: 3, borderRadius: 2 }}>
         <Toolbar>
-          <IconButton edge="start" color="inherit" onClick={() => navigate(-1)} sx={{ mr: 2 }}>
-            <ArrowBack />
+          <IconButton
+            edge="start"
+            color="inherit"
+            onClick={() => navigate("/")}
+            sx={{ mr: 2 }}
+          >
+            <Home />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             <Inventory sx={{ mr: 1, verticalAlign: 'middle' }} />
-            전체 학생 물품 수령 현황
+            물품 수령 전체 현황
           </Typography>
+          <Button
+            color="inherit"
+            onClick={() => navigate("/item-distribution")}
+            sx={{ mr: 2 }}
+          >
+            QR 스캔으로 돌아가기
+          </Button>
+          <Chip 
+            label={`진행률 ${Math.round(progressPercentage)}%`}
+            color="secondary"
+            variant="outlined"
+            sx={{ color: 'white', borderColor: 'white' }}
+          />
         </Toolbar>
       </AppBar>
-      {alert && (
-        <Alert severity={alert.type} sx={{ mb: 2 }}>{alert.message}</Alert>
+
+      {/* Progress Summary */}
+      <Paper elevation={3} sx={{ p: 3, mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+        <Grid container spacing={3} alignItems="center">
+          <Grid item xs={12} md={8}>
+            <Typography variant="h5" gutterBottom>
+              물품 수령 진행 상황
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              전체 학생 {totalStudents}명 중 {completedCount}명 완료 ({Math.round(progressPercentage)}%)
+            </Typography>
+            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+              미수령 학생: {totalStudents - completedCount}명
+            </Typography>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Filters */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              placeholder="이름, 영문명, 또는 교회로 검색"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={showOnlyPending}
+                  onChange={handleShowPendingChange}
+                  color="primary"
+                />
+              }
+              label="미수령 학생만 보기"
+            />
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
       )}
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-          <Typography variant="h6">
-            전체 학생 목록 ({filteredStudents.length}명)
-          </Typography>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={showUndistributedOnly}
-                onChange={e => setShowUndistributedOnly(e.target.checked)}
-                color="warning"
-              />
-            }
-            label={<Typography variant="body2">🔍 미수령자만 보기</Typography>}
-          />
-        </Stack>
-        {loading ? (
-          <Box sx={{ textAlign: 'center', py: 6 }}>
-            <CircularProgress />
-            <Typography variant="body2" sx={{ mt: 2 }}>데이터 로딩 중...</Typography>
-          </Box>
-        ) : (
-          <TableContainer sx={{ maxHeight: 600 }}>
-            <Table stickyHeader size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>이름</TableCell>
-                  <TableCell>교회</TableCell>
-                  <TableCell>옷사이즈</TableCell>
-                  <TableCell>조/그룹</TableCell>
-                  <TableCell>수령상태</TableCell>
-                  <TableCell>수령시간</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredStudents.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} sx={{ textAlign: 'center', py: 4 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {showUndistributedOnly ? '🎉 모든 학생이 물품을 수령했습니다!' : '대상자가 없습니다.'}
-                      </Typography>
+
+      {/* Student List */}
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>이름</TableCell>
+              <TableCell>영문명</TableCell>
+              <TableCell>교회</TableCell>
+              <TableCell>물품 수령 상태</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={4} align="center">
+                  <CircularProgress />
+                </TableCell>
+              </TableRow>
+            ) : filteredStudents
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((student) => (
+                  <TableRow key={student.id}>
+                    <TableCell>{student.name || student.koreanName}</TableCell>
+                    <TableCell>{student.englishName}</TableCell>
+                    <TableCell>{student.churchName}</TableCell>
+                    <TableCell>
+                      {student.hasReceivedItems ? (
+                        <Chip
+                          icon={<CheckCircle />}
+                          label="수령 완료"
+                          color="success"
+                          variant="outlined"
+                        />
+                      ) : (
+                        <Chip
+                          icon={<Cancel />}
+                          label="미수령"
+                          color="error"
+                          variant="outlined"
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filteredStudents.map(stu => (
-                    <TableRow key={stu.id}>
-                      <TableCell>{stu.koreanName} {stu.englishName && `(${stu.englishName})`}</TableCell>
-                      <TableCell>{stu.churchName}</TableCell>
-                      <TableCell>{stu.shirtSize}</TableCell>
-                      <TableCell>{stu.studentGroup || ''} {stu.team ? `${stu.team}조` : ''}</TableCell>
-                      <TableCell>
-                        {distributedMap[stu.id] ? (
-                          <Chip label="수령" color="success" icon={<CheckCircle />} />
-                        ) : (
-                          <Chip label="미수령" color="default" icon={<Cancel />} />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {distributedMap[stu.id] ? new Date(distributedMap[stu.id]).toLocaleString() : '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
+                ))}
+          </TableBody>
+        </Table>
+        <TablePagination
+          rowsPerPageOptions={[10, 25, 50]}
+          component="div"
+          count={filteredStudents.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          labelRowsPerPage="페이지당 행 수:"
+        />
+      </TableContainer>
     </Container>
   );
 };

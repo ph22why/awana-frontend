@@ -20,7 +20,7 @@ function App() {
         <Route path='/attendance' element={<AttendancePage />} />
         <Route path='/level-test' element={<LevelTestPage />} />
         <Route path='/item-distribution' element={<ItemDistributionPage />} />
-        <Route path='/item-distribution/list' element={<ItemDistributionListPage />} />
+        <Route path='/item-distribution-list' element={<ItemDistributionListPage />} />
       </Routes>
     </Router>
     </ThemeProvider>
