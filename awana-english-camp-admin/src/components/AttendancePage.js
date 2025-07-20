@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Webcam from "react-webcam";
 import { BrowserMultiFormatReader } from '@zxing/library';
+import PinAuthDialog from './PinAuthDialog';
 import {
   Container,
   Paper,
@@ -66,6 +67,7 @@ const AttendancePage = () => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showAbsentOnly, setShowAbsentOnly] = useState(false);
+  const [isPinVerified, setIsPinVerified] = useState(false);
   const webcamRef = useRef(null);
   const codeReader = useRef(null);
   const barcodeInputRef = useRef(null);
@@ -124,6 +126,9 @@ const AttendancePage = () => {
   };
 
   useEffect(() => {
+    // PIN이 확인되지 않았으면 다른 작업을 하지 않음
+    if (!isPinVerified) return;
+
     if (useCameraScanner && scannerDialog) {
       startCameraScanner();
     }
@@ -135,7 +140,7 @@ const AttendancePage = () => {
         clearTimeout(scanTimeoutRef.current);
       }
     };
-  }, [useCameraScanner, scannerDialog]);
+  }, [useCameraScanner, scannerDialog, isPinVerified]); // Add isPinVerified to dependencies
 
   // PC 바코드 스캐너를 위한 키보드 이벤트 리스너 (최적화)
   useEffect(() => {
@@ -457,6 +462,23 @@ const AttendancePage = () => {
       setUseCameraScanner(true);
     }
   };
+
+  const handlePinSuccess = () => {
+    setIsPinVerified(true);
+  };
+
+  // PIN이 확인되지 않았으면 PIN 입력 다이얼로그만 표시
+  if (!isPinVerified) {
+    return (
+      <PinAuthDialog
+        open={true}
+        onClose={() => navigate('/')}
+        onSuccess={handlePinSuccess}
+        requiredPin="0000"
+        title="출석 관리 인증"
+      />
+    );
+  }
 
   return (
     <Container maxWidth="xl" sx={{ py: 3 }}>

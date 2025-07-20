@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import PinAuthDialog from './PinAuthDialog';
 import {
   Container,
   Paper,
@@ -45,9 +46,13 @@ const ItemDistributionListPage = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalStudents, setTotalStudents] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
+  const [isPinVerified, setIsPinVerified] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
+    // PIN이 확인되지 않았으면 다른 작업을 하지 않음
+    if (!isPinVerified) return;
+    
     // 초기화 API 호출
     const initializeSystem = async () => {
       try {
@@ -60,7 +65,24 @@ const ItemDistributionListPage = () => {
     };
     
     initializeSystem();
-  }, []);
+  }, [isPinVerified]); // Add isPinVerified to dependencies
+
+  const handlePinSuccess = () => {
+    setIsPinVerified(true);
+  };
+
+  // PIN이 확인되지 않았으면 PIN 입력 다이얼로그만 표시
+  if (!isPinVerified) {
+    return (
+      <PinAuthDialog
+        open={true}
+        onClose={() => navigate('/')}
+        onSuccess={handlePinSuccess}
+        requiredPin="6790"
+        title="물품 수령 현황 인증"
+      />
+    );
+  }
 
   const fetchData = async () => {
     try {

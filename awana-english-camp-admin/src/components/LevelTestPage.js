@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Webcam from "react-webcam";
 import { BrowserMultiFormatReader } from '@zxing/library';
+import PinAuthDialog from './PinAuthDialog';
 import {
   Container,
   Paper,
@@ -62,6 +63,7 @@ const LevelTestPage = () => {
   const [testCompleted, setTestCompleted] = useState(false);
   const [useCameraScanner, setUseCameraScanner] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [isPinVerified, setIsPinVerified] = useState(false);
   const webcamRef = useRef(null);
   const codeReader = useRef(null);
   const navigate = useNavigate();
@@ -93,6 +95,9 @@ const LevelTestPage = () => {
   ];
 
   useEffect(() => {
+    // PIN이 확인되지 않았으면 다른 작업을 하지 않음
+    if (!isPinVerified) return;
+    
     if (useCameraScanner && scannerDialog) {
       startCameraScanner();
     }
@@ -101,7 +106,7 @@ const LevelTestPage = () => {
         codeReader.current.reset();
       }
     };
-  }, [useCameraScanner, scannerDialog]);
+  }, [useCameraScanner, scannerDialog, isPinVerified]); // Add isPinVerified to dependencies
 
   const showAlert = (message, severity = "success") => {
     setAlertMessage(message);
@@ -289,6 +294,23 @@ const LevelTestPage = () => {
       codeReader.current.reset();
     }
   };
+
+  const handlePinSuccess = () => {
+    setIsPinVerified(true);
+  };
+
+  // PIN이 확인되지 않았으면 PIN 입력 다이얼로그만 표시
+  if (!isPinVerified) {
+    return (
+      <PinAuthDialog
+        open={true}
+        onClose={() => navigate('/')}
+        onSuccess={handlePinSuccess}
+        requiredPin="0422"
+        title="레벨 테스트 인증"
+      />
+    );
+  }
 
   const progress = testStarted ? ((currentQuestion + 1) / questions.length) * 100 : 0;
 

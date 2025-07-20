@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Webcam from "react-webcam";
 import { BrowserMultiFormatReader } from '@zxing/library';
+import PinAuthDialog from './PinAuthDialog';
 import {
   Container,
   Paper,
@@ -57,8 +58,12 @@ const ItemDistributionPage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [isPinVerified, setIsPinVerified] = useState(false);
 
   useEffect(() => {
+    // PIN이 확인되지 않았으면 다른 작업을 하지 않음
+    if (!isPinVerified) return;
+    
     // 초기화 API 호출
     const initializeSystem = async () => {
       try {
@@ -71,7 +76,7 @@ const ItemDistributionPage = () => {
     };
     
     initializeSystem();
-  }, []);
+  }, [isPinVerified]); // Add isPinVerified to dependencies
 
   useEffect(() => {
     if (useCameraScanner && scannerDialog) {
@@ -265,6 +270,23 @@ const ItemDistributionPage = () => {
   };
 
   const progressPercentage = totalStudents > 0 ? (completedCount / totalStudents) * 100 : 0;
+
+  const handlePinSuccess = () => {
+    setIsPinVerified(true);
+  };
+
+  // PIN이 확인되지 않았으면 PIN 입력 다이얼로그만 표시
+  if (!isPinVerified) {
+    return (
+      <PinAuthDialog
+        open={true}
+        onClose={() => navigate('/')}
+        onSuccess={handlePinSuccess}
+        requiredPin="6790"
+        title="물품 수령 관리 인증"
+      />
+    );
+  }
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }}>
