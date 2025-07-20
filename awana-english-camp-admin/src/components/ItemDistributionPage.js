@@ -347,6 +347,16 @@ const ItemDistributionPage = () => {
             </Typography>
           </Grid>
         </Grid>
+        <Box sx={{ textAlign: 'right', mt: 2 }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={() => navigate('/item-distribution/list')}
+            startIcon={<Inventory />}
+          >
+            전체 수령 현황 보기
+          </Button>
+        </Box>
       </Paper>
 
       {/* Student Info Card */}
