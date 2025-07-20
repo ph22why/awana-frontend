@@ -59,7 +59,18 @@ const ItemDistributionPage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   useEffect(() => {
-    fetchProgressData();
+    // 초기화 API 호출
+    const initializeSystem = async () => {
+      try {
+        await axios.post(`${BACKEND_URL}/init-item-distribution`);
+        console.log('✅ Item distribution system initialized');
+      } catch (error) {
+        console.error('Error initializing system:', error);
+      }
+      fetchProgressData();
+    };
+    
+    initializeSystem();
   }, []);
 
   useEffect(() => {

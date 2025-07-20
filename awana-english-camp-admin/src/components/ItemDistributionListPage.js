@@ -48,7 +48,18 @@ const ItemDistributionListPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchData();
+    // 초기화 API 호출
+    const initializeSystem = async () => {
+      try {
+        await axios.post(`${BACKEND_URL}/init-item-distribution`);
+        console.log('✅ Item distribution system initialized');
+      } catch (error) {
+        console.error('Error initializing system:', error);
+      }
+      fetchData();
+    };
+    
+    initializeSystem();
   }, []);
 
   const fetchData = async () => {
