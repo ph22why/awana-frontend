@@ -62,7 +62,7 @@ const ItemDistributionPage = () => {
     // 초기화 API 호출
     const initializeSystem = async () => {
       try {
-        await axios.post(`${BACKEND_URL}/api/init-item-distribution`);
+        await axios.post(`${BACKEND_URL}/init-item-distribution`);
         console.log('✅ Item distribution system initialized');
       } catch (error) {
         console.error('Error initializing system:', error);
@@ -87,12 +87,12 @@ const ItemDistributionPage = () => {
   const fetchProgressData = async () => {
     try {
       // 전체 학생 수 조회 (출석체크 테이블 기준)
-      const studentsResponse = await axios.get(`${BACKEND_URL}/api/attendance/session1?userTypes=student`);
+      const studentsResponse = await axios.get(`${BACKEND_URL}/attendance/session1?userTypes=student`);
       const totalStudents = studentsResponse.data.length;
       setTotalStudents(totalStudents);
       
       // 물품 수령 완료 학생 조회
-      const completedResponse = await axios.get(`${BACKEND_URL}/api/item-distribution/completed`);
+      const completedResponse = await axios.get(`${BACKEND_URL}/item-distribution/completed`);
       const completedStudents = completedResponse.data;
       setCompletedCount(completedStudents.length);
       setDistributedItems(new Set(completedStudents.map(item => item.student_id)));
@@ -132,7 +132,7 @@ const ItemDistributionPage = () => {
         studentId = studentId.split('userId=')[1].split('&')[0];
       }
 
-      const response = await axios.get(`${BACKEND_URL}/api/user/${studentId}`);
+      const response = await axios.get(`${BACKEND_URL}/user/${studentId}`);
       
       if (response.data && response.data.length > 0) {
         const studentData = response.data[0];
@@ -154,7 +154,7 @@ const ItemDistributionPage = () => {
 
     try {
       // DB에 물품 수령 완료 기록
-      const response = await axios.post(`${BACKEND_URL}/api/item-distribution/complete`, {
+      const response = await axios.post(`${BACKEND_URL}/item-distribution/complete`, {
         studentId: student.id
       });
 
