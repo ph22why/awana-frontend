@@ -1312,12 +1312,13 @@ app.get('/level-test/completed', (req, res) => {
 function redistributeStudentsByLevel(callback) {
   console.log('🔄 Redistributing students based on level test scores...');
   
-  // Get all students with level test scores, ordered by score
+  // Get all students with level test scores, ordered by total score (highest first)
   const getStudentsWithScoresSql = `
     SELECT 
       s.id,
       s.koreanName,
       s.englishName,
+      s.studentGroup as currentGroup,
       lt.total_score,
       lt.percentage
     FROM students s
@@ -1338,40 +1339,69 @@ function redistributeStudentsByLevel(callback) {
       return;
     }
     
-    // Group assignment logic - corrected for proper level distribution
+    console.log(`📊 Starting redistribution for ${students.length} students by global ranking...`);
+    
     const groups = ['KNOW', 'LOVE', 'SERVE', 'GLORY', 'HOLY', 'GRACE', 'HOPE'];
     const teams = [1, 2, 3, 4, 5];
     const totalStudents = students.length;
-    const studentsPerTeam = Math.ceil(totalStudents / teams.length); // 각 조당 학생 수
+    
+    // Calculate students per team (20% each)
+    const studentsPerTeam = Math.ceil(totalStudents / teams.length);
     
     const updates = [];
     
-    students.forEach((student, index) => {
-      // Calculate team based on overall ranking percentile
+    students.forEach((student, globalIndex) => {
+      // Calculate team based on global ranking percentile
       // Top 20% go to team 1, next 20% to team 2, etc.
-      const teamIndex = Math.floor(index / studentsPerTeam);
+      const teamIndex = Math.floor(globalIndex / studentsPerTeam);
       const assignedTeam = Math.min(teamIndex + 1, teams.length); // 1~5조
       
-      // Within each team level, distribute across groups evenly
-      const positionInTeam = index % studentsPerTeam;
+      // Calculate global percentile
+      const globalPercentile = Math.round((globalIndex / totalStudents) * 100);
+      const percentileRange = teamIndex * 20;
+      
+      // Within the same team, distribute across groups cyclically
+      // This ensures even distribution of groups within each team
+      const positionInTeam = globalIndex % studentsPerTeam;
       const groupIndex = positionInTeam % groups.length;
       const assignedGroup = groups[groupIndex];
       
       updates.push([assignedGroup, assignedTeam, student.id]);
       
-      console.log(`📊 Student ${student.koreanName} (Rank: ${index + 1}/${totalStudents}, Score: ${student.total_score}) -> ${assignedGroup} Team ${assignedTeam}`);
+      console.log(`📊 Global Rank ${globalIndex + 1}/${totalStudents} - ${student.koreanName} (Score: ${student.total_score}, ${globalPercentile}th percentile) -> ${assignedGroup} Team ${assignedTeam} (${percentileRange}-${Math.min(percentileRange + 20, 100)}%)`);
     });
     
     if (updates.length === 0) {
+      console.log('No updates needed');
       if (callback) callback();
       return;
     }
+    
+    // Log team and group distribution
+    const teamDistribution = {};
+    const groupTeamDistribution = {};
+    
+    updates.forEach(([group, team, studentId]) => {
+      // Count by team
+      if (!teamDistribution[team]) teamDistribution[team] = 0;
+      teamDistribution[team]++;
+      
+      // Count by group-team combination
+      const key = `${group}-Team${team}`;
+      if (!groupTeamDistribution[key]) groupTeamDistribution[key] = 0;
+      groupTeamDistribution[key]++;
+    });
+    
+    console.log('📈 Team distribution (based on global ranking):', teamDistribution);
+    console.log('📈 Group-Team distribution:', groupTeamDistribution);
     
     // Batch update students
     const updateSql = 'UPDATE students SET studentGroup = ?, team = ? WHERE id = ?';
     
     let completed = 0;
     let hasError = false;
+    
+    console.log(`🔄 Updating ${updates.length} students...`);
     
     updates.forEach(update => {
       db.query(updateSql, update, (err, result) => {
@@ -1386,7 +1416,9 @@ function redistributeStudentsByLevel(callback) {
         
         if (completed === updates.length && !hasError) {
           console.log(`✅ Successfully redistributed ${updates.length} students based on level test scores`);
-          console.log(`📈 Team distribution: Team 1 (Top ${Math.round(100/teams.length)}%) = ${Math.min(studentsPerTeam, totalStudents)} students per team`);
+          console.log('🎯 Logic: Global top 20% -> Team 1, 21-40% -> Team 2, etc.');
+          console.log('🎯 Groups are distributed cyclically within each team for separation');
+          console.log('⚠️ Note: When new students take level tests, existing students may be reassigned to different teams');
           if (callback) callback();
         }
       });
