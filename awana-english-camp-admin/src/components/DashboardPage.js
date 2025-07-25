@@ -101,31 +101,32 @@ const DashboardPage = () => {
   };
 
   // 7그룹 * 5조 = 35개 조 생성
-  const groups = Array.from({ length: 7 }, (_, i) => i + 1);
+  const groups = ['KNOW', 'LOVE', 'SERVE', 'GLORY', 'HOLY', 'GRACE', 'HOPE']; // 문자열로 직접 사용
   const teams = Array.from({ length: 5 }, (_, i) => i + 1);
 
-  // 백엔드 그룹명과 매핑
+  // 백엔드 그룹명과 매핑 (더 이상 필요 없지만 getGroupDisplayName을 위해 유지)
   const groupMapping = {
-    1: 'KNOW',
-    2: 'LOVE', 
-    3: 'SERVE',
-    4: 'GLORY',
-    5: 'HOLY',
-    6: 'GRACE',
-    7: 'HOPE'
+    'KNOW': 'KNOW',
+    'LOVE': 'LOVE', 
+    'SERVE': 'SERVE',
+    'GLORY': 'GLORY',
+    'HOLY': 'HOLY',
+    'GRACE': 'GRACE',
+    'HOPE': 'HOPE'
   };
 
-  const getGroupDisplayName = (groupNumber) => {
-    const groupNames = {
-      1: 'KNOW',
-      2: 'LOVE', 
-      3: 'SERVE',
-      4: 'GLORY',
-      5: 'HOLY',
-      6: 'GRACE',
-      7: 'HOPE'
+  const getGroupDisplayName = (groupName) => {
+    const groupNumbers = {
+      'KNOW': 1,
+      'LOVE': 2, 
+      'SERVE': 3,
+      'GLORY': 4,
+      'HOLY': 5,
+      'GRACE': 6,
+      'HOPE': 7
     };
-    return `${groupNumber}그룹 (${groupNames[groupNumber]})`;
+    const groupNumber = groupNumbers[groupName] || 0;
+    return `${groupNumber}그룹 (${groupName})`;
   };
 
   useEffect(() => {
@@ -194,12 +195,60 @@ const DashboardPage = () => {
         // 그룹-조별로 데이터 분류
         const groupedData = {};
         
+        // 먼저 전체 데이터 샘플 확인 (디버깅)
+        if (students.length > 0) {
+          console.log('📋 Sample student data:', students[0]);
+          console.log('📋 Student fields:', Object.keys(students[0]));
+        }
+        
+        // 실제 그룹-조 조합 확인
+        const actualCombinations = {};
+        students.forEach(student => {
+          const group = student.studentGroup;
+          const team = student.team;
+          const key = `${group}-${team}`;
+          
+          if (!actualCombinations[key]) {
+            actualCombinations[key] = 0;
+          }
+          actualCombinations[key]++;
+        });
+        console.log('🎯 Actual group-team combinations in data:', actualCombinations);
+        
         groups.forEach(group => {
           teams.forEach(team => {
             const key = `${group}-${team}`;
-            const studentsInTeam = students.filter(student => 
-              student.studentGroup === groupMapping[group] && student.team === team
-            );
+            
+            // 여러 방식으로 필터링 시도
+            const studentsInTeam = students.filter(student => {
+              // 방법 1: 직접 매칭
+              const groupMatch1 = student.studentGroup === group;
+              const teamMatch1 = student.team === team;
+              
+              // 방법 2: 문자열 매칭
+              const groupMatch2 = student.studentGroup === group;
+              const teamMatch2 = String(student.team) === String(team);
+              
+              // 방법 3: 숫자 매칭
+              const groupMatch3 = student.studentGroup === group;
+              const teamMatch3 = Number(student.team) === Number(team);
+              
+              const finalMatch = groupMatch1 && (teamMatch1 || teamMatch2 || teamMatch3);
+              
+              // 첫 번째 매칭되는 학생에 대해 디버깅 로그
+              if (finalMatch && groupedData[key] === undefined) {
+                console.log(`🎯 First match for ${key}:`, {
+                  student: student.name || student.koreanName,
+                  studentGroup: student.studentGroup,
+                  team: student.team,
+                  groupMapping: group,
+                  teamTarget: team,
+                  attended: student.attended
+                });
+              }
+              
+              return finalMatch;
+            });
             
             // attended 필드는 1/0 또는 true/false로 올 수 있으므로 양쪽 다 체크
             const attendedCount = studentsInTeam.filter(s => s.attended === 1 || s.attended === true).length;
@@ -210,10 +259,8 @@ const DashboardPage = () => {
               students: studentsInTeam
             };
             
-            // 각 조별 상세 로그 (빈 조는 제외)
-            if (studentsInTeam.length > 0) {
-              console.log(`👥 ${groupMapping[group]}-${team}조: ${attendedCount}/${studentsInTeam.length} 출석`);
-            }
+            // 모든 조별 상세 로그 (빈 조도 포함)
+            console.log(`👥 ${group}-${team}조: ${attendedCount}/${studentsInTeam.length} 출석 (key: ${key})`);
           });
         });
         
@@ -243,7 +290,7 @@ const DashboardPage = () => {
           teams.forEach(team => {
             const key = `${group}-${team}`;
             const studentsInTeam = allStudents.filter(student => 
-              student.studentGroup === groupMapping[group] && student.team === team
+              student.studentGroup === group && student.team === team
             );
             
             groupedData[key] = {
