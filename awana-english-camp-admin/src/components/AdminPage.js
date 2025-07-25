@@ -231,17 +231,51 @@ const AdminPage = () => {
     try {
       showAlert("조-그룹별 엑셀을 생성 중입니다...", "info");
       
-      // 전체 학생 데이터 조회 - 더 안전한 방식으로 변경
-      const response = await axios.get(`${BACKEND_URL}/attendance/session1`, {
-        params: { userTypes: 'student' }
-      });
+      // 전체 학생 데이터 조회 - 여러 세션을 시도해서 가장 많은 데이터를 가져오기
+      let allStudents = [];
       
-      let allStudents = response.data || [];
-
+      // 다양한 세션에서 학생 데이터 시도
+      const sessionsToTry = ['session1', 'day1_interview', 'day2_qt'];
+      
+      for (const session of sessionsToTry) {
+        try {
+          console.log(`👥 Trying to fetch students from ${session}...`);
+          const response = await axios.get(`${BACKEND_URL}/attendance/${session}`, {
+            params: { userTypes: 'student' }
+          });
+          
+          const students = response.data || [];
+          console.log(`✅ Found ${students.length} students in ${session}`);
+          
+          if (students.length > allStudents.length) {
+            allStudents = students;
+            console.log(`📊 Using ${session} as data source (${students.length} students)`);
+          }
+        } catch (error) {
+          console.log(`⚠️ Failed to fetch from ${session}:`, error.message);
+        }
+      }
+      
       if (allStudents.length === 0) {
-        showAlert("다운로드할 학생 데이터가 없습니다.", "warning");
+        showAlert("다운로드할 학생 데이터가 없습니다. 학생이 등록되어 있는지 확인해주세요.", "warning");
         return;
       }
+      
+      console.log(`📋 Total students found: ${allStudents.length}`);
+      
+      // 그룹-조 정보 확인 (디버깅)
+      const groupStats = {};
+      allStudents.forEach(student => {
+        const group = student.studentGroup || '미배정';
+        const team = student.team || '미배정';
+        const key = `${group}-${team}`;
+        
+        if (!groupStats[key]) {
+          groupStats[key] = 0;
+        }
+        groupStats[key]++;
+      });
+      console.log('📊 Current group-team distribution:', groupStats);
 
       // 그룹과 조 정의
       const groups = ['KNOW', 'LOVE', 'SERVE', 'GLORY', 'HOLY', 'GRACE', 'HOPE'];
@@ -250,11 +284,12 @@ const AdminPage = () => {
       // 워크북 생성
       const workbook = XLSX.utils.book_new();
       
-      // 전체 요약 시트 생성
+      // 전체 요약 시트 데이터
       const summaryData = [];
       summaryData.push(['그룹', '조', '학생 수', '학생 명단']);
       
       let totalStudentsAssigned = 0;
+      let sheetsCreated = 0;
       
       // 각 그룹-조별로 시트 생성
       groups.forEach(group => {
@@ -263,29 +298,31 @@ const AdminPage = () => {
           
           // 해당 그룹-조에 속한 학생들 필터링
           const studentsInTeam = allStudents.filter(student => 
-            student.studentGroup === group && student.team === team
+            student.studentGroup === group && 
+            (student.team === team || student.team === `${team}`)
           );
           
-          // 시트 데이터 준비
-          const sheetData = [];
-          sheetData.push(['번호', '한글이름', '영어이름', '교회명', '교회번호', '성별', '옷사이즈', '부모연락처', '특이사항']);
-          
-          studentsInTeam.forEach((student, index) => {
-            sheetData.push([
-              index + 1,
-              student.name || student.koreanName || '',
-              student.englishName || '',
-              student.churchName || '',
-              student.churchNumber || '',
-              student.gender === 'male' ? '남자' : student.gender === 'female' ? '여자' : student.gender || '',
-              student.shirtSize || '',
-              student.parentContact || '',
-              student.healthNotes || ''
-            ]);
-          });
-          
-          // 시트가 비어있지 않은 경우에만 추가
           if (studentsInTeam.length > 0) {
+            console.log(`📝 Creating sheet for ${group}-${team}조: ${studentsInTeam.length} students`);
+            
+            // 시트 데이터 준비
+            const sheetData = [];
+            sheetData.push(['번호', '한글이름', '영어이름', '교회명', '교회번호', '성별', '옷사이즈', '부모연락처', '특이사항']);
+            
+            studentsInTeam.forEach((student, index) => {
+              sheetData.push([
+                index + 1,
+                student.name || student.koreanName || '',
+                student.englishName || '',
+                student.churchName || '',
+                student.churchNumber || '',
+                student.gender === 'male' ? '남자' : student.gender === 'female' ? '여자' : student.gender || '',
+                student.shirtSize || '',
+                student.parentContact || '',
+                student.healthNotes || ''
+              ]);
+            });
+            
             const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
             
             // 열 너비 설정
@@ -303,22 +340,28 @@ const AdminPage = () => {
             
             XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
             totalStudentsAssigned += studentsInTeam.length;
+            sheetsCreated++;
             
             // 요약 데이터에 추가
             const studentNames = studentsInTeam.map(s => s.name || s.koreanName).join(', ');
             summaryData.push([group, `${team}조`, studentsInTeam.length, studentNames]);
+          } else {
+            console.log(`⚪ ${group}-${team}조: 배정된 학생 없음`);
           }
         });
       });
       
       // 그룹-조에 배정되지 않은 학생들 체크
       const unassignedStudents = allStudents.filter(student => 
-        !student.studentGroup || !student.team || 
+        !student.studentGroup || 
+        !student.team || 
         !groups.includes(student.studentGroup) || 
-        !teams.includes(student.team)
+        !teams.includes(parseInt(student.team))
       );
       
       if (unassignedStudents.length > 0) {
+        console.log(`⚠️ Found ${unassignedStudents.length} unassigned students`);
+        
         const sheetData = [];
         sheetData.push(['번호', '한글이름', '영어이름', '교회명', '교회번호', '현재그룹', '현재조', '상태']);
         
@@ -342,16 +385,18 @@ const AdminPage = () => {
         ];
         
         XLSX.utils.book_append_sheet(workbook, worksheet, '미배정학생');
+        sheetsCreated++;
         
         summaryData.push(['미배정', '-', unassignedStudents.length, '그룹-조 미배정 학생들']);
       }
       
-      // 요약 시트를 맨 앞에 추가
+      // 요약 시트 완성
       summaryData.push([]); // 빈 줄
       summaryData.push(['전체 통계', '', '', '']);
       summaryData.push(['총 학생 수', allStudents.length, '', '']);
       summaryData.push(['배정된 학생 수', totalStudentsAssigned, '', '']);
       summaryData.push(['미배정 학생 수', unassignedStudents.length, '', '']);
+      summaryData.push(['생성된 시트 수', sheetsCreated, '', '']);
       
       const summaryWorksheet = XLSX.utils.aoa_to_sheet(summaryData);
       summaryWorksheet['!cols'] = [
@@ -388,11 +433,11 @@ const AdminPage = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
       
-      showAlert(`조-그룹별 엑셀 파일이 생성되었습니다! (총 ${sheetNames.length}개 시트, ${totalStudentsAssigned}명 배정됨)`, "success");
+      showAlert(`조-그룹별 엑셀 파일이 생성되었습니다! (총 ${sheetsCreated}개 시트, ${totalStudentsAssigned}명 배정됨)`, "success");
       
     } catch (error) {
       console.error('Error creating group Excel:', error);
-      showAlert("조-그룹별 엑셀 생성 중 오류가 발생했습니다. 학생 데이터를 확인해주세요.", "error");
+      showAlert(`조-그룹별 엑셀 생성 중 오류가 발생했습니다: ${error.message}`, "error");
     }
   };
 

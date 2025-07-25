@@ -174,6 +174,23 @@ const DashboardPage = () => {
         
         console.log(`✅ Found ${students.length} students for session ${selectedSession.id}`);
         
+        // 출석한 학생 수 확인 (디버깅)
+        const attendedStudents = students.filter(s => s.attended === 1 || s.attended === true);
+        console.log(`📊 Attended students: ${attendedStudents.length}/${students.length}`);
+        
+        // 그룹별 출석 현황 로그
+        const groupAttendance = {};
+        students.forEach(student => {
+          if (!groupAttendance[student.studentGroup]) {
+            groupAttendance[student.studentGroup] = { total: 0, attended: 0 };
+          }
+          groupAttendance[student.studentGroup].total++;
+          if (student.attended === 1 || student.attended === true) {
+            groupAttendance[student.studentGroup].attended++;
+          }
+        });
+        console.log('📈 Group attendance breakdown:', groupAttendance);
+        
         // 그룹-조별로 데이터 분류
         const groupedData = {};
         
@@ -184,11 +201,19 @@ const DashboardPage = () => {
               student.studentGroup === groupMapping[group] && student.team === team
             );
             
+            // attended 필드는 1/0 또는 true/false로 올 수 있으므로 양쪽 다 체크
+            const attendedCount = studentsInTeam.filter(s => s.attended === 1 || s.attended === true).length;
+            
             groupedData[key] = {
               total: studentsInTeam.length,
-              attended: studentsInTeam.filter(s => s.attended).length,
+              attended: attendedCount,
               students: studentsInTeam
             };
+            
+            // 각 조별 상세 로그 (빈 조는 제외)
+            if (studentsInTeam.length > 0) {
+              console.log(`👥 ${groupMapping[group]}-${team}조: ${attendedCount}/${studentsInTeam.length} 출석`);
+            }
           });
         });
         
@@ -262,6 +287,22 @@ const DashboardPage = () => {
     }, 100);
   };
 
+  const handleRefresh = () => {
+    console.log(`🔄 Manual refresh requested for tab ${selectedTab}`);
+    
+    // 즉시 데이터 가져오기
+    if (selectedTab === 1 || (selectedTab === 0 && selectedSession)) {
+      fetchDashboardData();
+    } else if (selectedTab === 0 && !selectedSession) {
+      // 출석 탭인데 세션이 없으면 첫 번째 세션 설정
+      const firstSession = Object.values(studentScheduleData)[0]?.[0];
+      if (firstSession) {
+        setSelectedSession(firstSession);
+        // useEffect에서 자동으로 데이터를 가져올 것임
+      }
+    }
+  };
+
   const getSessionOptions = () => {
     const options = [];
     Object.entries(studentScheduleData).forEach(([day, sessions]) => {
@@ -327,7 +368,7 @@ const DashboardPage = () => {
           <Button
             color="inherit"
             startIcon={<Refresh />}
-            onClick={fetchDashboardData}
+            onClick={handleRefresh}
             disabled={loading}
           >
             새로고침
@@ -470,7 +511,7 @@ const DashboardPage = () => {
       {/* Summary */}
       <Paper elevation={2} sx={{ p: 3, mt: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
         <Typography variant="h6" gutterBottom>
-          전체 현황 요약
+          {selectedTab === 0 ? `출석 현황 요약 ${selectedSession ? `(${selectedSession.name})` : ''}` : '레벨테스트 현황 요약'}
         </Typography>
         <Grid container spacing={3}>
           <Grid item xs={12} md={4}>
@@ -486,10 +527,14 @@ const DashboardPage = () => {
               완료된 조
             </Typography>
             <Typography variant="h4">
-              {selectedTab === 0 
-                ? Object.values(attendanceData).filter(data => data.total > 0 && data.attended === data.total).length
-                : Object.values(levelTestData).filter(data => data.total > 0 && data.completed === data.total).length
-              }개 조
+              {(() => {
+                const data = selectedTab === 0 ? attendanceData : levelTestData;
+                const completedTeams = Object.values(data).filter(teamData => 
+                  teamData && teamData.total > 0 && 
+                  (selectedTab === 0 ? teamData.attended === teamData.total : teamData.completed === teamData.total)
+                ).length;
+                return completedTeams;
+              })()}개 조
             </Typography>
           </Grid>
           <Grid item xs={12} md={4}>
@@ -499,11 +544,45 @@ const DashboardPage = () => {
             <Typography variant="h4">
               {(() => {
                 const data = selectedTab === 0 ? attendanceData : levelTestData;
-                const totalStudents = Object.values(data).reduce((sum, item) => sum + (item.total || 0), 0);
-                const completedStudents = Object.values(data).reduce((sum, item) => 
+                const dataValues = Object.values(data).filter(item => item && item.total > 0);
+                
+                if (dataValues.length === 0) return '0';
+                
+                const totalStudents = dataValues.reduce((sum, item) => sum + item.total, 0);
+                const completedStudents = dataValues.reduce((sum, item) => 
                   sum + (selectedTab === 0 ? (item.attended || 0) : (item.completed || 0)), 0);
+                
                 return totalStudents > 0 ? Math.round((completedStudents / totalStudents) * 100) : 0;
               })()}%
+            </Typography>
+          </Grid>
+        </Grid>
+        
+        {/* 추가 통계 */}
+        <Grid container spacing={3} sx={{ mt: 2, pt: 2, borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+          <Grid item xs={12} md={6}>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              총 학생 수
+            </Typography>
+            <Typography variant="h5">
+              {(() => {
+                const data = selectedTab === 0 ? attendanceData : levelTestData;
+                const dataValues = Object.values(data).filter(item => item && item.total > 0);
+                return dataValues.reduce((sum, item) => sum + item.total, 0);
+              })()}명
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              {selectedTab === 0 ? '출석한 학생' : '테스트 완료 학생'}
+            </Typography>
+            <Typography variant="h5">
+              {(() => {
+                const data = selectedTab === 0 ? attendanceData : levelTestData;
+                const dataValues = Object.values(data).filter(item => item && item.total > 0);
+                return dataValues.reduce((sum, item) => 
+                  sum + (selectedTab === 0 ? (item.attended || 0) : (item.completed || 0)), 0);
+              })()}명
             </Typography>
           </Grid>
         </Grid>
