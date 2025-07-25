@@ -184,25 +184,25 @@ const AdminPage = () => {
     setPage(1);
   };
 
-  const handleAssignGroups = async () => {
-    try {
-      const response = await axios.post(`${BACKEND_URL}/admin/assign-groups`);
-      showAlert(response.data.message);
-      fetchData();
-    } catch (error) {
-      showAlert("그룹 배정 중 오류가 발생했습니다.", "error");
-    }
-  };
+  // const handleAssignGroups = async () => {
+  //   try {
+  //     const response = await axios.post(`${BACKEND_URL}/admin/assign-groups`);
+  //     showAlert(response.data.message);
+  //     fetchData();
+  //   } catch (error) {
+  //     showAlert("그룹 배정 중 오류가 발생했습니다.", "error");
+  //   }
+  // };
 
-  const handleRankAssignment = async () => {
-    try {
-      const response = await axios.put(`${BACKEND_URL}/score/all-rank`);
-      showAlert(response.data.message);
-      fetchData();
-    } catch (error) {
-      showAlert("등급 부여 중 오류가 발생했습니다.", "error");
-    }
-  };
+  // const handleRankAssignment = async () => {
+  //   try {
+  //     const response = await axios.put(`${BACKEND_URL}/score/all-rank`);
+  //     showAlert(response.data.message);
+  //     fetchData();
+  //   } catch (error) {
+  //     showAlert("등급 부여 중 오류가 발생했습니다.", "error");
+  //   }
+  // };
 
   // 엑셀 다운로드는 export API만 시도, 실패 시 안내
   const handleDownloadExcel = async () => {
@@ -223,6 +223,170 @@ const AdminPage = () => {
       showAlert("엑셀 파일이 다운로드되었습니다.");
     } catch (error) {
       showAlert("엑셀 다운로드는 관리자에게 문의하세요.", "error");
+    }
+  };
+
+  // 조-그룹별 엑셀 다운로드
+  const handleDownloadGroupExcel = async () => {
+    try {
+      showAlert("조-그룹별 엑셀을 생성 중입니다...", "info");
+      
+      // 전체 학생 데이터 조회
+      const response = await axios.get(`${BACKEND_URL}/admin/students`, {
+        params: { limit: 'all' }
+      });
+      
+      let allStudents = [];
+      if (Array.isArray(response.data)) {
+        allStudents = response.data;
+      } else if (Array.isArray(response.data?.data)) {
+        allStudents = response.data.data;
+      }
+
+      if (allStudents.length === 0) {
+        showAlert("다운로드할 학생 데이터가 없습니다.", "warning");
+        return;
+      }
+
+      // 그룹과 조 정의
+      const groups = ['KNOW', 'LOVE', 'SERVE', 'GLORY', 'HOLY', 'GRACE', 'HOPE'];
+      const teams = [1, 2, 3, 4, 5];
+      
+      // 워크북 생성
+      const workbook = XLSX.utils.book_new();
+      
+      // 전체 요약 시트 생성
+      const summaryData = [];
+      summaryData.push(['그룹', '조', '학생 수', '학생 명단']);
+      
+      let totalStudentsAssigned = 0;
+      
+      // 각 그룹-조별로 시트 생성
+      groups.forEach(group => {
+        teams.forEach(team => {
+          const sheetName = `${group}-${team}조`;
+          
+          // 해당 그룹-조에 속한 학생들 필터링
+          const studentsInTeam = allStudents.filter(student => 
+            student.studentGroup === group && student.team === team
+          );
+          
+          // 시트 데이터 준비
+          const sheetData = [];
+          sheetData.push(['번호', '한글이름', '영어이름', '교회명', '교회번호', '성별', '옷사이즈', '부모연락처', '특이사항']);
+          
+          studentsInTeam.forEach((student, index) => {
+            sheetData.push([
+              index + 1,
+              student.koreanName || '',
+              student.englishName || '',
+              student.churchName || '',
+              student.churchNumber || '',
+              student.gender === 'male' ? '남자' : student.gender === 'female' ? '여자' : student.gender || '',
+              student.shirtSize || '',
+              student.parentContact || '',
+              student.healthNotes || ''
+            ]);
+          });
+          
+          // 시트가 비어있지 않은 경우에만 추가
+          if (studentsInTeam.length > 0) {
+            const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+            
+            // 열 너비 설정
+            worksheet['!cols'] = [
+              { width: 5 },   // 번호
+              { width: 12 },  // 한글이름
+              { width: 15 },  // 영어이름
+              { width: 20 },  // 교회명
+              { width: 12 },  // 교회번호
+              { width: 8 },   // 성별
+              { width: 10 },  // 옷사이즈
+              { width: 15 },  // 부모연락처
+              { width: 25 }   // 특이사항
+            ];
+            
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+            totalStudentsAssigned += studentsInTeam.length;
+            
+            // 요약 데이터에 추가
+            const studentNames = studentsInTeam.map(s => s.koreanName).join(', ');
+            summaryData.push([group, `${team}조`, studentsInTeam.length, studentNames]);
+          }
+        });
+      });
+      
+      // 그룹-조에 배정되지 않은 학생들 체크
+      const unassignedStudents = allStudents.filter(student => 
+        !student.studentGroup || !student.team || 
+        !groups.includes(student.studentGroup) || 
+        !teams.includes(student.team)
+      );
+      
+      if (unassignedStudents.length > 0) {
+        const sheetData = [];
+        sheetData.push(['번호', '한글이름', '영어이름', '교회명', '교회번호', '현재그룹', '현재조', '상태']);
+        
+        unassignedStudents.forEach((student, index) => {
+          sheetData.push([
+            index + 1,
+            student.koreanName || '',
+            student.englishName || '',
+            student.churchName || '',
+            student.churchNumber || '',
+            student.studentGroup || '미배정',
+            student.team || '미배정',
+            '그룹-조 미배정'
+          ]);
+        });
+        
+        const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+        worksheet['!cols'] = [
+          { width: 5 }, { width: 12 }, { width: 15 }, { width: 20 }, 
+          { width: 12 }, { width: 12 }, { width: 8 }, { width: 15 }
+        ];
+        
+        XLSX.utils.book_append_sheet(workbook, worksheet, '미배정학생');
+        
+        summaryData.push(['미배정', '-', unassignedStudents.length, '그룹-조 미배정 학생들']);
+      }
+      
+      // 요약 시트를 맨 앞에 추가
+      summaryData.push([]); // 빈 줄
+      summaryData.push(['전체 통계', '', '', '']);
+      summaryData.push(['총 학생 수', allStudents.length, '', '']);
+      summaryData.push(['배정된 학생 수', totalStudentsAssigned, '', '']);
+      summaryData.push(['미배정 학생 수', unassignedStudents.length, '', '']);
+      summaryData.push(['생성된 시트 수', workbook.SheetNames.length - 1, '', '']); // 요약 시트 제외
+      
+      const summaryWorksheet = XLSX.utils.aoa_to_sheet(summaryData);
+      summaryWorksheet['!cols'] = [
+        { width: 15 }, { width: 10 }, { width: 12 }, { width: 50 }
+      ];
+      
+      // 요약 시트를 맨 앞에 추가
+      XLSX.utils.book_append_sheet(workbook, summaryWorksheet, '📊 전체요약', 0);
+      
+      // 시트 순서 재정렬 (요약을 맨 앞으로)
+      workbook.SheetNames = ['📊 전체요약', ...workbook.SheetNames.slice(0, -1)];
+      
+      // 파일 다운로드
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `AWANA_학생_조그룹별_명단_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      showAlert(`조-그룹별 엑셀 파일이 생성되었습니다! (총 ${workbook.SheetNames.length}개 시트, ${totalStudentsAssigned}명 배정됨)`, "success");
+      
+    } catch (error) {
+      console.error('Error creating group Excel:', error);
+      showAlert("조-그룹별 엑셀 생성 중 오류가 발생했습니다.", "error");
     }
   };
 
@@ -447,6 +611,16 @@ const AdminPage = () => {
                   <Button
                     variant="outlined"
                     startIcon={<Group />}
+                    onClick={handleDownloadGroupExcel}
+                    size="small"
+                    disabled={loading}
+                    color="secondary"
+                  >
+                    조-그룹별 엑셀
+                  </Button>
+                  {/* <Button
+                    variant="outlined"
+                    startIcon={<Group />}
                     onClick={handleAssignGroups}
                     size="small"
                     disabled={loading}
@@ -461,7 +635,7 @@ const AdminPage = () => {
                     disabled={loading}
                   >
                     등급 부여
-                  </Button>
+                  </Button> */}
                 </>
               )}
             </Stack>

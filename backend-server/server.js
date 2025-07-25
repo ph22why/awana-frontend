@@ -1277,6 +1277,37 @@ app.get('/level-test/results', (req, res) => {
   });
 });
 
+// Get completed level tests (for dashboard)
+app.get('/level-test/completed', (req, res) => {
+  console.log('📊 Fetching completed level tests for dashboard...');
+  
+  const sql = `
+    SELECT 
+      lt.student_id,
+      lt.total_score,
+      lt.percentage,
+      lt.test_date,
+      s.koreanName,
+      s.englishName,
+      s.churchName,
+      s.studentGroup,
+      s.team
+    FROM level_tests lt
+    JOIN students s ON lt.student_id = s.id
+    ORDER BY lt.test_date DESC
+  `;
+  
+  db.query(sql, [], (err, results) => {
+    if (err) {
+      console.error('Error fetching completed level tests:', err);
+      res.status(500).json({ error: err.message });
+    } else {
+      console.log(`✅ Found ${results.length} completed level tests`);
+      res.status(200).json(results);
+    }
+  });
+});
+
 // Redistribute students by level test scores
 function redistributeStudentsByLevel(callback) {
   console.log('🔄 Redistributing students based on level test scores...');

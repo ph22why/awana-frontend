@@ -8,6 +8,7 @@ import AttendancePage from './components/AttendancePage';
 import LevelTestPage from './components/LevelTestPage';
 import ItemDistributionPage from './components/ItemDistributionPage';
 import ItemDistributionListPage from './components/ItemDistributionListPage';
+import DashboardPage from './components/DashboardPage';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path='/level-test' element={<LevelTestPage />} />
         <Route path='/item-distribution' element={<ItemDistributionPage />} />
         <Route path='/item-distribution-list' element={<ItemDistributionListPage />} />
+        <Route path='/dashboard' element={<DashboardPage />} />
       </Routes>
     </Router>
     </ThemeProvider>

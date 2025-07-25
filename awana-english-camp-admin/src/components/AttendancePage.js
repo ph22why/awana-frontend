@@ -90,7 +90,9 @@ const AttendancePage = () => {
       { id: "day2_eng4", name: "영어수업 S4", time: "오후", type: "class", userTypes: ["student"] },
       { id: "day2_eng5", name: "영어수업 S5", time: "오후", type: "class", userTypes: ["student"] },
       { id: "day2_lunch", name: "점심식사", time: "점심", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] },
-      { id: "day2_dinner", name: "저녁식사", time: "저녁", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] }
+      { id: "day2_dinner", name: "저녁식사", time: "저녁", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] },
+      { id: "day2_gpp", name: "GPP", time: "저녁", type: "activity", userTypes: ["student"] },
+      { id: "day2_revival", name: "부흥회", time: "저녁", type: "activity", userTypes: ["student"] }
     ],
     "셋째날": [
       { id: "day3_qt", name: "QT", time: "아침", type: "activity", userTypes: ["student"] },
@@ -102,7 +104,9 @@ const AttendancePage = () => {
       { id: "day3_lunch", name: "점심식사", time: "점심", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] },
       { id: "day3_waterpark", name: "워터파크 입장", time: "오후", type: "special", userTypes: ["student", "ym", "teacher", "staff"] },
       { id: "day3_waterpark_exit", name: "워터파크 퇴장", time: "오후", type: "special", userTypes: ["student", "ym", "teacher", "staff"] },
-      { id: "day3_dinner", name: "저녁식사", time: "저녁", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] }
+      { id: "day3_dinner", name: "저녁식사", time: "저녁", type: "meal", userTypes: ["student", "ym", "teacher", "staff"] },
+      { id: "day3_gpp", name: "GPP", time: "저녁", type: "activity", userTypes: ["student"] },
+      { id: "day3_revival", name: "부흥회", time: "저녁", type: "activity", userTypes: ["student"] }
     ],
     "넷째날": [
       { id: "day4_qt", name: "QT", time: "아침", type: "activity", userTypes: ["student"] },

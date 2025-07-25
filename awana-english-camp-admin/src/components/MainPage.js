@@ -19,7 +19,8 @@ import {
   CheckCircle,
   Lock,
   School,
-  Inventory
+  Inventory,
+  Dashboard
 } from '@mui/icons-material';
 
 const MainPage = () => {
@@ -53,6 +54,11 @@ const MainPage = () => {
   const handleItemDistributionSubmit = (e) => {
     e.preventDefault();
     navigate('/item-distribution');
+  };
+
+  const handleDashboardSubmit = (e) => {
+    e.preventDefault();
+    navigate('/dashboard');
   };
 
   return (
@@ -140,6 +146,56 @@ const MainPage = () => {
                   {error}
                 </Alert>
               )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Dashboard Card */}
+        <Grid item xs={12} md={4}>
+          <Card 
+            elevation={4}
+            sx={{ 
+              height: '100%',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white'
+            }}
+          >
+            <CardContent sx={{ textAlign: 'center', py: 4 }}>
+              <Dashboard sx={{ fontSize: 60, mb: 2, opacity: 0.9 }} />
+              <Typography variant="h5" component="h2" gutterBottom fontWeight="bold">
+                현황 대시보드
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 3, opacity: 0.9 }}>
+                학생 그룹-조별 출석 및 레벨테스트 현황을 확인합니다
+              </Typography>
+              
+              <Paper 
+                component="form" 
+                onSubmit={handleDashboardSubmit}
+                elevation={2}
+                sx={{ 
+                  p: 3,
+                  backgroundColor: 'rgba(255,255,255,0.95)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <Typography variant="body1" color="text.primary" sx={{ mb: 3 }} fontWeight="medium">
+                  7그룹 × 5조 현황을 한눈에 확인
+                </Typography>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  size="large"
+                  sx={{
+                    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                    fontWeight: 'bold',
+                    py: 1.5
+                  }}
+                >
+                  현황 대시보드
+                </Button>
+              </Paper>
             </CardContent>
           </Card>
         </Grid>
