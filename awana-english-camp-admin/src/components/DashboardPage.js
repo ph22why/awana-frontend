@@ -131,18 +131,27 @@ const DashboardPage = () => {
   useEffect(() => {
     if (!isPinVerified) return;
     
-    // 기본으로 첫 번째 세션 선택
-    const firstSession = Object.values(studentScheduleData)[0]?.[0];
-    if (firstSession) {
-      setSelectedSession(firstSession);
+    // 출석 현황 탭인 경우에만 기본 세션 설정
+    if (selectedTab === 0 && !selectedSession) {
+      const firstSession = Object.values(studentScheduleData)[0]?.[0];
+      if (firstSession) {
+        setSelectedSession(firstSession);
+        return; // 세션 설정 후 다음 useEffect에서 데이터 가져오기
+      }
     }
-  }, [isPinVerified]);
+    
+    // 데이터 가져오기 (출석: 세션 필요, 레벨테스트: 세션 불필요)
+    if (selectedTab === 1 || (selectedTab === 0 && selectedSession)) {
+      fetchDashboardData();
+    }
+  }, [isPinVerified, selectedTab]);
 
   useEffect(() => {
-    if (!isPinVerified || !selectedSession) return;
-    
-    fetchDashboardData();
-  }, [isPinVerified, selectedSession]);
+    // 세션이 변경되었을 때만 데이터 다시 가져오기 (출석 탭에서만)
+    if (isPinVerified && selectedTab === 0 && selectedSession) {
+      fetchDashboardData();
+    }
+  }, [selectedSession]);
 
   const showAlert = (message, severity = "success") => {
     setAlertMessage(message);
@@ -151,15 +160,19 @@ const DashboardPage = () => {
   };
 
   const fetchDashboardData = async () => {
-    if (!selectedSession) return;
+    if (!selectedSession && selectedTab === 0) return;
     
     try {
       setLoading(true);
       
       if (selectedTab === 0) {
-        // 출석 현황 조회
+        // 출석 현황 조회 - AttendancePage.js와 동일한 방식
+        console.log(`📋 Fetching attendance for session: ${selectedSession.id}`);
+        
         const response = await axios.get(`${BACKEND_URL}/attendance/${selectedSession.id}?userTypes=student`);
-        const students = response.data;
+        const students = response.data || [];
+        
+        console.log(`✅ Found ${students.length} students for session ${selectedSession.id}`);
         
         // 그룹-조별로 데이터 분류
         const groupedData = {};
@@ -180,13 +193,23 @@ const DashboardPage = () => {
         });
         
         setAttendanceData(groupedData);
+        console.log('📊 Attendance data grouped successfully');
+        
       } else {
         // 레벨테스트 현황 조회
-        const studentsResponse = await axios.get(`${BACKEND_URL}/attendance/session1?userTypes=student`);
-        const allStudents = studentsResponse.data;
+        console.log('📋 Fetching level test data...');
         
+        // 1. 모든 학생 데이터 조회 (AttendancePage.js 방식 사용)
+        const studentsResponse = await axios.get(`${BACKEND_URL}/attendance/session1?userTypes=student`);
+        const allStudents = studentsResponse.data || [];
+        
+        console.log(`✅ Found ${allStudents.length} total students`);
+        
+        // 2. 레벨테스트 완료된 학생들 조회
         const levelTestResponse = await axios.get(`${BACKEND_URL}/level-test/completed`);
-        const completedStudents = new Set(levelTestResponse.data.map(item => item.student_id));
+        const completedStudents = new Set((levelTestResponse.data || []).map(item => item.student_id));
+        
+        console.log(`✅ Found ${completedStudents.size} students with completed level tests`);
         
         // 그룹-조별로 데이터 분류
         const groupedData = {};
@@ -207,10 +230,18 @@ const DashboardPage = () => {
         });
         
         setLevelTestData(groupedData);
+        console.log('📊 Level test data grouped successfully');
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      showAlert("데이터를 불러오는데 실패했습니다.", "error");
+      showAlert(`데이터를 불러오는데 실패했습니다: ${error.message}`, "error");
+      
+      // 에러 시 빈 데이터로 초기화
+      if (selectedTab === 0) {
+        setAttendanceData({});
+      } else {
+        setLevelTestData({});
+      }
     } finally {
       setLoading(false);
     }
@@ -222,6 +253,13 @@ const DashboardPage = () => {
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
+    
+    // 탭 변경 시 즉시 데이터 가져오기
+    setTimeout(() => {
+      if (newValue === 1 || (newValue === 0 && selectedSession)) {
+        fetchDashboardData();
+      }
+    }, 100);
   };
 
   const getSessionOptions = () => {
