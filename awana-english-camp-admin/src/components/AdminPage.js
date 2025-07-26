@@ -263,9 +263,36 @@ const AdminPage = () => {
       
       console.log(`📋 Total students found: ${allStudents.length}`);
       
+      // 레벨테스트 결과 조회
+      let levelTestResults = [];
+      try {
+        console.log('📊 Fetching level test results...');
+        const levelTestResponse = await axios.get(`${BACKEND_URL}/level-test/results`);
+        levelTestResults = levelTestResponse.data || [];
+        console.log(`✅ Found ${levelTestResults.length} level test results`);
+      } catch (error) {
+        console.log('⚠️ Failed to fetch level test results:', error.message);
+        levelTestResults = [];
+      }
+      
+      // 학생 데이터와 레벨테스트 결과 조인
+      const studentsWithScores = allStudents.map(student => {
+        const levelTest = levelTestResults.find(lt => lt.student_id === student.id);
+        return {
+          ...student,
+          levelTest: levelTest || null,
+          total_score: levelTest ? levelTest.total_score : null,
+          max_score: levelTest ? levelTest.max_score : null,
+          percentage: levelTest ? levelTest.percentage : null,
+          test_date: levelTest ? levelTest.test_date : null
+        };
+      });
+      
+      console.log(`📊 Students with level test data: ${studentsWithScores.filter(s => s.levelTest).length}/${studentsWithScores.length}`);
+      
       // 그룹-조 정보 확인 (디버깅)
       const groupStats = {};
-      allStudents.forEach(student => {
+      studentsWithScores.forEach(student => {
         const group = student.studentGroup || '미배정';
         const team = student.team || '미배정';
         const key = `${group}-${team}`;
@@ -286,7 +313,7 @@ const AdminPage = () => {
       
       // 전체 요약 시트 데이터
       const summaryData = [];
-      summaryData.push(['그룹', '조', '학생 수', '학생 명단']);
+      summaryData.push(['그룹', '조', '학생 수', '레벨테스트 완료', '평균 점수', '학생 명단']);
       
       let totalStudentsAssigned = 0;
       let sheetsCreated = 0;
@@ -297,7 +324,7 @@ const AdminPage = () => {
           const sheetName = `${group}-${team}조`;
           
           // 해당 그룹-조에 속한 학생들 필터링
-          const studentsInTeam = allStudents.filter(student => 
+          const studentsInTeam = studentsWithScores.filter(student => 
             student.studentGroup === group && 
             (student.team === team || student.team === `${team}`)
           );
@@ -305,13 +332,40 @@ const AdminPage = () => {
           if (studentsInTeam.length > 0) {
             console.log(`📝 Creating sheet for ${group}-${team}조: ${studentsInTeam.length} students`);
             
-            // 시트 데이터 준비
+            // 점수 순으로 정렬 (점수가 있는 학생 우선, 그 다음 이름순)
+            studentsInTeam.sort((a, b) => {
+              if (a.total_score && b.total_score) {
+                return b.total_score - a.total_score; // 점수 높은 순
+              } else if (a.total_score && !b.total_score) {
+                return -1; // 점수 있는 학생 우선
+              } else if (!a.total_score && b.total_score) {
+                return 1; // 점수 있는 학생 우선
+              } else {
+                // 둘 다 점수 없으면 이름순
+                const nameA = a.name || a.koreanName || '';
+                const nameB = b.name || b.koreanName || '';
+                return nameA.localeCompare(nameB);
+              }
+            });
+            
+            // 시트 데이터 준비 (점수 정보 포함)
             const sheetData = [];
-            sheetData.push(['번호', '한글이름', '영어이름', '교회명', '교회번호', '성별', '옷사이즈', '부모연락처', '특이사항']);
+            sheetData.push([
+              '순위', '한글이름', '영어이름', '교회명', '교회번호', '성별', '옷사이즈', 
+              '부모연락처', '특이사항', '레벨테스트 점수', '최대점수', '정답률(%)', '테스트일시'
+            ]);
             
             studentsInTeam.forEach((student, index) => {
+              // 순위 계산 (점수가 있는 학생만)
+              let rank = '';
+              if (student.total_score !== null) {
+                const studentsWithScoresInTeam = studentsInTeam.filter(s => s.total_score !== null);
+                const rankIndex = studentsWithScoresInTeam.findIndex(s => s.id === student.id);
+                rank = rankIndex + 1;
+              }
+              
               sheetData.push([
-                index + 1,
+                rank,
                 student.name || student.koreanName || '',
                 student.englishName || '',
                 student.churchName || '',
@@ -319,15 +373,19 @@ const AdminPage = () => {
                 student.gender === 'male' ? '남자' : student.gender === 'female' ? '여자' : student.gender || '',
                 student.shirtSize || '',
                 student.parentContact || '',
-                student.healthNotes || ''
+                student.healthNotes || '',
+                student.total_score !== null ? student.total_score : '미완료',
+                student.max_score !== null ? student.max_score : '',
+                student.percentage !== null ? `${student.percentage}%` : '',
+                student.test_date ? new Date(student.test_date).toLocaleDateString() : ''
               ]);
             });
             
             const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
             
-            // 열 너비 설정
+            // 열 너비 설정 (점수 컬럼 추가)
             worksheet['!cols'] = [
-              { width: 5 },   // 번호
+              { width: 6 },   // 순위
               { width: 12 },  // 한글이름
               { width: 15 },  // 영어이름
               { width: 20 },  // 교회명
@@ -335,16 +393,32 @@ const AdminPage = () => {
               { width: 8 },   // 성별
               { width: 10 },  // 옷사이즈
               { width: 15 },  // 부모연락처
-              { width: 25 }   // 특이사항
+              { width: 25 },  // 특이사항
+              { width: 12 },  // 레벨테스트 점수
+              { width: 10 },  // 최대점수
+              { width: 12 },  // 정답률(%)
+              { width: 12 }   // 테스트일시
             ];
             
             XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
             totalStudentsAssigned += studentsInTeam.length;
             sheetsCreated++;
             
-            // 요약 데이터에 추가
+            // 요약 데이터에 추가 (레벨테스트 통계 포함)
+            const studentsWithTest = studentsInTeam.filter(s => s.total_score !== null);
+            const avgScore = studentsWithTest.length > 0 
+              ? (studentsWithTest.reduce((sum, s) => sum + s.total_score, 0) / studentsWithTest.length).toFixed(1)
+              : 0;
             const studentNames = studentsInTeam.map(s => s.name || s.koreanName).join(', ');
-            summaryData.push([group, `${team}조`, studentsInTeam.length, studentNames]);
+            
+            summaryData.push([
+              group, 
+              `${team}조`, 
+              studentsInTeam.length, 
+              `${studentsWithTest.length}/${studentsInTeam.length}`,
+              studentsWithTest.length > 0 ? `${avgScore}점` : '테스트 미완료',
+              studentNames
+            ]);
           } else {
             console.log(`⚪ ${group}-${team}조: 배정된 학생 없음`);
           }
@@ -352,7 +426,7 @@ const AdminPage = () => {
       });
       
       // 그룹-조에 배정되지 않은 학생들 체크
-      const unassignedStudents = allStudents.filter(student => 
+      const unassignedStudents = studentsWithScores.filter(student => 
         !student.studentGroup || 
         !student.team || 
         !groups.includes(student.studentGroup) || 
@@ -362,45 +436,96 @@ const AdminPage = () => {
       if (unassignedStudents.length > 0) {
         console.log(`⚠️ Found ${unassignedStudents.length} unassigned students`);
         
+        // 미배정 학생들도 점수순으로 정렬
+        unassignedStudents.sort((a, b) => {
+          if (a.total_score && b.total_score) {
+            return b.total_score - a.total_score;
+          } else if (a.total_score && !b.total_score) {
+            return -1;
+          } else if (!a.total_score && b.total_score) {
+            return 1;
+          } else {
+            const nameA = a.name || a.koreanName || '';
+            const nameB = b.name || b.koreanName || '';
+            return nameA.localeCompare(nameB);
+          }
+        });
+        
         const sheetData = [];
-        sheetData.push(['번호', '한글이름', '영어이름', '교회명', '교회번호', '현재그룹', '현재조', '상태']);
+        sheetData.push([
+          '순위', '한글이름', '영어이름', '교회명', '교회번호', '현재그룹', '현재조', 
+          '상태', '레벨테스트 점수', '정답률(%)', '테스트일시'
+        ]);
         
         unassignedStudents.forEach((student, index) => {
+          let rank = '';
+          if (student.total_score !== null) {
+            const studentsWithScoresUnassigned = unassignedStudents.filter(s => s.total_score !== null);
+            const rankIndex = studentsWithScoresUnassigned.findIndex(s => s.id === student.id);
+            rank = rankIndex + 1;
+          }
+          
           sheetData.push([
-            index + 1,
+            rank,
             student.name || student.koreanName || '',
             student.englishName || '',
             student.churchName || '',
             student.churchNumber || '',
             student.studentGroup || '미배정',
             student.team || '미배정',
-            '그룹-조 미배정'
+            '그룹-조 미배정',
+            student.total_score !== null ? student.total_score : '미완료',
+            student.percentage !== null ? `${student.percentage}%` : '',
+            student.test_date ? new Date(student.test_date).toLocaleDateString() : ''
           ]);
         });
         
         const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
         worksheet['!cols'] = [
-          { width: 5 }, { width: 12 }, { width: 15 }, { width: 20 }, 
-          { width: 12 }, { width: 12 }, { width: 8 }, { width: 15 }
+          { width: 6 }, { width: 12 }, { width: 15 }, { width: 20 }, 
+          { width: 12 }, { width: 12 }, { width: 8 }, { width: 15 },
+          { width: 12 }, { width: 12 }, { width: 12 }
         ];
         
         XLSX.utils.book_append_sheet(workbook, worksheet, '미배정학생');
         sheetsCreated++;
         
-        summaryData.push(['미배정', '-', unassignedStudents.length, '그룹-조 미배정 학생들']);
+        // 미배정 학생 통계
+        const unassignedWithTest = unassignedStudents.filter(s => s.total_score !== null);
+        const unassignedAvgScore = unassignedWithTest.length > 0 
+          ? (unassignedWithTest.reduce((sum, s) => sum + s.total_score, 0) / unassignedWithTest.length).toFixed(1)
+          : 0;
+        
+        summaryData.push([
+          '미배정', 
+          '-', 
+          unassignedStudents.length, 
+          `${unassignedWithTest.length}/${unassignedStudents.length}`,
+          unassignedWithTest.length > 0 ? `${unassignedAvgScore}점` : '테스트 미완료',
+          '그룹-조 미배정 학생들'
+        ]);
       }
       
       // 요약 시트 완성
       summaryData.push([]); // 빈 줄
-      summaryData.push(['전체 통계', '', '', '']);
-      summaryData.push(['총 학생 수', allStudents.length, '', '']);
-      summaryData.push(['배정된 학생 수', totalStudentsAssigned, '', '']);
-      summaryData.push(['미배정 학생 수', unassignedStudents.length, '', '']);
-      summaryData.push(['생성된 시트 수', sheetsCreated, '', '']);
+      summaryData.push(['전체 통계', '', '', '', '', '']);
+      summaryData.push(['총 학생 수', studentsWithScores.length, '', '', '', '']);
+      summaryData.push(['배정된 학생 수', totalStudentsAssigned, '', '', '', '']);
+      summaryData.push(['미배정 학생 수', unassignedStudents.length, '', '', '', '']);
+      summaryData.push(['레벨테스트 완료', studentsWithScores.filter(s => s.total_score !== null).length, '', '', '', '']);
+      summaryData.push(['레벨테스트 미완료', studentsWithScores.filter(s => s.total_score === null).length, '', '', '', '']);
+      summaryData.push(['생성된 시트 수', sheetsCreated, '', '', '', '']);
+      
+      // 전체 평균 점수
+      const allWithTest = studentsWithScores.filter(s => s.total_score !== null);
+      const overallAvgScore = allWithTest.length > 0 
+        ? (allWithTest.reduce((sum, s) => sum + s.total_score, 0) / allWithTest.length).toFixed(1)
+        : 0;
+      summaryData.push(['전체 평균 점수', allWithTest.length > 0 ? `${overallAvgScore}점` : '테스트 미완료', '', '', '', '']);
       
       const summaryWorksheet = XLSX.utils.aoa_to_sheet(summaryData);
       summaryWorksheet['!cols'] = [
-        { width: 15 }, { width: 10 }, { width: 12 }, { width: 50 }
+        { width: 15 }, { width: 10 }, { width: 12 }, { width: 15 }, { width: 15 }, { width: 50 }
       ];
       
       // 요약 시트를 맨 앞에 추가
@@ -433,7 +558,11 @@ const AdminPage = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
       
-      showAlert(`조-그룹별 엑셀 파일이 생성되었습니다! (총 ${sheetsCreated}개 시트, ${totalStudentsAssigned}명 배정됨)`, "success");
+      const completedTests = studentsWithScores.filter(s => s.total_score !== null).length;
+      showAlert(
+        `조-그룹별 엑셀 파일이 생성되었습니다! (총 ${sheetsCreated}개 시트, ${totalStudentsAssigned}명 배정됨, 레벨테스트 완료 ${completedTests}명)`, 
+        "success"
+      );
       
     } catch (error) {
       console.error('Error creating group Excel:', error);
