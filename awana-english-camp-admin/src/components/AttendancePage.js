@@ -194,17 +194,18 @@ const AttendancePage = () => {
           
           lastKeyTime = currentTime;
           
-          if (event.key === 'Enter') {
-            // 엔터키가 눌리면 스캔 완료로 처리
-            if (currentScanBuffer.length > 3) {
-              console.log(`🔍 Scanner Enter detected: ${currentScanBuffer}`);
-              setBarcodeInput(currentScanBuffer);
-              currentScanBuffer = "";
-              // 즉시 출석 처리
-              setTimeout(() => {
-                handleBarcodeSubmit();
-              }, 50);
-            }
+                      if (event.key === 'Enter') {
+              // 엔터키가 눌리면 스캔 완료로 처리
+              if (currentScanBuffer.length > 3) {
+                console.log(`🔍 Scanner Enter detected: ${currentScanBuffer}`);
+                setBarcodeInput(currentScanBuffer);
+                const scannedCode = currentScanBuffer;
+                currentScanBuffer = "";
+                // 즉시 출석 처리
+                setTimeout(() => {
+                  handleBarcodeSubmit(scannedCode);
+                }, 50);
+              }
           } else if (event.key.length === 1 && /[0-9a-zA-Z]/.test(event.key)) {
             // 일반 문자 입력 (숫자와 영문만)
             currentScanBuffer += event.key;
@@ -219,11 +220,12 @@ const AttendancePage = () => {
               if (currentScanBuffer.length > 3) { // 최소 길이 체크
                 console.log(`🔍 Scanner timeout detected: ${currentScanBuffer}`);
                 setBarcodeInput(currentScanBuffer);
+                const scannedCode = currentScanBuffer;
                 currentScanBuffer = "";
                 setScanBuffer("");
                 // 즉시 출석 처리
                 setTimeout(() => {
-                  handleBarcodeSubmit();
+                  handleBarcodeSubmit(scannedCode);
                 }, 50);
               }
             }, 100);
@@ -238,11 +240,12 @@ const AttendancePage = () => {
             event.preventDefault();
             console.log(`🔍 Scanner Enter (keydown) detected: ${currentScanBuffer}`);
             setBarcodeInput(currentScanBuffer);
+            const scannedCode = currentScanBuffer;
             currentScanBuffer = "";
             setScanBuffer("");
             // 즉시 출석 처리
             setTimeout(() => {
-              handleBarcodeSubmit();
+              handleBarcodeSubmit(scannedCode);
             }, 50);
           }
         }
@@ -320,8 +323,11 @@ const AttendancePage = () => {
     }
   };
 
-  const handleBarcodeSubmit = async () => {
-    if (!barcodeInput.trim()) {
+  const handleBarcodeSubmit = async (scannedCode = null) => {
+    // 스캔된 코드가 직접 전달되면 사용하고, 그렇지 않으면 입력 필드 값 사용
+    const codeToSubmit = scannedCode || barcodeInput.trim();
+    
+    if (!codeToSubmit) {
       showAlert("바코드를 입력해주세요.", "error");
       return;
     }
@@ -337,7 +343,7 @@ const AttendancePage = () => {
       
       const response = await axios.post(`${BACKEND_URL}/attendance/check`, {
         sessionId: selectedSession.id,
-        studentId: barcodeInput.trim()
+        studentId: codeToSubmit
       });
       
       const endTime = Date.now();
@@ -466,7 +472,7 @@ const AttendancePage = () => {
                 
                 // 카메라 스캔 후 즉시 출석 처리
                 setTimeout(() => {
-                  handleBarcodeSubmit();
+                  handleBarcodeSubmit(scannedCode);
                 }, 100);
               }
             }
@@ -505,7 +511,7 @@ const AttendancePage = () => {
                 
                 // 웹캠 스캔 후 즉시 출석 처리
                 setTimeout(() => {
-                  handleBarcodeSubmit();
+                  handleBarcodeSubmit(scannedCode);
                 }, 100);
               }
             })
