@@ -63,7 +63,6 @@ const AttendancePage = () => {
   const [useCameraScanner, setUseCameraScanner] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [scanBuffer, setScanBuffer] = useState("");
-  const [scanTimeStamp, setScanTimeStamp] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showAbsentOnly, setShowAbsentOnly] = useState(false);
@@ -75,6 +74,37 @@ const AttendancePage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // 스캔 성공 소리 재생 함수
+  const playBeepSound = () => {
+    try {
+      // Web Audio API를 사용하여 beep 소리 생성
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      // 주파수 설정 (800Hz - 명확한 beep 소리)
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.type = 'sine';
+      
+      // 볼륨 설정
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+      
+      // 오디오 노드 연결
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // 0.2초간 재생
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
+      
+      console.log('🔊 Scan success beep played');
+    } catch (error) {
+      console.warn('Audio not available:', error);
+      // 소리 재생 실패해도 기능에는 영향 없음
+    }
+  };
 
   // 시간표 데이터 - 세션 타입에 따른 사용자 필터링
   const scheduleData = {
@@ -149,57 +179,87 @@ const AttendancePage = () => {
   // PC 바코드 스캐너를 위한 키보드 이벤트 리스너 (최적화)
   useEffect(() => {
     if (!isMobile && attendanceDialog) {
+      let currentScanBuffer = "";
+      let lastKeyTime = 0;
+      
       const handleKeyPress = (event) => {
         // 입력 필드에 포커스가 있을 때만 처리
         if (barcodeInputRef.current && document.activeElement === barcodeInputRef.current) {
           const currentTime = Date.now();
           
-          // 빠른 연속 입력 감지 (바코드 스캐너 특성) - 50ms로 단축
-          if (currentTime - scanTimeStamp > 50) {
-            setScanBuffer("");
+          // 빠른 연속 입력 감지 (바코드 스캐너 특성) - 30ms로 단축
+          if (currentTime - lastKeyTime > 30) {
+            currentScanBuffer = "";
           }
           
-          setScanTimeStamp(currentTime);
+          lastKeyTime = currentTime;
           
           if (event.key === 'Enter') {
             // 엔터키가 눌리면 스캔 완료로 처리
-            if (scanBuffer.length > 0) {
-              setBarcodeInput(scanBuffer);
-              setScanBuffer("");
-              // 즉시 출석 처리 (지연 제거)
-              handleBarcodeSubmit();
+            if (currentScanBuffer.length > 3) {
+              console.log(`🔍 Scanner Enter detected: ${currentScanBuffer}`);
+              setBarcodeInput(currentScanBuffer);
+              currentScanBuffer = "";
+              // 즉시 출석 처리
+              setTimeout(() => {
+                handleBarcodeSubmit();
+              }, 50);
             }
-          } else if (event.key.length === 1) {
-            // 일반 문자 입력
-            setScanBuffer(prev => prev + event.key);
+          } else if (event.key.length === 1 && /[0-9a-zA-Z]/.test(event.key)) {
+            // 일반 문자 입력 (숫자와 영문만)
+            currentScanBuffer += event.key;
+            setScanBuffer(currentScanBuffer);
             
-            // 타이머 설정 - 200ms로 단축하여 빠른 처리
+            // 타이머 설정 - 100ms로 단축하여 빠른 처리
             if (scanTimeoutRef.current) {
               clearTimeout(scanTimeoutRef.current);
             }
             
             scanTimeoutRef.current = setTimeout(() => {
-              if (scanBuffer.length > 3) { // 최소 길이 체크
-                setBarcodeInput(scanBuffer);
+              if (currentScanBuffer.length > 3) { // 최소 길이 체크
+                console.log(`🔍 Scanner timeout detected: ${currentScanBuffer}`);
+                setBarcodeInput(currentScanBuffer);
+                currentScanBuffer = "";
                 setScanBuffer("");
-                // 즉시 출석 처리 (지연 제거)
-                handleBarcodeSubmit();
+                // 즉시 출석 처리
+                setTimeout(() => {
+                  handleBarcodeSubmit();
+                }, 50);
               }
-            }, 200);
+            }, 100);
+          }
+        }
+      };
+
+      // keydown과 keypress 이벤트 모두 감지
+      const handleKeyDown = (event) => {
+        if (barcodeInputRef.current && document.activeElement === barcodeInputRef.current) {
+          if (event.key === 'Enter' && currentScanBuffer.length > 3) {
+            event.preventDefault();
+            console.log(`🔍 Scanner Enter (keydown) detected: ${currentScanBuffer}`);
+            setBarcodeInput(currentScanBuffer);
+            currentScanBuffer = "";
+            setScanBuffer("");
+            // 즉시 출석 처리
+            setTimeout(() => {
+              handleBarcodeSubmit();
+            }, 50);
           }
         }
       };
 
       document.addEventListener('keypress', handleKeyPress);
+      document.addEventListener('keydown', handleKeyDown);
       
       return () => {
         document.removeEventListener('keypress', handleKeyPress);
+        document.removeEventListener('keydown', handleKeyDown);
         if (scanTimeoutRef.current) {
           clearTimeout(scanTimeoutRef.current);
         }
       };
     }
-  }, [isMobile, attendanceDialog, scanBuffer, scanTimeStamp]);
+  }, [isMobile, attendanceDialog]);
 
   // 출석 다이얼로그가 열릴 때 입력 필드에 자동 포커스 (안전하게)
   useEffect(() => {
@@ -393,20 +453,31 @@ const AttendancePage = () => {
             'video',
             (result, err) => {
               if (result) {
-                setBarcodeInput(result.getText());
+                const scannedCode = result.getText();
+                console.log(`📹 Camera scan detected: ${scannedCode}`);
+                
+                // 스캔 성공 소리 재생
+                playBeepSound();
+                
+                setBarcodeInput(scannedCode);
                 setScannerDialog(false);
                 setUseCameraScanner(false);
                 codeReader.current.reset();
+                
+                // 카메라 스캔 후 즉시 출석 처리
+                setTimeout(() => {
+                  handleBarcodeSubmit();
+                }, 100);
               }
             }
           );
         } else {
-          setCameraError("스캐너가 연결되지 않았습니다. USB 스캐너를 연결해주세요.");
+          setCameraError("카메라가 연결되지 않았습니다. 카메라를 연결해주세요.");
         }
       }
     } catch (error) {
       console.error("Scanner error:", error);
-      setCameraError("스캐너를 시작할 수 없습니다. 권한을 확인해주세요.");
+      setCameraError("카메라를 시작할 수 없습니다. 권한을 확인해주세요.");
     }
   };
 
@@ -418,13 +489,24 @@ const AttendancePage = () => {
           codeReader.current.decodeFromImage(undefined, imageSrc)
             .then((result) => {
               if (result) {
-                setBarcodeInput(result.text);
+                const scannedCode = result.text;
+                console.log(`📱 Webcam scan detected: ${scannedCode}`);
+                
+                // 스캔 성공 소리 재생
+                playBeepSound();
+                
+                setBarcodeInput(scannedCode);
                 setScannerDialog(false);
                 setUseCameraScanner(false);
                 clearInterval(scanInterval);
                 if (codeReader.current) {
                   codeReader.current.reset();
                 }
+                
+                // 웹캠 스캔 후 즉시 출석 처리
+                setTimeout(() => {
+                  handleBarcodeSubmit();
+                }, 100);
               }
             })
             .catch((err) => {
@@ -583,18 +665,20 @@ const AttendancePage = () => {
             {/* PC 스캐너 안내 */}
             {!isMobile && (
               <Alert 
-                severity="info" 
+                severity="success" 
                 sx={{ mb: 2 }}
                 icon={<Computer />}
               >
-                💻 <strong>PC 바코드 스캐너 사용법:</strong>
+                💻 <strong>PC 바코드 스캐너 사용법 (개선됨!):</strong>
                 <br />
                 1. 아래 입력 필드를 클릭하여 포커스를 맞춘 후
                 <br />
-                2. USB 바코드 스캐너로 QR코드를 스캔하면 자동으로 출석 처리됩니다
+                2. USB 바코드 스캐너로 QR코드를 스캔하면 <strong>즉시 자동으로 출석 처리</strong>됩니다
+                <br />
+                ⚡ <strong>빠른 처리:</strong> 스캔 후 0.1초 만에 출석 완료!
                 {scanBuffer && (
                   <Box sx={{ mt: 1, p: 1, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }}>
-                    스캔 중... <strong>{scanBuffer}</strong>
+                    📊 실시간 스캔 중... <strong>{scanBuffer}</strong>
                   </Box>
                 )}
               </Alert>
@@ -632,7 +716,7 @@ const AttendancePage = () => {
                   onClick={openScannerDialog}
                   startIcon={isMobile ? <CameraAlt /> : <QrCodeScanner />}
                 >
-                  {isMobile ? "카메라 스캔" : "카메라 스캔 (보조)"}
+                  {isMobile ? "카메라 스캔 ⚡🔊" : "카메라 스캔 (보조) ⚡🔊"}
                 </Button>
                 
                 {!isMobile && (
@@ -664,7 +748,7 @@ const AttendancePage = () => {
                 )}
                 
                 <Typography variant="caption" color="text.secondary">
-                  {isMobile ? "📱 모바일: 카메라로 QR코드 스캔" : "💻 PC: USB 스캐너 권장 (키보드 입력처럼 작동)"}
+                  {isMobile ? "📱 모바일: 카메라로 QR코드 스캔 → 즉시 출석처리" : "💻 PC: USB 스캐너 권장 (스캔 즉시 자동 출석처리!)"}
                 </Typography>
               </Stack>
             </Box>
@@ -852,7 +936,7 @@ const AttendancePage = () => {
       <Dialog open={scannerDialog} onClose={handleCloseScannerDialog} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {isMobile ? <CameraAlt /> : <QrCodeScanner />}
-          {isMobile ? "카메라 QR 스캔" : "바코드/QR 스캐너"}
+          {isMobile ? "카메라 QR 스캔 🔊" : "바코드/QR 스캐너 🔊"}
           <IconButton
             onClick={handleCloseScannerDialog}
             sx={{ ml: 'auto' }}
@@ -877,7 +961,9 @@ const AttendancePage = () => {
                   />
                 )}
                 <Typography variant="body2" sx={{ mt: 2 }}>
-                  📱 QR코드나 바코드를 카메라에 비춰주세요
+                  📱 QR코드나 바코드를 카메라에 비춰주세요 (스캔 즉시 자동 출석처리!)
+                  <br />
+                  🔊 스캔 성공 시 확인음이 재생됩니다
                 </Typography>
                 {!useCameraScanner && (
                   <Button
@@ -886,7 +972,7 @@ const AttendancePage = () => {
                     startIcon={<CameraAlt />}
                     sx={{ mt: 2 }}
                   >
-                    카메라 시작
+                    카메라 시작 🔊
                   </Button>
                 )}
               </Box>
@@ -903,7 +989,9 @@ const AttendancePage = () => {
                   <Box>
                     <video id="video" width="100%" height="300" style={{ border: '2px solid #ccc', borderRadius: 8 }} />
                     <Typography variant="body2" sx={{ mt: 2 }}>
-                      💻 QR코드나 바코드를 카메라에 비춰주세요
+                      💻 QR코드나 바코드를 카메라에 비춰주세요 (스캔 즉시 자동 출석처리!)
+                      <br />
+                      🔊 스캔 성공 시 확인음이 재생됩니다
                     </Typography>
                   </Box>
                 ) : (
@@ -919,7 +1007,7 @@ const AttendancePage = () => {
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           USB 바코드 스캐너를 연결하고 바코드를 스캔하면<br/>
-                          자동으로 입력창에 입력됩니다.
+                          <strong>즉시 자동으로 출석처리</strong>됩니다. (0.1초 만에 완료!)
                         </Typography>
                       </Paper>
                       
@@ -928,14 +1016,16 @@ const AttendancePage = () => {
                           📷 웹카메라 스캔
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                          카메라를 사용하여 QR코드를 스캔할 수 있습니다.
+                          카메라를 사용하여 QR코드를 스캔하면 <strong>즉시 자동으로 출석처리</strong>됩니다.
+                          <br />
+                          🔊 스캔 성공 시 확인음이 재생됩니다.
                         </Typography>
                         <Button
                           variant="outlined"
                           onClick={() => setUseCameraScanner(true)}
                           startIcon={<CameraAlt />}
                         >
-                          카메라 스캔 시작
+                          카메라 스캔 시작 🔊
                         </Button>
                       </Paper>
                     </Stack>

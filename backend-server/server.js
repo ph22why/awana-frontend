@@ -1352,23 +1352,23 @@ function redistributeStudentsByLevel(callback) {
     
     students.forEach((student, globalIndex) => {
       // Calculate team based on global ranking percentile
-      // Top 20% go to team 1, next 20% to team 2, etc.
+      // Top 20% (0-19%ile) -> Team 1, 20-39%ile -> Team 2, etc.
       const teamIndex = Math.floor(globalIndex / studentsPerTeam);
       const assignedTeam = Math.min(teamIndex + 1, teams.length); // 1~5조
       
-      // Calculate global percentile
-      const globalPercentile = Math.round((globalIndex / totalStudents) * 100);
+      // Calculate global percentile (0-based)
+      const globalPercentile = Math.floor((globalIndex / totalStudents) * 100);
       const percentileRange = teamIndex * 20;
       
       // Within the same team, distribute across groups cyclically
-      // This ensures even distribution of groups within each team
+      // This ensures even distribution: KNOW, LOVE, SERVE, GLORY, HOLY, GRACE, HOPE rotation
       const positionInTeam = globalIndex % studentsPerTeam;
       const groupIndex = positionInTeam % groups.length;
       const assignedGroup = groups[groupIndex];
       
       updates.push([assignedGroup, assignedTeam, student.id]);
       
-      console.log(`📊 Global Rank ${globalIndex + 1}/${totalStudents} - ${student.koreanName} (Score: ${student.total_score}, ${globalPercentile}th percentile) -> ${assignedGroup} Team ${assignedTeam} (${percentileRange}-${Math.min(percentileRange + 20, 100)}%)`);
+      console.log(`📊 Rank ${globalIndex + 1}/${totalStudents} (${globalPercentile}%ile) - ${student.koreanName} (${student.total_score}점) -> ${assignedGroup}-${assignedTeam}조 [${percentileRange}-${Math.min(percentileRange + 19, 99)}%ile범위]`);
     });
     
     if (updates.length === 0) {
@@ -1380,20 +1380,36 @@ function redistributeStudentsByLevel(callback) {
     // Log team and group distribution
     const teamDistribution = {};
     const groupTeamDistribution = {};
+    const groupDistribution = {};
     
     updates.forEach(([group, team, studentId]) => {
       // Count by team
       if (!teamDistribution[team]) teamDistribution[team] = 0;
       teamDistribution[team]++;
       
+      // Count by group
+      if (!groupDistribution[group]) groupDistribution[group] = 0;
+      groupDistribution[group]++;
+      
       // Count by group-team combination
-      const key = `${group}-Team${team}`;
+      const key = `${group}-${team}조`;
       if (!groupTeamDistribution[key]) groupTeamDistribution[key] = 0;
       groupTeamDistribution[key]++;
     });
     
-    console.log('📈 Team distribution (based on global ranking):', teamDistribution);
-    console.log('📈 Group-Team distribution:', groupTeamDistribution);
+    console.log('🎯 === 레벨테스트 기반 재배정 결과 ===');
+    console.log('📊 조별 분포 (전체 순위 기반):', teamDistribution);
+    console.log('📊 그룹별 분포 (균등 배치):', groupDistribution);
+    console.log('📊 그룹-조 조합별 분포:', groupTeamDistribution);
+    
+    // Show percentile ranges for each team
+    console.log('🎯 조별 백분위 범위:');
+    teams.forEach((team, idx) => {
+      const startPercentile = idx * 20;
+      const endPercentile = Math.min((idx + 1) * 20 - 1, 99);
+      const studentsInTeam = teamDistribution[team] || 0;
+      console.log(`   ${team}조: ${startPercentile}-${endPercentile}%ile (${studentsInTeam}명)`);
+    });
     
     // Batch update students
     const updateSql = 'UPDATE students SET studentGroup = ?, team = ? WHERE id = ?';
@@ -1416,9 +1432,12 @@ function redistributeStudentsByLevel(callback) {
         
         if (completed === updates.length && !hasError) {
           console.log(`✅ Successfully redistributed ${updates.length} students based on level test scores`);
-          console.log('🎯 Logic: Global top 20% -> Team 1, 21-40% -> Team 2, etc.');
-          console.log('🎯 Groups are distributed cyclically within each team for separation');
-          console.log('⚠️ Note: When new students take level tests, existing students may be reassigned to different teams');
+          console.log('🎯 === 배정 로직 ===');
+          console.log('   1. 전체 학생을 레벨테스트 점수 순으로 정렬 (높은 점수부터)');
+          console.log('   2. 상위 20% -> 1조, 21-40% -> 2조, 41-60% -> 3조, 61-80% -> 4조, 81-100% -> 5조');
+          console.log('   3. 각 조 내에서 그룹을 순환 배치: KNOW -> LOVE -> SERVE -> GLORY -> HOLY -> GRACE -> HOPE');
+          console.log('   4. 결과: love1조, grace1조, know1조, serve1조, glory1조, holy1조, hope1조 (1조 내 균등배치)');
+          console.log('⚠️ 주의: 새로운 학생이 레벨테스트를 완료하면 기존 학생들의 조/그룹이 변경될 수 있음');
           if (callback) callback();
         }
       });
