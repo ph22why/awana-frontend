@@ -466,14 +466,22 @@ const AttendancePage = () => {
                 playBeepSound();
                 
                 setBarcodeInput(scannedCode);
-                setScannerDialog(false);
-                setUseCameraScanner(false);
+                
+                // 스캐너를 일시 중지하고 출석 처리
                 codeReader.current.reset();
                 
                 // 카메라 스캔 후 즉시 출석 처리
                 setTimeout(() => {
                   handleBarcodeSubmit(scannedCode);
-                }, 100);
+                  
+                  // 출석처리 완료 후 2초 뒤에 스캐너 재시작
+                  setTimeout(() => {
+                    if (scannerDialog && useCameraScanner) {
+                      console.log('🔄 Restarting camera scanner...');
+                      startCameraScanner();
+                    }
+                  }, 200);
+5                }, 100);
               }
             }
           );
@@ -502,8 +510,8 @@ const AttendancePage = () => {
                 playBeepSound();
                 
                 setBarcodeInput(scannedCode);
-                setScannerDialog(false);
-                setUseCameraScanner(false);
+                
+                // 현재 스캔 인터벌을 중지하고 출석 처리
                 clearInterval(scanInterval);
                 if (codeReader.current) {
                   codeReader.current.reset();
@@ -512,6 +520,14 @@ const AttendancePage = () => {
                 // 웹캠 스캔 후 즉시 출석 처리
                 setTimeout(() => {
                   handleBarcodeSubmit(scannedCode);
+                  
+                  // 출석처리 완료 후 2.5초 뒤에 웹캠 스캐너 재시작
+                  setTimeout(() => {
+                    if (scannerDialog && useCameraScanner) {
+                      console.log('🔄 Restarting webcam scanner...');
+                      startWebcamScanner();
+                    }
+                  }, 2500);
                 }, 100);
               }
             })
@@ -522,7 +538,7 @@ const AttendancePage = () => {
       }
     }, 100);
 
-    // 30초 후 자동 정지
+    // 30초 후 자동 정지 (재시작 로직 때문에 실제로는 계속 동작)
     setTimeout(() => {
       clearInterval(scanInterval);
     }, 30000);
@@ -970,6 +986,8 @@ const AttendancePage = () => {
                   📱 QR코드나 바코드를 카메라에 비춰주세요 (스캔 즉시 자동 출석처리!)
                   <br />
                   🔊 스캔 성공 시 확인음이 재생됩니다
+                  <br />
+                  🔄 출석처리 후 자동으로 다음 스캔이 가능합니다 (연속 출석체크!)
                 </Typography>
                 {!useCameraScanner && (
                   <Button
@@ -978,7 +996,7 @@ const AttendancePage = () => {
                     startIcon={<CameraAlt />}
                     sx={{ mt: 2 }}
                   >
-                    카메라 시작 🔊
+                    카메라 시작 🔊🔄
                   </Button>
                 )}
               </Box>
@@ -998,6 +1016,8 @@ const AttendancePage = () => {
                       💻 QR코드나 바코드를 카메라에 비춰주세요 (스캔 즉시 자동 출석처리!)
                       <br />
                       🔊 스캔 성공 시 확인음이 재생됩니다
+                      <br />
+                      🔄 출석처리 후 자동으로 다음 스캔이 가능합니다 (연속 출석체크!)
                     </Typography>
                   </Box>
                 ) : (
@@ -1025,13 +1045,15 @@ const AttendancePage = () => {
                           카메라를 사용하여 QR코드를 스캔하면 <strong>즉시 자동으로 출석처리</strong>됩니다.
                           <br />
                           🔊 스캔 성공 시 확인음이 재생됩니다.
+                          <br />
+                          🔄 출석처리 후 <strong>자동으로 다음 스캔 대기</strong> (연속 출석체크 가능!)
                         </Typography>
                         <Button
                           variant="outlined"
                           onClick={() => setUseCameraScanner(true)}
                           startIcon={<CameraAlt />}
                         >
-                          카메라 스캔 시작 🔊
+                          카메라 스캔 시작 🔊🔄
                         </Button>
                       </Paper>
                     </Stack>
