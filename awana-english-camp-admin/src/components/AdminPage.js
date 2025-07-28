@@ -570,6 +570,33 @@ const AdminPage = () => {
     }
   };
 
+  // 레벨테스트 기반 조-그룹 재배정
+  const handleLevelTestRedistribute = async () => {
+    try {
+      if (!window.confirm("레벨테스트 점수를 기반으로 모든 학생의 조-그룹을 재배정하시겠습니까?\n\n⚠️ 주의: 기존 조-그룹 배정이 모두 변경됩니다!")) {
+        return;
+      }
+      
+      showAlert("레벨테스트 기반 조-그룹 재배정을 시작합니다...", "info");
+      
+      const response = await axios.post(`${BACKEND_URL}/level-test/redistribute`);
+      
+      if (response.data.success) {
+        showAlert("레벨테스트 점수를 기반으로 조-그룹 재배정이 완료되었습니다!", "success");
+        // 학생 데이터 새로고침
+        if (type === "students") {
+          fetchData();
+        }
+      } else {
+        showAlert("재배정 중 오류가 발생했습니다.", "error");
+      }
+    } catch (error) {
+      console.error('Error redistributing students:', error);
+      const errorMessage = error.response?.data?.error || error.message || "재배정 중 오류가 발생했습니다.";
+      showAlert(`레벨테스트 재배정 실패: ${errorMessage}`, "error");
+    }
+  };
+
   const getColumns = () => {
     switch (type) {
       case "students":
@@ -797,6 +824,24 @@ const AdminPage = () => {
                     color="secondary"
                   >
                     조-그룹별 엑셀
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EmojiEvents />}
+                    onClick={handleLevelTestRedistribute}
+                    size="small"
+                    disabled={loading}
+                    color="warning"
+                    sx={{ 
+                      borderColor: 'warning.main',
+                      color: 'warning.main',
+                      '&:hover': {
+                        borderColor: 'warning.dark',
+                        backgroundColor: 'warning.light'
+                      }
+                    }}
+                  >
+                    레벨테스트 재배정
                   </Button>
                   {/* <Button
                     variant="outlined"

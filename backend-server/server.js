@@ -1217,12 +1217,11 @@ app.post('/level-test/submit', (req, res) => {
           }
           
           console.log(`✅ Level test updated for student ${studentId}`);
-          redistributeStudentsByLevel(() => {
-            res.status(200).json({ 
-              success: true, 
-              message: 'Level test updated and students redistributed',
-              testId: existingResult[0].id
-            });
+          res.status(200).json({ 
+            success: true, 
+            message: 'Level test updated successfully',
+            testId: existingResult[0].id,
+            note: 'Students will be redistributed manually by admin'
           });
         });
       } else {
@@ -1239,12 +1238,11 @@ app.post('/level-test/submit', (req, res) => {
           }
           
           console.log(`✅ Level test saved for student ${studentId}`);
-          redistributeStudentsByLevel(() => {
-            res.status(200).json({ 
-              success: true, 
-              message: 'Level test saved and students redistributed',
-              testId: insertResult.insertId
-            });
+          res.status(200).json({ 
+            success: true, 
+            message: 'Level test saved successfully',
+            testId: insertResult.insertId,
+            note: 'Students will be redistributed manually by admin'
           });
         });
       }
