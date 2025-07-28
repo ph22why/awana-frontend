@@ -81,31 +81,103 @@ const AttendancePage = () => {
   // 스캔 성공 소리 재생 함수
   const playBeepSound = () => {
     try {
-      // Web Audio API를 사용하여 beep 소리 생성
+      // Web Audio API를 사용하여 더 잘 들리는 "삑" 소리 생성
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      
+      // 모바일에서 오디오 컨텍스트가 suspended 상태일 수 있으므로 resume 시도
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       
-      // 주파수 설정 (800Hz - 명확한 beep 소리)
-      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-      oscillator.type = 'sine';
+      // 더 명확한 "삑" 소리를 위한 주파수 설정 (1000Hz - 높고 명확한 소리)
+      oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
+      oscillator.type = 'square'; // 사각파로 변경하여 더 뚜렷한 "삑" 소리
       
-      // 볼륨 설정
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+      // 볼륨을 높여서 더 잘 들리게 설정
+      gainNode.gain.setValueAtTime(0.6, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
       
       // 오디오 노드 연결
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
       
-      // 0.2초간 재생
+      // 0.15초간 재생 (짧고 명확한 "삑" 소리)
       oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.2);
+      oscillator.stop(audioContext.currentTime + 0.15);
       
-      console.log('🔊 Scan success beep played');
+      console.log('🔊 Enhanced scan success beep played (Mobile optimized)');
+      
+      // 모바일에서 진동도 함께 제공 (지원되는 경우)
+      if (navigator.vibrate && isMobile) {
+        navigator.vibrate(100); // 100ms 진동
+        console.log('📳 Vibration feedback provided');
+      }
+      
     } catch (error) {
-      console.warn('Audio not available:', error);
-      // 소리 재생 실패해도 기능에는 영향 없음
+      console.warn('Audio not available, trying fallback:', error);
+      
+      // 대체 방법: HTML5 Audio API 사용
+      try {
+        // 간단한 beep 소리를 data URI로 생성
+        const beepFreq = 1000;
+        const duration = 0.15;
+        const sampleRate = 44100;
+        const samples = sampleRate * duration;
+        const buffer = new ArrayBuffer(44 + samples * 2);
+        const view = new DataView(buffer);
+        
+        // WAV 헤더 생성
+        const writeString = (offset, string) => {
+          for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+          }
+        };
+        
+        writeString(0, 'RIFF');
+        view.setUint32(4, 36 + samples * 2, true);
+        writeString(8, 'WAVE');
+        writeString(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        writeString(36, 'data');
+        view.setUint32(40, samples * 2, true);
+        
+        // 사각파 생성
+        let offset = 44;
+        for (let i = 0; i < samples; i++) {
+          const sample = Math.sin(2 * Math.PI * beepFreq * i / sampleRate) > 0 ? 0.6 : -0.6;
+          const intSample = Math.max(-32768, Math.min(32767, sample * 32767));
+          view.setInt16(offset, intSample, true);
+          offset += 2;
+        }
+        
+        const blob = new Blob([buffer], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.volume = 0.8;
+        audio.play().then(() => {
+          console.log('🔊 Fallback beep sound played successfully');
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }).catch(err => {
+          console.warn('Fallback audio also failed:', err);
+        });
+        
+      } catch (fallbackError) {
+        console.warn('All audio methods failed:', fallbackError);
+        // 최후의 수단: 진동만 제공 (모바일에서)
+        if (navigator.vibrate && isMobile) {
+          navigator.vibrate([100, 50, 100]); // 패턴 진동
+          console.log('📳 Vibration-only feedback provided');
+        }
+      }
     }
   };
 
