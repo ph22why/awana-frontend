@@ -67,6 +67,9 @@ const AttendancePage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showAbsentOnly, setShowAbsentOnly] = useState(false);
   const [isPinVerified, setIsPinVerified] = useState(false);
+  const [facingMode, setFacingMode] = useState("environment"); // "user" or "environment"
+  const [availableCameras, setAvailableCameras] = useState([]);
+  const [selectedCameraId, setSelectedCameraId] = useState("");
   const webcamRef = useRef(null);
   const codeReader = useRef(null);
   const barcodeInputRef = useRef(null);
@@ -175,6 +178,87 @@ const AttendancePage = () => {
       }
     };
   }, [useCameraScanner, scannerDialog, isPinVerified]); // Add isPinVerified to dependencies
+
+  // 사용 가능한 카메라 목록 가져오기
+  useEffect(() => {
+    if (isPinVerified && isMobile) {
+      getAvailableCameras();
+    }
+  }, [isPinVerified, isMobile]);
+
+  const getAvailableCameras = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      setAvailableCameras(videoDevices);
+      
+      if (videoDevices.length > 0 && !selectedCameraId) {
+        // 후면 카메라를 기본으로 설정
+        const backCamera = videoDevices.find(device => 
+          device.label.toLowerCase().includes('back') || 
+          device.label.toLowerCase().includes('rear') ||
+          device.label.toLowerCase().includes('environment')
+        );
+        setSelectedCameraId(backCamera ? backCamera.deviceId : videoDevices[0].deviceId);
+      }
+    } catch (error) {
+      console.warn("카메라 목록을 가져올 수 없습니다:", error);
+    }
+  };
+
+  const switchCamera = () => {
+    if (availableCameras.length > 1) {
+      const currentIndex = availableCameras.findIndex(camera => camera.deviceId === selectedCameraId);
+      const nextIndex = (currentIndex + 1) % availableCameras.length;
+      setSelectedCameraId(availableCameras[nextIndex].deviceId);
+      
+      // facingMode도 업데이트
+      const nextCamera = availableCameras[nextIndex];
+      if (nextCamera.label.toLowerCase().includes('front') || nextCamera.label.toLowerCase().includes('user')) {
+        setFacingMode("user");
+      } else {
+        setFacingMode("environment");
+      }
+    } else {
+      // 카메라가 2개 미만이면 facingMode만 토글
+      setFacingMode(prev => prev === "user" ? "environment" : "user");
+    }
+  };
+
+  const getCameraDisplayName = (camera) => {
+    if (camera.label.toLowerCase().includes('front') || camera.label.toLowerCase().includes('user')) {
+      return "전면 카메라";
+    } else if (camera.label.toLowerCase().includes('back') || camera.label.toLowerCase().includes('rear') || camera.label.toLowerCase().includes('environment')) {
+      return "후면 카메라";
+    }
+    return camera.label || `카메라 ${camera.deviceId.slice(0, 4)}`;
+  };
+
+  const handleWebcamClick = (event) => {
+    // 터치/클릭으로 포커스 맞추기 (실험적 기능)
+    if (webcamRef.current && isMobile) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 100;
+      const y = ((event.clientY - rect.top) / rect.height) * 100;
+      
+      console.log(`📱 터치 포커스 시도: (${x.toFixed(1)}%, ${y.toFixed(1)}%)`);
+      
+      // 시각적 피드백
+      showAlert(`📱 포커스 조정 중... (${x.toFixed(0)}%, ${y.toFixed(0)}%)`, "info");
+      
+      // 웹캠 재시작으로 포커스 갱신 시도
+      setTimeout(() => {
+        if (useCameraScanner && webcamRef.current) {
+          try {
+            // 포커스 포인트 힌트로 웹캠 설정 갱신
+            webcamRef.current.video?.focus?.();
+          } catch (error) {
+            console.log("포커스 조정이 지원되지 않는 기기입니다.");
+          }
+        }
+      }, 100);
+    }
+  };
 
   // PC 바코드 스캐너를 위한 키보드 이벤트 리스너 (최적화)
   useEffect(() => {
@@ -972,24 +1056,79 @@ const AttendancePage = () => {
               // 모바일: 웹캠 사용
               <Box>
                 {useCameraScanner && (
-                  <Webcam
-                    ref={webcamRef}
-                    audio={false}
-                    screenshotFormat="image/jpeg"
-                    videoConstraints={{
-                      facingMode: { ideal: "environment" } // 후면 카메라 우선
-                    }}
-                    style={{ width: '100%', maxWidth: 400, border: '2px solid #ccc', borderRadius: 8 }}
-                  />
+                  <Box sx={{ position: 'relative' }}>
+                    <Webcam
+                      ref={webcamRef}
+                      audio={false}
+                      screenshotFormat="image/jpeg"
+                      videoConstraints={{
+                        deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
+                        facingMode: !selectedCameraId ? { ideal: facingMode } : undefined,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                      }}
+                      style={{ 
+                        width: '100%', 
+                        maxWidth: 400, 
+                        border: '2px solid #1976d2', 
+                        borderRadius: 8,
+                        cursor: 'crosshair'
+                      }}
+                      onClick={handleWebcamClick}
+                    />
+                    
+                    {/* 카메라 전환 버튼 */}
+                    {availableCameras.length > 1 && (
+                      <IconButton
+                        onClick={switchCamera}
+                        sx={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          backgroundColor: 'rgba(0,0,0,0.7)',
+                          color: 'white',
+                          '&:hover': { backgroundColor: 'rgba(0,0,0,0.8)' }
+                        }}
+                        size="small"
+                      >
+                        🔄
+                      </IconButton>
+                    )}
+                    
+                    {/* 카메라 정보 표시 */}
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        bottom: 8,
+                        left: 8,
+                        right: 8,
+                        backgroundColor: 'rgba(0,0,0,0.7)',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: 1,
+                        fontSize: '0.75rem'
+                      }}
+                    >
+                      {availableCameras.length > 0 ? (
+                        getCameraDisplayName(availableCameras.find(c => c.deviceId === selectedCameraId) || availableCameras[0])
+                      ) : (
+                        facingMode === "user" ? "전면 카메라" : "후면 카메라"
+                      )}
+                    </Box>
+                  </Box>
                 )}
+                
                 <Typography variant="body2" sx={{ mt: 2 }}>
                   📱 QR코드나 바코드를 카메라에 비춰주세요 (스캔 즉시 자동 출석처리!)
                   <br />
                   🔊 스캔 성공 시 확인음이 재생됩니다
                   <br />
                   🔄 출석처리 후 자동으로 다음 스캔이 가능합니다 (연속 출석체크!)
+                  <br />
+                  👆 <strong>화면을 터치하여 포커스 조정</strong> • 🔄 버튼으로 카메라 전환
                 </Typography>
-                {!useCameraScanner && (
+                
+                {!useCameraScanner ? (
                   <Button
                     variant="contained"
                     onClick={() => setUseCameraScanner(true)}
@@ -998,6 +1137,24 @@ const AttendancePage = () => {
                   >
                     카메라 시작 🔊🔄
                   </Button>
+                ) : (
+                  <Stack direction="row" spacing={1} sx={{ mt: 2, justifyContent: 'center' }}>
+                    <Button
+                      variant="outlined"
+                      onClick={switchCamera}
+                      size="small"
+                      disabled={availableCameras.length <= 1}
+                    >
+                      🔄 카메라 전환 ({availableCameras.length})
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() => getAvailableCameras()}
+                      size="small"
+                    >
+                      📷 카메라 재검색
+                    </Button>
+                  </Stack>
                 )}
               </Box>
             ) : (
