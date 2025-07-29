@@ -1217,8 +1217,8 @@ app.post('/level-test/submit', (req, res) => {
           }
           
           console.log(`✅ Level test updated for student ${studentId}`);
-          res.status(200).json({ 
-            success: true, 
+            res.status(200).json({ 
+              success: true, 
             message: 'Level test updated successfully',
             testId: existingResult[0].id,
             note: 'Students will be redistributed manually by admin'
@@ -1238,8 +1238,8 @@ app.post('/level-test/submit', (req, res) => {
           }
           
           console.log(`✅ Level test saved for student ${studentId}`);
-          res.status(200).json({ 
-            success: true, 
+            res.status(200).json({ 
+              success: true, 
             message: 'Level test saved successfully',
             testId: insertResult.insertId,
             note: 'Students will be redistributed manually by admin'

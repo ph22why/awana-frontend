@@ -23,7 +23,19 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Button
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Switch,
+  FormControlLabel
 } from '@mui/material';
 import {
   Home,
@@ -33,7 +45,9 @@ import {
   School,
   CheckCircle,
   Cancel,
-  Refresh
+  Refresh,
+  Close,
+  Person
 } from '@mui/icons-material';
 import { BACKEND_URL } from "../config";
 
@@ -46,6 +60,9 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [alertSeverity, setAlertSeverity] = useState("success");
+  const [studentDialog, setStudentDialog] = useState(false);
+  const [selectedTeamData, setSelectedTeamData] = useState(null);
+  const [showAbsentOnly, setShowAbsentOnly] = useState(false);
   const navigate = useNavigate();
 
   // 학생 대상 시간표 데이터
@@ -293,10 +310,16 @@ const DashboardPage = () => {
               student.studentGroup === group && student.team === team
             );
             
+            // 학생별 레벨테스트 완료 정보 추가
+            const studentsWithLevelTest = studentsInTeam.map(student => ({
+              ...student,
+              levelTestCompleted: completedStudents.has(student.id)
+            }));
+            
             groupedData[key] = {
               total: studentsInTeam.length,
               completed: studentsInTeam.filter(s => completedStudents.has(s.id)).length,
-              students: studentsInTeam
+              students: studentsWithLevelTest
             };
           });
         });
@@ -371,15 +394,59 @@ const DashboardPage = () => {
   const getCardColor = (completed, total) => {
     const rate = getCompletionRate(completed, total);
     if (rate === 100) return 'primary'; // 파란색
+    if (rate >= 80) return 'info'; // 연한 파란색 (80% 이상)
     if (rate === 0) return 'error'; // 빨간색
     return 'warning'; // 노란색 (부분 완료)
   };
 
   const getCardBackground = (completed, total) => {
     const rate = getCompletionRate(completed, total);
-    if (rate === 100) return 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)'; // 파란색
+    if (rate === 100) return 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)'; // 진한 파란색 (100%)
+    if (rate >= 80) return 'linear-gradient(135deg, #29b6f6 0%, #81d4fa 100%)'; // 연한 파란색 (80% 이상)
     if (rate === 0) return 'linear-gradient(135deg, #d32f2f 0%, #f44336 100%)'; // 빨간색
     return 'linear-gradient(135deg, #f57c00 0%, #ff9800 100%)'; // 노란색
+  };
+
+  const handleTeamClick = (group, team, data) => {
+    if (!data || data.total === 0) return; // 학생이 없으면 모달 열지 않음
+    
+    setSelectedTeamData({
+      group,
+      team,
+      data,
+      title: `${getGroupDisplayName(group)} ${team}조 ${selectedTab === 0 ? '출석' : '레벨테스트'} 현황`,
+      type: selectedTab === 0 ? 'attendance' : 'leveltest'
+    });
+    setShowAbsentOnly(false);
+    setStudentDialog(true);
+  };
+
+  const handleCloseStudentDialog = () => {
+    setStudentDialog(false);
+    setSelectedTeamData(null);
+    setShowAbsentOnly(false);
+  };
+
+  // 사용자 타입별 한국어 변환
+  const getKoreanUserType = (userType) => {
+    switch (userType) {
+      case 'student': return '학생';
+      case 'ym': return 'YM';
+      case 'teacher': return '교사';
+      case 'staff': return '스태프';
+      default: return '사용자';
+    }
+  };
+
+  // 사용자 타입별 색상
+  const getUserTypeColor = (userType) => {
+    switch (userType) {
+      case 'student': return 'primary';
+      case 'ym': return 'success';
+      case 'teacher': return 'warning';
+      case 'staff': return 'error';
+      default: return 'default';
+    }
   };
 
   // PIN이 확인되지 않았으면 PIN 입력 다이얼로그만 표시
@@ -497,8 +564,14 @@ const DashboardPage = () => {
                         sx={{ 
                           background: getCardBackground(completed, total),
                           color: 'white',
-                          minHeight: 120
+                          minHeight: 120,
+                          cursor: data && data.total > 0 ? 'pointer' : 'default',
+                          transition: 'transform 0.2s',
+                          '&:hover': data && data.total > 0 ? {
+                            transform: 'scale(1.02)'
+                          } : {}
                         }}
+                        onClick={() => handleTeamClick(group, team, data)}
                       >
                         <CardContent sx={{ textAlign: 'center', p: 2 }}>
                           <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -515,6 +588,16 @@ const DashboardPage = () => {
                             <Chip 
                               icon={<CheckCircle />}
                               label="완료" 
+                              size="small" 
+                              sx={{ 
+                                mt: 1, 
+                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                color: 'white'
+                              }}
+                            />
+                          ) : rate >= 80 ? (
+                            <Chip 
+                              label="거의완료" 
                               size="small" 
                               sx={{ 
                                 mt: 1, 
@@ -634,6 +717,195 @@ const DashboardPage = () => {
           </Grid>
         </Grid>
       </Paper>
+
+      {/* Bottom Refresh Button */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<Refresh />}
+          onClick={handleRefresh}
+          disabled={loading}
+          size="large"
+          sx={{ 
+            px: 4, 
+            py: 1.5,
+            borderRadius: 2,
+            boxShadow: 3,
+            '&:hover': {
+              boxShadow: 6
+            }
+          }}
+        >
+          {loading ? '새로고침 중...' : '데이터 새로고침'}
+        </Button>
+      </Box>
+
+      {/* Student Detail Dialog */}
+      <Dialog
+        open={studentDialog}
+        onClose={handleCloseStudentDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Person color="primary" />
+          {selectedTeamData && selectedTeamData.title}
+          <IconButton
+            onClick={handleCloseStudentDialog}
+            sx={{ ml: 'auto' }}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {selectedTeamData && (
+            <Box>
+              {/* 출석 현황 헤더 */}
+              <Paper elevation={1}>
+                <Box sx={{ p: 2, backgroundColor: 'primary.main', color: 'white' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Group />
+                      {selectedTeamData.type === 'attendance' ? (
+                        showAbsentOnly ? (
+                          <>
+                            결시자 현황 ({selectedTeamData.data.students.filter(s => !s.attended).length}명)
+                            <Chip 
+                              label="결시자만 표시" 
+                              size="small" 
+                              color="warning" 
+                              sx={{ ml: 1, backgroundColor: 'rgba(255,193,7,0.8)', color: 'white' }}
+                            />
+                          </>
+                        ) : (
+                          <>학생 현황 ({selectedTeamData.data.attended || 0}/{selectedTeamData.data.total})</>
+                        )
+                      ) : (
+                        <>레벨테스트 현황 ({selectedTeamData.data.completed || 0}/{selectedTeamData.data.total})</>
+                      )}
+                    </Typography>
+                    
+                    {selectedTeamData.type === 'attendance' && (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={showAbsentOnly}
+                            onChange={(e) => setShowAbsentOnly(e.target.checked)}
+                            sx={{ 
+                              '& .MuiSwitch-switchBase': { color: 'white' },
+                              '& .MuiSwitch-track': { backgroundColor: 'rgba(255,255,255,0.3)' }
+                            }}
+                          />
+                        }
+                        label={
+                          <Typography variant="body2" sx={{ color: 'white' }}>
+                            🔍 결시자만 보기
+                          </Typography>
+                        }
+                      />
+                    )}
+                  </Box>
+                </Box>
+                
+                <TableContainer sx={{ maxHeight: 400 }}>
+                  <Table stickyHeader size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>이름</TableCell>
+                        <TableCell>영어이름</TableCell>
+                        <TableCell>교회</TableCell>
+                        {selectedTeamData.type === 'attendance' ? (
+                          <>
+                            <TableCell>출석 시간</TableCell>
+                            <TableCell>상태</TableCell>
+                          </>
+                        ) : (
+                          <>
+                            <TableCell>점수</TableCell>
+                            <TableCell>완료 여부</TableCell>
+                          </>
+                        )}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {(() => {
+                        // 필터링 적용
+                        let filteredStudents = selectedTeamData.data.students || [];
+                        
+                        if (selectedTeamData.type === 'attendance' && showAbsentOnly) {
+                          filteredStudents = filteredStudents.filter(student => !student.attended);
+                        }
+                        
+                        if (filteredStudents.length === 0) {
+                          return (
+                            <TableRow>
+                              <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                  {selectedTeamData.type === 'attendance' && showAbsentOnly 
+                                    ? "🎉 모든 학생이 출석했습니다!" 
+                                    : "학생이 없습니다."}
+                                </Typography>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        }
+                        
+                        return filteredStudents.map((student, index) => (
+                          <TableRow key={index}>
+                            <TableCell>
+                              <Typography variant="body2" fontWeight="medium">
+                                {student.name || student.koreanName}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption" color="text.secondary">
+                                {student.englishName || '-'}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="caption" color="text.secondary">
+                                {student.churchName || '-'}
+                              </Typography>
+                            </TableCell>
+                            {selectedTeamData.type === 'attendance' ? (
+                              <>
+                                <TableCell>
+                                  {student.attendedAt ? new Date(student.attendedAt).toLocaleTimeString() : '-'}
+                                </TableCell>
+                                <TableCell>
+                                  {student.attended ? (
+                                    <Chip label="출석" color="success" size="small" />
+                                  ) : (
+                                    <Chip label="미출석" color="default" size="small" />
+                                  )}
+                                </TableCell>
+                              </>
+                            ) : (
+                              <>
+                                <TableCell>
+                                  {student.total_score ? `${student.total_score}/${student.max_score}` : '-'}
+                                </TableCell>
+                                <TableCell>
+                                  {student.levelTestCompleted ? (
+                                    <Chip label="완료" color="success" size="small" />
+                                  ) : (
+                                    <Chip label="미완료" color="default" size="small" />
+                                  )}
+                                </TableCell>
+                              </>
+                            )}
+                          </TableRow>
+                        ));
+                      })()}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Paper>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 };

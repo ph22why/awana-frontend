@@ -825,7 +825,7 @@ const AdminPage = () => {
                   >
                     조-그룹별 엑셀
                   </Button>
-                  <Button
+                  {/* <Button
                     variant="outlined"
                     startIcon={<EmojiEvents />}
                     onClick={handleLevelTestRedistribute}
@@ -842,24 +842,6 @@ const AdminPage = () => {
                     }}
                   >
                     레벨테스트 재배정
-                  </Button>
-                  {/* <Button
-                    variant="outlined"
-                    startIcon={<Group />}
-                    onClick={handleAssignGroups}
-                    size="small"
-                    disabled={loading}
-                  >
-                    그룹 배정
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<EmojiEvents />}
-                    onClick={handleRankAssignment}
-                    size="small"
-                    disabled={loading}
-                  >
-                    등급 부여
                   </Button> */}
                 </>
               )}
