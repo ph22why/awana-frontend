@@ -17,6 +17,11 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=awana123
     command: mongod --logpath /var/log/mongodb/mongod.log --logappend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # MySQL (TNT Camp 데이터베이스)
   mysql:
@@ -36,7 +41,11 @@ services:
       - MYSQL_USER=tntcamp
       - MYSQL_PASSWORD=tntcamp123!@#
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   # Event Service
   event-service:
     build: ./services/event-service
@@ -51,7 +60,11 @@ services:
     networks:
       - awana-network
     restart: unless-stopped
-
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
   # Church Service
   church-service:
     build: ./services/church-service
@@ -66,6 +79,11 @@ services:
     networks:
       - awana-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Receipt Service
   receipt-service:
@@ -81,6 +99,11 @@ services:
     networks:
       - awana-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Frontend Service (React + Nginx with HTTPS and API Proxy)
   frontend:
@@ -105,6 +128,11 @@ services:
     networks:
       - awana-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # TNT Camp Backend Server
   tntcamp-backend:
@@ -126,6 +154,11 @@ services:
     networks:
       - awana-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # TNT Camp Main App
   tntcamp-app:
@@ -143,6 +176,11 @@ services:
     networks:
       - awana-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # TNT Camp Admin App
   tntcamp-admin:
@@ -160,6 +198,11 @@ services:
     networks:
       - awana-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 
 volumes:
