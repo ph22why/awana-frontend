@@ -333,10 +333,7 @@ const ReceiptManagePage: React.FC = () => {
         })));
 
         // 영수증 목록 새로고침
-        const receiptsResponse = await receiptApi.getReceipts({ eventId: selectedEvent });
-        if (receiptsResponse.success) {
-          setReceipts(receiptsResponse.data);
-        }
+        await fetchReceipts(selectedEvent, true, searchText);
       }
 
       if (failedReceipts.length > 0) {
@@ -520,7 +517,7 @@ const ReceiptManagePage: React.FC = () => {
 
         // Refresh receipt list immediately
         if (selectedEvent) {
-          await fetchReceipts(selectedEvent, true);
+          await fetchReceipts(selectedEvent, true, searchText);
         }
       }
     } catch (err: any) {
@@ -755,6 +752,7 @@ const ReceiptManagePage: React.FC = () => {
     setSelectedEvent(event.target.value);
     setShowForm(false); // Reset form when event changes
     setSelectedChurch(null); // Reset selected church
+    setSearchText(''); // Reset search when event changes
     setCurrentReceipt({ // Reset form state
       churchId: {
         mainId: '',
@@ -771,26 +769,54 @@ const ReceiptManagePage: React.FC = () => {
     });
   };
 
-  const fetchReceipts = async (eventId: string, resetPage: boolean = false) => {
+  const fetchReceipts = async (eventId: string, resetPage: boolean = false, searchQuery?: string) => {
     try {
       setLoading(true);
-      console.log('Fetching receipts for eventId:', eventId);
+      console.log('Fetching receipts for eventId:', eventId, 'searchQuery:', searchQuery);
       
       if (resetPage) {
         setPage(1);
       }
       
-      const response = await receiptApi.getReceipts({ 
+      // 검색어가 있으면 전체 데이터를 가져와서 필터링, 없으면 페이지네이션 적용
+      const requestParams = searchQuery ? {
+        eventId: eventId,
+        limit: 5000 // 전체 데이터를 가져오기 위해 큰 수치 설정
+      } : {
         eventId: eventId,
         page: resetPage ? 1 : page,
         limit: pageSize
-      });
+      };
+      
+      const response = await receiptApi.getReceipts(requestParams);
       
       console.log('Raw API response:', response);
       
       if (response.success) {
-        setReceipts(response.data);
-        if (response.count) {
+        let receiptsData = response.data;
+        
+        // 검색어가 있으면 클라이언트에서 필터링
+        if (searchQuery && searchQuery.trim()) {
+          receiptsData = response.data.filter(receipt => 
+            receipt.churchName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            receipt.churchId.mainId.includes(searchQuery) ||
+            receipt.managerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            receipt.managerPhone.includes(searchQuery) ||
+            receipt.partTotal.toString().includes(searchQuery) ||
+            receipt.partStudent.toString().includes(searchQuery) ||
+            receipt.partTeacher.toString().includes(searchQuery) ||
+            receipt.partYM.toString().includes(searchQuery) ||
+            receipt.costs.toString().includes(searchQuery)
+          );
+        }
+        
+        setReceipts(receiptsData);
+        setFilteredReceipts(receiptsData);
+        
+        // 검색어가 있을 때는 페이지네이션 비활성화
+        if (searchQuery && searchQuery.trim()) {
+          setTotalPages(1);
+        } else if (response.count) {
           setTotalPages(Math.ceil(response.count / pageSize));
         }
         setError(null);
@@ -801,6 +827,7 @@ const ReceiptManagePage: React.FC = () => {
       console.error('Error fetching receipts:', err);
       setError('영수증 목록을 불러오는데 실패했습니다.');
       setReceipts([]);
+      setFilteredReceipts([]);
     } finally {
       setLoading(false);
     }
@@ -835,7 +862,7 @@ const ReceiptManagePage: React.FC = () => {
   useEffect(() => {
     if (selectedEvent) {
       console.log('Selected event changed, fetching receipts for:', selectedEvent);
-      fetchReceipts(selectedEvent, true); // Pass true to reset pagination
+      fetchReceipts(selectedEvent, true); // Pass true to reset pagination, no search
     }
   }, [selectedEvent]);
 
@@ -843,35 +870,31 @@ const ReceiptManagePage: React.FC = () => {
   useEffect(() => {
     if (selectedEvent && snackbar.severity === 'success') {
       console.log('Receipt saved successfully, refreshing list for:', selectedEvent);
-      fetchReceipts(selectedEvent, true); // Pass true to reset pagination
+      fetchReceipts(selectedEvent, true, searchText); // Pass true to reset pagination
     }
   }, [snackbar.severity]);
 
   // Add effect to handle page changes
   useEffect(() => {
-    if (selectedEvent && page > 1) {
+    if (selectedEvent && page > 1 && !searchText.trim()) {
       console.log('Page changed, fetching receipts for:', selectedEvent);
       fetchReceipts(selectedEvent, false);
     }
   }, [page]);
 
-  // Add filtered receipts effect
-  useEffect(() => {
-    if (!searchText.trim()) {
-      setFilteredReceipts(receipts);
-      return;
+  // 검색 실행 함수
+  const handleSearch = () => {
+    if (selectedEvent) {
+      fetchReceipts(selectedEvent, true, searchText);
     }
+  };
 
-    const filtered = receipts.filter(receipt => 
-      receipt.churchName.toLowerCase().includes(searchText.toLowerCase()) ||
-      receipt.churchId.mainId.includes(searchText) ||
-      receipt.partTotal.toString().includes(searchText) ||
-      receipt.partStudent.toString().includes(searchText) ||
-      receipt.partTeacher.toString().includes(searchText) ||
-      receipt.partYM.toString().includes(searchText)
-    );
-    setFilteredReceipts(filtered);
-  }, [searchText, receipts]);
+  // 검색 입력 필드에서 엔터키 핸들러
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
 
   // Add delete handler
   const handleDelete = async (id: string) => {
@@ -889,7 +912,7 @@ const ReceiptManagePage: React.FC = () => {
       });
       // Refresh the list
       if (selectedEvent) {
-        fetchReceipts(selectedEvent, true);
+        fetchReceipts(selectedEvent, true, searchText);
       }
     } catch (err) {
       console.error('Error deleting receipt:', err);
@@ -1151,7 +1174,7 @@ const ReceiptManagePage: React.FC = () => {
         // input value 초기화(같은 파일 재업로드 가능)
         if (event.target) event.target.value = '';
         // 업로드 후 목록 새로고침
-        if (selectedEvent) fetchReceipts(selectedEvent, true);
+        if (selectedEvent) fetchReceipts(selectedEvent, true, searchText);
       };
       reader.readAsArrayBuffer(file);
     } catch (err) {
@@ -1441,9 +1464,36 @@ const ReceiptManagePage: React.FC = () => {
               size="small"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
+              onKeyPress={handleSearchKeyPress}
               sx={{ width: 300 }}
-              placeholder="교회명, 등록번호, 인원수로 검색"
+              placeholder="교회명, 등록번호, 담당자명, 연락처, 인원수, 비용 검색 (Enter로 검색)"
             />
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<SearchIcon />}
+              onClick={handleSearch}
+              disabled={loading || !selectedEvent}
+              sx={{ minWidth: 80 }}
+            >
+              검색
+            </Button>
+            {searchText && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() => {
+                  setSearchText('');
+                  if (selectedEvent) {
+                    fetchReceipts(selectedEvent, true);
+                  }
+                }}
+                disabled={loading}
+                sx={{ minWidth: 80 }}
+              >
+                초기화
+              </Button>
+            )}
             <FormControl size="small" sx={{ width: 100 }}>
               <InputLabel>페이지당</InputLabel>
               <Select
@@ -1453,7 +1503,7 @@ const ReceiptManagePage: React.FC = () => {
                   setPageSize(Number(e.target.value));
                   setPage(1); // Reset to first page when changing page size
                   if (selectedEvent) {
-                    fetchReceipts(selectedEvent, true);
+                    fetchReceipts(selectedEvent, true, searchText || undefined);
                   }
                 }}
               >
@@ -1556,8 +1606,8 @@ const ReceiptManagePage: React.FC = () => {
             </Table>
           </TableContainer>
 
-          {/* 페이지네이션 컨트롤 추가 */}
-          {totalPages > 1 && (
+          {/* 페이지네이션 컨트롤 추가 - 검색 중이 아닐 때만 표시 */}
+          {totalPages > 1 && !searchText.trim() && (
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 3 }}>
               <Pagination
                 count={totalPages}
