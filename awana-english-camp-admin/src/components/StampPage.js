@@ -100,19 +100,66 @@ const StampPage = () => {
       // 스탬프 데이터 조회
       console.log('🏆 Fetching stamps data...');
       const stampsResponse = await axios.get(`${BACKEND_URL}/stamps/all`);
-      const allStamps = stampsResponse.data || [];
+      let allStamps = stampsResponse.data || [];
+      
+      // 데이터 구조 확인 및 디버깅
+      console.log('🔍 Stamps response structure:', stampsResponse.data);
+      console.log('🔍 Type of stamps data:', typeof stampsResponse.data);
+      console.log('🔍 Is array:', Array.isArray(stampsResponse.data));
+      
+      // 만약 data가 객체이고 배열이 아니라면 적절히 처리
+      if (stampsResponse.data && typeof stampsResponse.data === 'object' && !Array.isArray(stampsResponse.data)) {
+        // 객체의 값들이 배열인 경우 (예: { data: [...] })
+        if (stampsResponse.data.data && Array.isArray(stampsResponse.data.data)) {
+          allStamps = stampsResponse.data.data;
+        } else if (stampsResponse.data.results && Array.isArray(stampsResponse.data.results)) {
+          allStamps = stampsResponse.data.results;
+        } else {
+          // 객체의 값들을 배열로 변환
+          allStamps = Object.values(stampsResponse.data);
+        }
+      }
+      
+      // 최종 확인
+      if (!Array.isArray(allStamps)) {
+        console.error('❌ Stamps data is not an array:', allStamps);
+        allStamps = [];
+      }
       
       console.log(`✅ Found ${allStamps.length} stamp records`);
 
       // 스탬프 데이터를 student_id로 매핑
       const stampsMap = {};
       allStamps.forEach(stamp => {
-        stampsMap[stamp.student_id] = stamp;
+        if (stamp && stamp.student_id) {
+          stampsMap[stamp.student_id] = stamp;
+        }
       });
+      
+      console.log('🔗 Sample stamp mapping:', Object.keys(stampsMap).slice(0, 5));
+      console.log('🔗 Total stamp mappings:', Object.keys(stampsMap).length);
+      
+      // 학생 데이터 샘플 확인
+      if (allStudents.length > 0) {
+        console.log('👤 Sample student data:', allStudents[0]);
+        console.log('👤 Student ID type:', typeof allStudents[0].id);
+        const sampleStudentId = allStudents[0].id;
+        console.log('🔗 Sample student has stamp data:', !!stampsMap[sampleStudentId]);
+      }
 
       // 그룹-조별로 학생 데이터 분류
       const groupedStudents = {};
       const groupedStamps = {};
+
+      // 그룹별 학생 분포 확인
+      const groupDistribution = {};
+      allStudents.forEach(student => {
+        const group = student.studentGroup || 'undefined';
+        const team = student.team || 'undefined';
+        const key = `${group}-${team}`;
+        groupDistribution[key] = (groupDistribution[key] || 0) + 1;
+      });
+      console.log('📊 Student distribution by group-team:', groupDistribution);
 
       groups.forEach(group => {
         teams.forEach(team => {
@@ -121,16 +168,31 @@ const StampPage = () => {
             student.studentGroup === group && student.team === team
           );
           
+          if (studentsInTeam.length > 0) {
+            console.log(`👥 ${key}: Found ${studentsInTeam.length} students`);
+            // 첫 번째 학생의 스탬프 데이터 확인
+            const firstStudent = studentsInTeam[0];
+            const hasStampData = !!stampsMap[firstStudent.id];
+            console.log(`   📋 First student (${firstStudent.name || firstStudent.koreanName}) has stamp data: ${hasStampData}`);
+            if (hasStampData) {
+              console.log(`   📋 Stamp data:`, stampsMap[firstStudent.id]);
+            }
+          }
+          
           // 학생별 스탬프 정보 추가
-          const studentsWithStamps = studentsInTeam.map(student => ({
-            ...student,
-            stampData: stampsMap[student.id] || {
+          const studentsWithStamps = studentsInTeam.map(student => {
+            const stampData = stampsMap[student.id] || {
               stamp_count: 0,
               korean_pin_complete: false,
               english_pin_complete: false,
               total_score: 0
-            }
-          }));
+            };
+            
+            return {
+              ...student,
+              stampData: stampData
+            };
+          });
 
           groupedStudents[key] = {
             total: studentsInTeam.length,
