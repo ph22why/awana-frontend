@@ -346,11 +346,15 @@ const StampPage = () => {
       }
 
       console.log(`💾 Saving ${updates.length} stamp updates...`);
+      console.log('📤 Sending data:', { updates });
+      console.log('🌐 Target URL:', `${BACKEND_URL}/stamps/batch-update`);
       
       // 배치 업데이트 API 호출
       const response = await axios.post(`${BACKEND_URL}/stamps/batch-update`, {
         updates
       });
+
+      console.log('✅ Save response:', response.data);
 
       if (response.data.success) {
         showAlert(`${updates.length}명의 스탬프 정보가 저장되었습니다.`, "success");
@@ -360,8 +364,27 @@ const StampPage = () => {
         showAlert("저장 중 오류가 발생했습니다.", "error");
       }
     } catch (error) {
-      console.error("Error saving stamps:", error);
-      showAlert(`저장 실패: ${error.response?.data?.error || error.message}`, "error");
+      console.error("❌ Error saving stamps:", error);
+      console.error("❌ Error details:", {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          method: error.config?.method,
+          url: error.config?.url,
+          baseURL: error.config?.baseURL
+        }
+      });
+      
+      let errorMessage = `저장 실패: ${error.message}`;
+      if (error.response?.status === 405) {
+        errorMessage = "저장 실패: 서버 엔드포인트가 준비되지 않았습니다. 백엔드 서버를 재시작해주세요.";
+      } else if (error.response?.data?.error) {
+        errorMessage = `저장 실패: ${error.response.data.error}`;
+      }
+      
+      showAlert(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -503,7 +526,7 @@ const StampPage = () => {
           📝 담당하시는 조를 선택하여 학생들의 스탬프 정보를 입력해주세요
         </Typography>
         <Typography variant="body2" sx={{ opacity: 0.9 }}>
-          스탬프 개수, 도전암송핀 한글완성, 영어완성 여부를 체크할 수 있습니다
+          스탬프 개수 입력 및 한글/영어 암송 완성 시 선물 체크
         </Typography>
       </Paper>
 
@@ -534,7 +557,7 @@ const StampPage = () => {
                     학생 스탬프 입력 ({selectedTeamData.data.total}명)
                   </Typography>
                   <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                    💡 점수 계산: 스탬프 1개 = 1점, 한글완성 = 10점, 영어완성 = 5점
+                    🏆 스탬프 개수와 한글/영어 암송 완성 시 핀 체크
                   </Typography>
                 </Box>
                 
@@ -547,15 +570,12 @@ const StampPage = () => {
                         <TableCell align="center">스탬프 개수</TableCell>
                         <TableCell align="center">한글완성</TableCell>
                         <TableCell align="center">영어완성</TableCell>
-                        <TableCell align="center">계산점수</TableCell>
+
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {selectedTeamData.data.students.map((student) => {
                         const editData = editingStamps[student.id] || {};
-                        const calculatedScore = (editData.stamp_count || 0) + 
-                                              (editData.korean_pin_complete ? 10 : 0) + 
-                                              (editData.english_pin_complete ? 5 : 0);
                         
                         return (
                           <TableRow key={student.id}>
@@ -578,9 +598,22 @@ const StampPage = () => {
                               <TextField
                                 type="number"
                                 size="small"
-                                value={editData.stamp_count || 0}
-                                onChange={(e) => handleStampChange(student.id, 'stamp_count', parseInt(e.target.value) || 0)}
-                                inputProps={{ min: 0, style: { textAlign: 'center' } }}
+                                value={editData.stamp_count === 0 ? '' : editData.stamp_count || ''}
+                                placeholder="0"
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  handleStampChange(student.id, 'stamp_count', value === '' ? 0 : parseInt(value) || 0);
+                                }}
+                                onFocus={(e) => {
+                                  // 포커스 시 전체 텍스트 선택 (모바일에서 편리)
+                                  e.target.select();
+                                }}
+                                inputProps={{ 
+                                  min: 0, 
+                                  style: { textAlign: 'center' },
+                                  inputMode: 'numeric',
+                                  pattern: '[0-9]*'
+                                }}
                                 sx={{ width: 80 }}
                               />
                             </TableCell>
@@ -591,10 +624,15 @@ const StampPage = () => {
                                     checked={editData.korean_pin_complete || false}
                                     onChange={(e) => handleStampChange(student.id, 'korean_pin_complete', e.target.checked)}
                                     size="small"
+                                    color="success"
                                   />
                                 }
-                                label=""
-                                sx={{ m: 0 }}
+                                label={
+                                  <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                                    🎁 한글선물
+                                  </Typography>
+                                }
+                                sx={{ m: 0, flexDirection: 'column' }}
                               />
                             </TableCell>
                             <TableCell align="center">
@@ -604,16 +642,16 @@ const StampPage = () => {
                                     checked={editData.english_pin_complete || false}
                                     onChange={(e) => handleStampChange(student.id, 'english_pin_complete', e.target.checked)}
                                     size="small"
+                                    color="primary"
                                   />
                                 }
-                                label=""
-                                sx={{ m: 0 }}
+                                label={
+                                  <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                                    🎁 영어선물
+                                  </Typography>
+                                }
+                                sx={{ m: 0, flexDirection: 'column' }}
                               />
-                            </TableCell>
-                            <TableCell align="center">
-                              <Typography variant="body2" fontWeight="bold" color="primary">
-                                {calculatedScore}점
-                              </Typography>
                             </TableCell>
                           </TableRow>
                         );
