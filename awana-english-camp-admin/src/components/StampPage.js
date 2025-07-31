@@ -40,8 +40,7 @@ import {
   Refresh,
   Close,
   Person,
-  Save,
-  Star
+  Save
 } from '@mui/icons-material';
 import { BACKEND_URL } from "../config";
 
@@ -138,14 +137,10 @@ const StampPage = () => {
             students: studentsWithStamps
           };
 
-          // 스탬프 통계 계산
+          // 간단한 통계만 (학생 수)
           const stampStats = {
-            totalStamps: studentsWithStamps.reduce((sum, s) => sum + (s.stampData.stamp_count || 0), 0),
-            koreanComplete: studentsWithStamps.filter(s => s.stampData.korean_pin_complete).length,
-            englishComplete: studentsWithStamps.filter(s => s.stampData.english_pin_complete).length,
-            averageScore: studentsWithStamps.length > 0 
-              ? (studentsWithStamps.reduce((sum, s) => sum + (s.stampData.total_score || 0), 0) / studentsWithStamps.length).toFixed(1)
-              : 0
+            studentCount: studentsWithStamps.length,
+            hasStudents: studentsWithStamps.length > 0
           };
 
           groupedStamps[key] = stampStats;
@@ -265,22 +260,12 @@ const StampPage = () => {
     }
   };
 
-  const getCardColor = (stampStats) => {
-    if (!stampStats) return 'grey';
-    const avgScore = parseFloat(stampStats.averageScore || 0);
-    if (avgScore >= 15) return '#4caf50'; // 초록색
-    if (avgScore >= 10) return '#2196f3'; // 파란색  
-    if (avgScore >= 5) return '#ff9800'; // 주황색
-    return '#f44336'; // 빨간색
-  };
-
-  const getCardBackground = (stampStats) => {
-    if (!stampStats) return 'linear-gradient(135deg, #9e9e9e 0%, #616161 100%)';
-    const avgScore = parseFloat(stampStats.averageScore || 0);
-    if (avgScore >= 15) return 'linear-gradient(135deg, #4caf50 0%, #81c784 100%)';
-    if (avgScore >= 10) return 'linear-gradient(135deg, #2196f3 0%, #64b5f6 100%)';
-    if (avgScore >= 5) return 'linear-gradient(135deg, #ff9800 0%, #ffb74d 100%)';
-    return 'linear-gradient(135deg, #f44336 0%, #e57373 100%)';
+  const getCardBackground = (stampStats, hasStudents) => {
+    if (!hasStudents) {
+      return 'linear-gradient(135deg, #9e9e9e 0%, #616161 100%)'; // 회색 - 학생 없음
+    }
+    // 모든 조에 동일한 색상 (파란색)
+    return 'linear-gradient(135deg, #2196f3 0%, #64b5f6 100%)';
   };
 
   // PIN이 확인되지 않았으면 PIN 입력 다이얼로그만 표시
@@ -291,7 +276,7 @@ const StampPage = () => {
         onClose={() => navigate('/')}
         onSuccess={handlePinSuccess}
         requiredPin="1234"
-        title="스탬프 관리 접근 인증"
+        title="스탬프 입력 접근 인증"
       />
     );
   }
@@ -311,7 +296,7 @@ const StampPage = () => {
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             <EmojiEvents sx={{ mr: 1, verticalAlign: 'middle' }} />
-            학생 스탬프 관리 시스템
+            스탬프 입력 시스템 (조별 선생님용)
           </Typography>
           <Button
             color="inherit"
@@ -353,44 +338,47 @@ const StampPage = () => {
                     <Grid item xs={12} sm={6} md={2.4} key={team}>
                       <Card 
                         sx={{ 
-                          background: getCardBackground(stampStats),
+                          background: getCardBackground(stampStats, total > 0),
                           color: 'white',
-                          minHeight: 140,
+                          minHeight: 120,
                           cursor: studentData && total > 0 ? 'pointer' : 'default',
                           transition: 'transform 0.2s',
+                          opacity: total > 0 ? 1 : 0.6,
                           '&:hover': studentData && total > 0 ? {
-                            transform: 'scale(1.02)'
+                            transform: 'scale(1.05)',
+                            boxShadow: 3
                           } : {}
                         }}
                         onClick={() => handleTeamClick(group, team, studentData)}
                       >
-                        <CardContent sx={{ textAlign: 'center', p: 2 }}>
-                          <Typography variant="h6" gutterBottom fontWeight="bold">
+                        <CardContent sx={{ textAlign: 'center', p: 3 }}>
+                          <Typography variant="h4" gutterBottom fontWeight="bold">
                             {team}조
                           </Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            학생: {total}명
-                          </Typography>
-                          <Typography variant="body2" sx={{ mb: 1 }}>
-                            총 스탬프: {stampStats?.totalStamps || 0}개
-                          </Typography>
-                          <Typography variant="body2" sx={{ mb: 1, fontSize: '0.75rem' }}>
-                            한글: {stampStats?.koreanComplete || 0}명 / 영어: {stampStats?.englishComplete || 0}명
-                          </Typography>
-                          <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                            평균: {stampStats?.averageScore || 0}점
+                          <Typography variant="h6" sx={{ mb: 2 }}>
+                            {total}명
                           </Typography>
                           
-                          <Chip 
-                            icon={<Star />}
-                            label={`평균 ${stampStats?.averageScore || 0}점`}
-                            size="small" 
-                            sx={{ 
-                              mt: 1, 
-                              backgroundColor: 'rgba(255,255,255,0.2)',
-                              color: 'white'
-                            }}
-                          />
+                          {total > 0 ? (
+                            <Chip 
+                              label="스탬프 입력하기"
+                              size="small" 
+                              sx={{ 
+                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                color: 'white',
+                                fontWeight: 'bold'
+                              }}
+                            />
+                          ) : (
+                            <Chip 
+                              label="학생 없음"
+                              size="small" 
+                              sx={{ 
+                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                color: 'white'
+                              }}
+                            />
+                          )}
                         </CardContent>
                       </Card>
                     </Grid>
@@ -402,45 +390,14 @@ const StampPage = () => {
         ))}
       </Grid>
 
-      {/* Summary */}
-      <Paper elevation={2} sx={{ p: 3, mt: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+      {/* 간단한 안내 메시지 */}
+      <Paper elevation={2} sx={{ p: 2, mt: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', textAlign: 'center' }}>
         <Typography variant="h6" gutterBottom>
-          전체 스탬프 현황 요약
+          📝 담당하시는 조를 선택하여 학생들의 스탬프 정보를 입력해주세요
         </Typography>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={3}>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              총 학생 수
-            </Typography>
-            <Typography variant="h4">
-              {Object.values(studentsData).reduce((sum, data) => sum + (data?.total || 0), 0)}명
-            </Typography>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              총 스탬프 개수
-            </Typography>
-            <Typography variant="h4">
-              {Object.values(stampsData).reduce((sum, data) => sum + (data?.totalStamps || 0), 0)}개
-            </Typography>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              한글 완성자
-            </Typography>
-            <Typography variant="h4">
-              {Object.values(stampsData).reduce((sum, data) => sum + (data?.koreanComplete || 0), 0)}명
-            </Typography>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              영어 완성자
-            </Typography>
-            <Typography variant="h4">
-              {Object.values(stampsData).reduce((sum, data) => sum + (data?.englishComplete || 0), 0)}명
-            </Typography>
-          </Grid>
-        </Grid>
+        <Typography variant="body2" sx={{ opacity: 0.9 }}>
+          스탬프 개수, 도전암송핀 한글완성, 영어완성 여부를 체크할 수 있습니다
+        </Typography>
       </Paper>
 
       {/* Student Detail Dialog */}
@@ -465,9 +422,12 @@ const StampPage = () => {
             <Box>
               <Paper elevation={1}>
                 <Box sx={{ p: 2, backgroundColor: 'primary.main', color: 'white' }}>
-                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <Group />
-                    학생 스탬프 관리 ({selectedTeamData.data.total}명)
+                    학생 스탬프 입력 ({selectedTeamData.data.total}명)
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                    💡 점수 계산: 스탬프 1개 = 1점, 한글완성 = 10점, 영어완성 = 5점
                   </Typography>
                 </Box>
                 
@@ -480,7 +440,7 @@ const StampPage = () => {
                         <TableCell align="center">스탬프 개수</TableCell>
                         <TableCell align="center">한글완성</TableCell>
                         <TableCell align="center">영어완성</TableCell>
-                        <TableCell align="center">예상점수</TableCell>
+                        <TableCell align="center">계산점수</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
