@@ -42,7 +42,8 @@ import {
   Person,
   Save
 } from '@mui/icons-material';
-import { BACKEND_URL } from "../config";
+// import { BACKEND_URL } from "../config";
+const BACKEND_URL = 'http://localhost:8080';
 
 const StampPage = () => {
   const [isPinVerified, setIsPinVerified] = useState(false);
@@ -526,7 +527,7 @@ const StampPage = () => {
           📝 담당하시는 조를 선택하여 학생들의 스탬프 정보를 입력해주세요
         </Typography>
         <Typography variant="body2" sx={{ opacity: 0.9 }}>
-          스탬프 개수 입력 및 한글/영어 암송 완성 시 선물 체크
+          스탬프 개수 입력 및 한글/영어 암송핀 체크
         </Typography>
       </Paper>
 
@@ -629,7 +630,7 @@ const StampPage = () => {
                                 }
                                 label={
                                   <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
-                                    🎁 한글선물
+                                    🎁 한글 암송핀
                                   </Typography>
                                 }
                                 sx={{ m: 0, flexDirection: 'column' }}
@@ -647,7 +648,7 @@ const StampPage = () => {
                                 }
                                 label={
                                   <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
-                                    🎁 영어선물
+                                    🎁 영어 암송핀
                                   </Typography>
                                 }
                                 sx={{ m: 0, flexDirection: 'column' }}
