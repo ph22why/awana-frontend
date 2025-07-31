@@ -602,8 +602,8 @@ const AdminPage = () => {
     try {
       showAlert("암송핀 완료 학생 엑셀을 생성 중입니다...", "info");
       
-      // 스탬프 데이터 조회
-      const response = await axios.get(`${BACKEND_URL}/stamps/all`);
+      // 스탬프 데이터 조회 (순위 API 사용)
+      const response = await axios.get(`${BACKEND_URL}/stamps/rankings`);
       let stampData = response.data || [];
       
       // 데이터 구조 확인 및 배열로 변환

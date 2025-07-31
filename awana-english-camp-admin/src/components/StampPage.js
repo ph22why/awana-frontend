@@ -110,12 +110,18 @@ const StampPage = () => {
       let allStamps = [];
       
       try {
-        const stampsResponse = await axios.get(`${BACKEND_URL}/stamps/all`);
+        const stampsResponse = await axios.get(`${BACKEND_URL}/stamps/rankings`);
         
         // 데이터 구조 확인 및 디버깅
-        console.log('🔍 Stamps response structure:', stampsResponse.data);
+        console.log('🔍 Stamps response from /stamps/rankings:', stampsResponse);
+        console.log('🔍 Response data:', stampsResponse.data);
         console.log('🔍 Type of stamps data:', typeof stampsResponse.data);
         console.log('🔍 Is array:', Array.isArray(stampsResponse.data));
+        
+        if (stampsResponse.data && stampsResponse.data.length > 0) {
+          console.log('🔍 First stamp record structure:', stampsResponse.data[0]);
+          console.log('🔍 Sample stamp keys:', Object.keys(stampsResponse.data[0]));
+        }
         
         // 배열인지 확인하고 처리
         if (Array.isArray(stampsResponse.data)) {
@@ -417,9 +423,11 @@ const StampPage = () => {
         showAlert(`${updates.length}명의 스탬프 정보가 저장되었습니다.`, "success");
         console.log('💾 Stamps saved successfully, refreshing data...');
         
-        // 다이얼로그 닫기 전에 잠시 대기하여 데이터 새로고침
-        // 즉시 데이터 새로고침
+        // 즉시 데이터 새로고침하고 기다림
+        console.log('🔄 Fetching updated stamp data...');
         await fetchData();
+        console.log('✅ Data refresh completed, closing dialog');
+        
         handleCloseStudentDialog();
       } else {
         showAlert("저장 중 오류가 발생했습니다.", "error");
