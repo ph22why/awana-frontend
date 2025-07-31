@@ -146,11 +146,22 @@ const StampPage = () => {
       allStamps.forEach(stamp => {
         if (stamp && stamp.student_id) {
           stampsMap[stamp.student_id] = stamp;
+          console.log(`🔗 Mapped stamp for student ${stamp.student_id}:`, {
+            stamp_count: stamp.stamp_count,
+            korean_pin: stamp.korean_pin_complete,
+            english_pin: stamp.english_pin_complete
+          });
         }
       });
       
       console.log('🔗 Sample stamp mapping:', Object.keys(stampsMap).slice(0, 5));
       console.log('🔗 Total stamp mappings:', Object.keys(stampsMap).length);
+      
+      // 스탬프 매핑 샘플 확인
+      const sampleMappings = Object.keys(stampsMap).slice(0, 3);
+      sampleMappings.forEach(studentId => {
+        console.log(`🔍 Student ${studentId} stamp data:`, stampsMap[studentId]);
+      });
       
       // 학생 데이터 샘플 확인
       if (allStudents.length > 0) {
@@ -219,6 +230,13 @@ const StampPage = () => {
               total_score: 0
             };
             
+            // 디버깅: 스탬프 데이터 매핑 확인
+            if (stampsMap[student.id]) {
+              console.log(`✅ Found stamp data for ${student.name || student.koreanName} (ID: ${student.id}):`, stampData);
+            } else {
+              console.log(`❌ No stamp data for ${student.name || student.koreanName} (ID: ${student.id})`);
+            }
+            
             return {
               ...student,
               stampData: stampData
@@ -280,6 +298,9 @@ const StampPage = () => {
   const handleTeamClick = (group, team, data) => {
     if (!data || data.total === 0) return;
     
+    console.log(`🎯 Opening team dialog for ${group}-${team}조`);
+    console.log(`👥 Students in team:`, data.students.length);
+    
     setSelectedTeamData({
       group,
       team,
@@ -287,15 +308,28 @@ const StampPage = () => {
       title: `${getGroupDisplayName(group)} ${team}조 스탬프 관리`
     });
     
-    // 편집 상태 초기화
+    // 편집 상태 초기화 - 기존 스탬프 데이터 로드
     const initialEditState = {};
     data.students.forEach(student => {
+      const hasStampData = student.stampData && Object.keys(student.stampData).length > 0;
+      const stampData = student.stampData || {};
+      
+      console.log(`📋 Student ${student.name || student.koreanName}:`, {
+        hasStampData,
+        stampData,
+        stamp_count: stampData.stamp_count,
+        korean_pin: stampData.korean_pin_complete,
+        english_pin: stampData.english_pin_complete
+      });
+      
       initialEditState[student.id] = {
-        stamp_count: student.stampData.stamp_count || 0,
-        korean_pin_complete: student.stampData.korean_pin_complete || false,
-        english_pin_complete: student.stampData.english_pin_complete || false
+        stamp_count: stampData.stamp_count || 0,
+        korean_pin_complete: stampData.korean_pin_complete || false,
+        english_pin_complete: stampData.english_pin_complete || false
       };
     });
+    
+    console.log(`💾 Initial edit state:`, initialEditState);
     setEditingStamps(initialEditState);
     setStudentDialog(true);
   };
@@ -358,8 +392,13 @@ const StampPage = () => {
 
       if (response.data.success) {
         showAlert(`${updates.length}명의 스탬프 정보가 저장되었습니다.`, "success");
-        handleCloseStudentDialog();
-        fetchData(); // 데이터 새로고침
+        console.log('💾 Stamps saved successfully, refreshing data...');
+        
+        // 다이얼로그 닫기 전에 잠시 대기하여 데이터 새로고침
+        setTimeout(() => {
+          handleCloseStudentDialog();
+          fetchData(); // 데이터 새로고침
+        }, 500);
       } else {
         showAlert("저장 중 오류가 발생했습니다.", "error");
       }
@@ -568,8 +607,8 @@ const StampPage = () => {
                         <TableCell>이름</TableCell>
                         <TableCell>교회</TableCell>
                         <TableCell align="center">스탬프 개수</TableCell>
-                        <TableCell align="center">한글완성</TableCell>
-                        <TableCell align="center">영어완성</TableCell>
+                        <TableCell align="center">한글 암송핀</TableCell>
+                        <TableCell align="center">영어 암송핀</TableCell>
 
                       </TableRow>
                     </TableHead>

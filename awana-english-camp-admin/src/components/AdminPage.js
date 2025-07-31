@@ -597,6 +597,169 @@ const AdminPage = () => {
     }
   };
 
+  // 암송핀 완료 학생 엑셀 다운로드
+  const handleDownloadRecitationPinExcel = async () => {
+    try {
+      showAlert("암송핀 완료 학생 엑셀을 생성 중입니다...", "info");
+      
+      // 스탬프 데이터 조회
+      const response = await axios.get(`${BACKEND_URL}/stamps/all`);
+      const stampData = response.data || [];
+      
+      console.log(`📊 Found ${stampData.length} stamp records`);
+      
+      if (stampData.length === 0) {
+        showAlert("다운로드할 스탬프 데이터가 없습니다.", "warning");
+        return;
+      }
+
+      // 암송핀 완료 학생들 필터링
+      const koreanPinStudents = stampData.filter(item => item.korean_pin_complete);
+      const englishPinStudents = stampData.filter(item => item.english_pin_complete);
+      const bothPinStudents = stampData.filter(item => item.korean_pin_complete && item.english_pin_complete);
+
+      // 워크북 생성
+      const workbook = XLSX.utils.book_new();
+      
+      // 1. 한글 암송핀 완료 시트
+      const koreanPinData = [];
+      koreanPinData.push(['순번', '학생명', '영어명', '교회명', '그룹', '조', '스탬프수', '완료일시']);
+      koreanPinStudents
+        .sort((a, b) => (a.koreanName || '').localeCompare(b.koreanName || ''))
+        .forEach((item, index) => {
+          koreanPinData.push([
+            index + 1,
+            item.koreanName || '',
+            item.englishName || '',
+            item.churchName || '',
+            item.studentGroup || '',
+            item.team || '',
+            item.stamp_count || 0,
+            item.updated_at ? new Date(item.updated_at).toLocaleDateString() : ''
+          ]);
+        });
+      
+      const koreanWorksheet = XLSX.utils.aoa_to_sheet(koreanPinData);
+      koreanWorksheet['!cols'] = [
+        { width: 6 }, { width: 12 }, { width: 15 }, { width: 20 }, 
+        { width: 10 }, { width: 6 }, { width: 10 }, { width: 12 }
+      ];
+      XLSX.utils.book_append_sheet(workbook, koreanWorksheet, '🇰🇷 한글암송핀완료');
+
+      // 2. 영어 암송핀 완료 시트
+      const englishPinData = [];
+      englishPinData.push(['순번', '학생명', '영어명', '교회명', '그룹', '조', '스탬프수', '완료일시']);
+      englishPinStudents
+        .sort((a, b) => (a.koreanName || '').localeCompare(b.koreanName || ''))
+        .forEach((item, index) => {
+          englishPinData.push([
+            index + 1,
+            item.koreanName || '',
+            item.englishName || '',
+            item.churchName || '',
+            item.studentGroup || '',
+            item.team || '',
+            item.stamp_count || 0,
+            item.updated_at ? new Date(item.updated_at).toLocaleDateString() : ''
+          ]);
+        });
+      
+      const englishWorksheet = XLSX.utils.aoa_to_sheet(englishPinData);
+      englishWorksheet['!cols'] = [
+        { width: 6 }, { width: 12 }, { width: 15 }, { width: 20 }, 
+        { width: 10 }, { width: 6 }, { width: 10 }, { width: 12 }
+      ];
+      XLSX.utils.book_append_sheet(workbook, englishWorksheet, '🇺🇸 영어암송핀완료');
+
+      // 3. 한글+영어 모두 완료 시트
+      const bothPinData = [];
+      bothPinData.push(['순번', '학생명', '영어명', '교회명', '그룹', '조', '스탬프수', '완료일시']);
+      bothPinStudents
+        .sort((a, b) => (a.koreanName || '').localeCompare(b.koreanName || ''))
+        .forEach((item, index) => {
+          bothPinData.push([
+            index + 1,
+            item.koreanName || '',
+            item.englishName || '',
+            item.churchName || '',
+            item.studentGroup || '',
+            item.team || '',
+            item.stamp_count || 0,
+            item.updated_at ? new Date(item.updated_at).toLocaleDateString() : ''
+          ]);
+        });
+      
+      const bothWorksheet = XLSX.utils.aoa_to_sheet(bothPinData);
+      bothWorksheet['!cols'] = [
+        { width: 6 }, { width: 12 }, { width: 15 }, { width: 20 }, 
+        { width: 10 }, { width: 6 }, { width: 10 }, { width: 12 }
+      ];
+      XLSX.utils.book_append_sheet(workbook, bothWorksheet, '🏆 한글영어모두완료');
+
+      // 4. 요약 시트
+      const summaryData = [];
+      summaryData.push(['📊 암송핀 완료 현황 요약', '', '', '']);
+      summaryData.push([]);
+      summaryData.push(['구분', '완료 학생 수', '비율', '']);
+      summaryData.push(['한글 암송핀 완료', koreanPinStudents.length, `${((koreanPinStudents.length / stampData.length) * 100).toFixed(1)}%`, '']);
+      summaryData.push(['영어 암송핀 완료', englishPinStudents.length, `${((englishPinStudents.length / stampData.length) * 100).toFixed(1)}%`, '']);
+      summaryData.push(['한글+영어 모두 완료', bothPinStudents.length, `${((bothPinStudents.length / stampData.length) * 100).toFixed(1)}%`, '']);
+      summaryData.push(['총 참가 학생', stampData.length, '100%', '']);
+      summaryData.push([]);
+      
+      // 그룹별 통계
+      summaryData.push(['📈 그룹별 암송핀 완료 현황', '', '', '']);
+      summaryData.push(['그룹', '한글완료', '영어완료', '모두완료']);
+      
+      const groups = ['KNOW', 'LOVE', 'SERVE', 'GLORY', 'HOLY', 'GRACE', 'HOPE'];
+      groups.forEach(group => {
+        const groupData = stampData.filter(item => item.studentGroup === group);
+        const koreanCount = groupData.filter(item => item.korean_pin_complete).length;
+        const englishCount = groupData.filter(item => item.english_pin_complete).length;
+        const bothCount = groupData.filter(item => item.korean_pin_complete && item.english_pin_complete).length;
+        
+        summaryData.push([
+          `${groups.indexOf(group) + 1}그룹-${group}`,
+          `${koreanCount}명`,
+          `${englishCount}명`,
+          `${bothCount}명`
+        ]);
+      });
+      
+      const summaryWorksheet = XLSX.utils.aoa_to_sheet(summaryData);
+      summaryWorksheet['!cols'] = [
+        { width: 20 }, { width: 15 }, { width: 15 }, { width: 15 }
+      ];
+      
+      // 요약을 맨 앞에 추가
+      XLSX.utils.book_append_sheet(workbook, summaryWorksheet, '📊 요약');
+      
+      // 시트 순서 재정렬
+      workbook.SheetNames = ['📊 요약', '🏆 한글영어모두완료', '🇰🇷 한글암송핀완료', '🇺🇸 영어암송핀완료'];
+      
+      // 파일 다운로드
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `AWANA_암송핀_완료현황_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      showAlert(
+        `암송핀 완료 현황 엑셀이 생성되었습니다! (한글: ${koreanPinStudents.length}명, 영어: ${englishPinStudents.length}명, 모두완료: ${bothPinStudents.length}명)`, 
+        "success"
+      );
+      
+    } catch (error) {
+      console.error('Error creating recitation pin Excel:', error);
+      showAlert(`암송핀 엑셀 생성 중 오류가 발생했습니다: ${error.message}`, "error");
+    }
+  };
+
   // 스탬프 순위별 엑셀 다운로드
   const handleDownloadStampRankingExcel = async () => {
     try {
@@ -623,14 +786,15 @@ const AdminPage = () => {
         '한글완성', '영어완성', '총점', '전체상'
       ]);
       
-      // 전체 순위로 정렬
+      // 전체 순위로 정렬 (스탬프 개수 기준)
       const sortedOverall = rankingData
-        .filter(item => item.overall_rank)
-        .sort((a, b) => (a.overall_rank || 999) - (b.overall_rank || 999));
+        .sort((a, b) => (b.stamp_count || 0) - (a.stamp_count || 0));
       
-      sortedOverall.forEach(item => {
+      sortedOverall.forEach((item, index) => {
+        const rank = index + 1;
+        const isMVP = rank <= mvpCutoff;
         overallRankingData.push([
-          item.overall_rank,
+          rank,
           item.koreanName || '',
           item.englishName || '',
           item.churchName || '',
@@ -639,8 +803,8 @@ const AdminPage = () => {
           item.stamp_count || 0,
           item.korean_pin_complete ? 'O' : 'X',
           item.english_pin_complete ? 'O' : 'X',
-          item.total_score || 0,
-          item.overall_award || ''
+          item.stamp_count || 0, // 스탬프 개수가 곧 점수
+          isMVP ? 'MVP' : ''
         ]);
       });
       
@@ -665,8 +829,8 @@ const AdminPage = () => {
             '한글완성', '영어완성', '총점', '그룹상'
           ]);
           
-          // 그룹 내 순위로 정렬
-          const sortedGroup = groupData.sort((a, b) => (a.group_rank || 999) - (b.group_rank || 999));
+          // 그룹 내 순위로 정렬 (스탬프 개수 기준)
+          const sortedGroup = groupData.sort((a, b) => (b.stamp_count || 0) - (a.stamp_count || 0));
           
           sortedGroup.forEach(item => {
             groupSheetData.push([
@@ -700,30 +864,37 @@ const AdminPage = () => {
       awardSummaryData.push(['구분', '학생명', '영어명', '교회명', '그룹', '조', '총점', '상격']);
       awardSummaryData.push([]); // 빈 줄
       
-      // MVP (전체 상위 10%)
-      const mvpStudents = sortedOverall.filter(item => item.overall_award === 'MVP');
+      // MVP (전체 상위 10% - 스탬프 개수 기준)
+      const totalStudents = sortedOverall.length;
+      const mvpCutoff = Math.ceil(totalStudents * 0.1);
+      const mvpStudents = sortedOverall.slice(0, mvpCutoff);
       if (mvpStudents.length > 0) {
         awardSummaryData.push(['🏆 MVP (상위 10%)', '', '', '', '', '', '', '']);
-        mvpStudents.forEach(item => {
+        mvpStudents.forEach((item, index) => {
           awardSummaryData.push([
-            `${item.overall_rank}위`,
+            `${index + 1}위`,
             item.koreanName || '',
             item.englishName || '',
             item.churchName || '',
             item.studentGroup || '',
             item.team || '',
-            item.total_score || 0,
+            item.stamp_count || 0,
             'MVP'
           ]);
         });
         awardSummaryData.push([]); // 빈 줄
       }
       
-      // 그룹별 수상자
+      // 그룹별 수상자 (스탬프 개수 기준)
       groups.forEach(group => {
-        const groupWinners = rankingData
-          .filter(item => item.studentGroup === group && item.group_award)
-          .sort((a, b) => (a.group_rank || 999) - (b.group_rank || 999));
+        const groupData = rankingData.filter(item => item.studentGroup === group);
+        const sortedGroupData = groupData.sort((a, b) => (b.stamp_count || 0) - (a.stamp_count || 0));
+        // 각 그룹에서 상위 5명이 수상자 (1등:금, 2등:은, 3-5등:동)
+        const groupWinners = sortedGroupData.slice(0, 5).map((item, index) => ({
+          ...item,
+          group_award: index === 0 ? '금' : index === 1 ? '은' : '동',
+          group_rank: index + 1
+        }));
         
         if (groupWinners.length > 0) {
           const groupNumber = groups.indexOf(group) + 1;
@@ -737,7 +908,7 @@ const AdminPage = () => {
               item.churchName || '',
               item.studentGroup || '',
               item.team || '',
-              item.total_score || 0,
+              item.stamp_count || 0,
               item.group_award || ''
             ]);
           });
@@ -747,10 +918,19 @@ const AdminPage = () => {
       
       // 통계 추가
       awardSummaryData.push(['📊 수상 통계', '', '', '', '', '', '', '']);
+      // 그룹별 수상자 통계 계산
+      let goldCount = 0, silverCount = 0, bronzeCount = 0;
+      groups.forEach(group => {
+        const groupData = rankingData.filter(item => item.studentGroup === group);
+        if (groupData.length > 0) goldCount++; // 각 그룹당 1명
+        if (groupData.length > 1) silverCount++; // 각 그룹당 1명
+        if (groupData.length > 2) bronzeCount += Math.min(3, groupData.length - 2); // 각 그룹당 최대 3명
+      });
+      
       awardSummaryData.push(['MVP 수상자', mvpStudents.length, '명', '', '', '', '', '']);
-      awardSummaryData.push(['금상 수상자', rankingData.filter(item => item.group_award === '금').length, '명', '', '', '', '', '']);
-      awardSummaryData.push(['은상 수상자', rankingData.filter(item => item.group_award === '은').length, '명', '', '', '', '', '']);
-      awardSummaryData.push(['동상 수상자', rankingData.filter(item => item.group_award === '동').length, '명', '', '', '', '', '']);
+      awardSummaryData.push(['금상 수상자', goldCount, '명', '', '', '', '', '']);
+      awardSummaryData.push(['은상 수상자', silverCount, '명', '', '', '', '', '']);
+      awardSummaryData.push(['동상 수상자', bronzeCount, '명', '', '', '', '', '']);
       awardSummaryData.push(['총 참가자', rankingData.length, '명', '', '', '', '', '']);
       
       const awardSummaryWorksheet = XLSX.utils.aoa_to_sheet(awardSummaryData);
@@ -1068,24 +1248,44 @@ const AdminPage = () => {
                 </>
               )}
               {type === "stamps" && (
-                <Button
-                  variant="outlined"
-                  startIcon={<EmojiEvents />}
-                  onClick={handleDownloadStampRankingExcel}
-                  size="small"
-                  disabled={loading}
-                  color="warning"
-                  sx={{ 
-                    borderColor: 'warning.main',
-                    color: 'warning.main',
-                    '&:hover': {
-                      borderColor: 'warning.dark',
-                      backgroundColor: 'warning.light'
-                    }
-                  }}
-                >
-                  순위별 수상자 엑셀
-                </Button>
+                <>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EmojiEvents />}
+                    onClick={handleDownloadStampRankingExcel}
+                    size="small"
+                    disabled={loading}
+                    color="warning"
+                    sx={{ 
+                      borderColor: 'warning.main',
+                      color: 'warning.main',
+                      '&:hover': {
+                        borderColor: 'warning.dark',
+                        backgroundColor: 'warning.light'
+                      }
+                    }}
+                  >
+                    순위별 수상자 엑셀
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<Group />}
+                    onClick={handleDownloadRecitationPinExcel}
+                    size="small"
+                    disabled={loading}
+                    color="success"
+                    sx={{ 
+                      borderColor: 'success.main',
+                      color: 'success.main',
+                      '&:hover': {
+                        borderColor: 'success.dark',
+                        backgroundColor: 'success.light'
+                      }
+                    }}
+                  >
+                    암송핀 완료 엑셀
+                  </Button>
+                </>
               )}
             </Stack>
           </Grid>
