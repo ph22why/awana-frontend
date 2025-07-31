@@ -20,7 +20,8 @@ import {
   Lock,
   School,
   Inventory,
-  Dashboard
+  Dashboard,
+  EmojiEvents
 } from '@mui/icons-material';
 
 const MainPage = () => {
@@ -59,6 +60,11 @@ const MainPage = () => {
   const handleDashboardSubmit = (e) => {
     e.preventDefault();
     navigate('/dashboard');
+  };
+
+  const handleStampSubmit = (e) => {
+    e.preventDefault();
+    navigate('/stamp');
   };
 
   return (
@@ -344,6 +350,56 @@ const MainPage = () => {
                   }}
                 >
                   물품 수령 관리
+                </Button>
+              </Paper>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Stamp Management Card */}
+        <Grid item xs={12} md={4}>
+          <Card 
+            elevation={4}
+            sx={{ 
+              height: '100%',
+              background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+              color: 'text.primary'
+            }}
+          >
+            <CardContent sx={{ textAlign: 'center', py: 4 }}>
+              <EmojiEvents sx={{ fontSize: 60, mb: 2, color: '#ff6b6b', opacity: 0.9 }} />
+              <Typography variant="h5" component="h2" gutterBottom fontWeight="bold" color="#d63384">
+                스탬프 관리
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+                학생들의 스탬프와 도전암송핀 완성 여부를 관리합니다
+              </Typography>
+              
+              <Paper 
+                component="form" 
+                onSubmit={handleStampSubmit}
+                elevation={2}
+                sx={{ 
+                  p: 3,
+                  backgroundColor: 'rgba(255,255,255,0.95)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
+                <Typography variant="body1" color="text.primary" sx={{ mb: 3 }} fontWeight="medium">
+                  조-그룹별 스탬프 현황을 관리합니다
+                </Typography>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  fullWidth
+                  size="large"
+                  sx={{
+                    background: 'linear-gradient(45deg, #ff6b6b 30%, #ee5a52 90%)',
+                    fontWeight: 'bold',
+                    py: 1.5
+                  }}
+                >
+                  스탬프 관리
                 </Button>
               </Paper>
             </CardContent>

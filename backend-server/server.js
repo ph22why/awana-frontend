@@ -1805,6 +1805,368 @@ app.post('/update-qr-codes', (req, res) => {
     });
 });
 
+// =============================================
+// 스탬프 관리 API 엔드포인트
+// =============================================
+
+// 모든 스탬프 데이터 조회
+app.get('/stamps/all', (req, res) => {
+  console.log('🏆 Fetching all stamp data...');
+  
+  const sql = `
+    SELECT 
+      ss.*,
+      s.koreanName,
+      s.englishName,
+      s.churchName,
+      s.studentGroup,
+      s.team
+    FROM student_stamps ss
+    JOIN students s ON ss.student_id = s.id
+    ORDER BY ss.total_score DESC, ss.stamp_count DESC
+  `;
+  
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error('❌ Error fetching stamps:', err);
+      res.status(500).json({ error: 'Error fetching stamp data', details: err.message });
+    } else {
+      console.log(`✅ Found ${results.length} stamp records`);
+      res.status(200).json(results);
+    }
+  });
+});
+
+// 스탬프 데이터 배치 업데이트
+app.post('/stamps/batch-update', (req, res) => {
+  const { updates } = req.body;
+  
+  if (!updates || !Array.isArray(updates) || updates.length === 0) {
+    return res.status(400).json({ error: 'No updates provided' });
+  }
+  
+  console.log(`💾 Processing ${updates.length} stamp updates...`);
+  
+  // 트랜잭션 시작
+  db.getConnection((err, connection) => {
+    if (err) {
+      console.error('❌ Error getting connection:', err);
+      return res.status(500).json({ error: 'Database connection error' });
+    }
+    
+    connection.beginTransaction((err) => {
+      if (err) {
+        connection.release();
+        console.error('❌ Error starting transaction:', err);
+        return res.status(500).json({ error: 'Transaction error' });
+      }
+      
+      let completedUpdates = 0;
+      let hasError = false;
+      
+      updates.forEach((update, index) => {
+        const { student_id, stamp_count, korean_pin_complete, english_pin_complete } = update;
+        
+        const sql = `
+          INSERT INTO student_stamps (student_id, stamp_count, korean_pin_complete, english_pin_complete)
+          VALUES (?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            stamp_count = VALUES(stamp_count),
+            korean_pin_complete = VALUES(korean_pin_complete),
+            english_pin_complete = VALUES(english_pin_complete),
+            updated_at = CURRENT_TIMESTAMP
+        `;
+        
+        connection.query(sql, [student_id, stamp_count || 0, korean_pin_complete || false, english_pin_complete || false], (err, result) => {
+          if (err && !hasError) {
+            hasError = true;
+            console.error('❌ Error updating stamp:', err);
+            connection.rollback(() => {
+              connection.release();
+              res.status(500).json({ error: 'Error updating stamps', details: err.message });
+            });
+            return;
+          }
+          
+          completedUpdates++;
+          
+          if (completedUpdates === updates.length && !hasError) {
+            connection.commit((err) => {
+              if (err) {
+                console.error('❌ Error committing transaction:', err);
+                connection.rollback(() => {
+                  connection.release();
+                  res.status(500).json({ error: 'Transaction commit error' });
+                });
+              } else {
+                connection.release();
+                console.log(`✅ Successfully updated ${completedUpdates} stamp records`);
+                res.status(200).json({ 
+                  success: true, 
+                  message: `Updated ${completedUpdates} stamp records`,
+                  updatedCount: completedUpdates
+                });
+              }
+            });
+          }
+        });
+      });
+    });
+  });
+});
+
+// 스탬프 순위 데이터 조회 (관리자용)
+app.get('/stamps/rankings', (req, res) => {
+  console.log('📊 Fetching stamp rankings...');
+  
+  const sql = `
+    SELECT 
+      ss.id,
+      ss.student_id,
+      ss.stamp_count,
+      ss.korean_pin_complete,
+      ss.english_pin_complete,
+      ss.total_score,
+      s.koreanName,
+      s.englishName,
+      s.churchName,
+      s.studentGroup,
+      s.team,
+      -- 전체 순위 계산
+      ROW_NUMBER() OVER (ORDER BY ss.total_score DESC, ss.stamp_count DESC, ss.korean_pin_complete DESC, ss.english_pin_complete DESC) AS overall_rank,
+      -- 그룹별 순위 계산
+      ROW_NUMBER() OVER (PARTITION BY s.studentGroup ORDER BY ss.total_score DESC, ss.stamp_count DESC, ss.korean_pin_complete DESC, ss.english_pin_complete DESC) AS group_rank
+    FROM student_stamps ss
+    JOIN students s ON ss.student_id = s.id
+    WHERE s.studentGroup IS NOT NULL AND s.team IS NOT NULL
+    ORDER BY ss.total_score DESC, ss.stamp_count DESC
+  `;
+  
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error('❌ Error fetching rankings:', err);
+      res.status(500).json({ error: 'Error fetching rankings', details: err.message });
+    } else {
+      // MVP와 그룹상 계산
+      const totalStudents = results.length;
+      const mvpCutoff = Math.ceil(totalStudents * 0.1); // 상위 10%
+      
+      const enhancedResults = results.map(item => {
+        // 전체상 (MVP) 계산
+        const overall_award = item.overall_rank <= mvpCutoff ? 'MVP' : null;
+        
+        // 그룹상 계산
+        let group_award = null;
+        if (item.group_rank === 1) group_award = '금';
+        else if (item.group_rank === 2) group_award = '은';
+        else if (item.group_rank <= 5) group_award = '동';
+        
+        return {
+          ...item,
+          overall_award,
+          group_award
+        };
+      });
+      
+      console.log(`✅ Found ${results.length} ranking records (MVP cutoff: ${mvpCutoff})`);
+      res.status(200).json(enhancedResults);
+    }
+  });
+});
+
+// 관리자용 스탬프 데이터 조회 (페이징 지원)
+app.get('/admin/stamps', (req, res) => {
+  const { search = '', limit = 30, page = 1 } = req.query;
+  const offset = (page - 1) * limit;
+  
+  console.log(`📋 Admin fetching stamps - page:${page}, limit:${limit}, search:'${search}'`);
+  
+  let whereClause = '';
+  let queryParams = [];
+  
+  if (search) {
+    whereClause = `WHERE (s.koreanName LIKE ? OR s.englishName LIKE ? OR s.churchName LIKE ? OR s.studentGroup LIKE ?)`;
+    queryParams = [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`];
+  }
+  
+  // 메인 쿼리 (순위 포함)
+  const sql = `
+    SELECT 
+      ss.id,
+      ss.student_id,
+      ss.stamp_count,
+      ss.korean_pin_complete,
+      ss.english_pin_complete,
+      ss.total_score,
+      s.koreanName,
+      s.englishName,
+      s.churchName,
+      s.studentGroup,
+      s.team,
+      ROW_NUMBER() OVER (ORDER BY ss.total_score DESC, ss.stamp_count DESC) AS overall_rank,
+      ROW_NUMBER() OVER (PARTITION BY s.studentGroup ORDER BY ss.total_score DESC, ss.stamp_count DESC) AS group_rank,
+      CASE 
+        WHEN ROW_NUMBER() OVER (ORDER BY ss.total_score DESC, ss.stamp_count DESC) <= (SELECT CEIL(COUNT(*) * 0.1) FROM student_stamps) THEN 'MVP'
+        ELSE NULL
+      END AS overall_award,
+      CASE 
+        WHEN ROW_NUMBER() OVER (PARTITION BY s.studentGroup ORDER BY ss.total_score DESC, ss.stamp_count DESC) = 1 THEN '금'
+        WHEN ROW_NUMBER() OVER (PARTITION BY s.studentGroup ORDER BY ss.total_score DESC, ss.stamp_count DESC) = 2 THEN '은'
+        WHEN ROW_NUMBER() OVER (PARTITION BY s.studentGroup ORDER BY ss.total_score DESC, ss.stamp_count DESC) <= 5 THEN '동'
+        ELSE NULL
+      END AS group_award
+    FROM student_stamps ss
+    JOIN students s ON ss.student_id = s.id
+    ${whereClause}
+    ORDER BY ss.total_score DESC, ss.stamp_count DESC
+    LIMIT ? OFFSET ?
+  `;
+  
+  // 카운트 쿼리
+  const countSql = `
+    SELECT COUNT(*) as total
+    FROM student_stamps ss
+    JOIN students s ON ss.student_id = s.id
+    ${whereClause}
+  `;
+  
+  // 페이징용 파라미터 추가
+  const mainQueryParams = [...queryParams, parseInt(limit), parseInt(offset)];
+  
+  // 카운트 먼저 조회
+  db.query(countSql, queryParams, (err, countResults) => {
+    if (err) {
+      console.error('❌ Error counting stamps:', err);
+      res.status(500).json({ error: 'Error counting records', details: err.message });
+    } else {
+      const totalCount = countResults[0].total;
+      
+      // 메인 데이터 조회
+      db.query(sql, mainQueryParams, (err, results) => {
+        if (err) {
+          console.error('❌ Error fetching stamps:', err);
+          res.status(500).json({ error: 'Error fetching stamps', details: err.message });
+        } else {
+          console.log(`✅ Found ${results.length} stamps (total: ${totalCount})`);
+          res.status(200).json({
+            data: results,
+            totalCount: totalCount,
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(totalCount / limit)
+          });
+        }
+      });
+    }
+  });
+});
+
+// 스탬프 데이터 엑셀 내보내기
+app.get('/admin/stamps/export', (req, res) => {
+  const { search = '' } = req.query;
+  
+  console.log('📊 Exporting stamp data to Excel...');
+  
+  let whereClause = '';
+  let queryParams = [];
+  
+  if (search) {
+    whereClause = `WHERE (s.koreanName LIKE ? OR s.englishName LIKE ? OR s.churchName LIKE ? OR s.studentGroup LIKE ?)`;
+    queryParams = [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`];
+  }
+  
+  const sql = `
+    SELECT 
+      ss.id,
+      ss.student_id,
+      s.koreanName,
+      s.englishName,
+      s.churchName,
+      s.studentGroup,
+      s.team,
+      ss.stamp_count,
+      ss.korean_pin_complete,
+      ss.english_pin_complete,
+      ss.total_score,
+      ROW_NUMBER() OVER (ORDER BY ss.total_score DESC, ss.stamp_count DESC) AS overall_rank,
+      ROW_NUMBER() OVER (PARTITION BY s.studentGroup ORDER BY ss.total_score DESC, ss.stamp_count DESC) AS group_rank,
+      CASE 
+        WHEN ROW_NUMBER() OVER (ORDER BY ss.total_score DESC, ss.stamp_count DESC) <= (SELECT CEIL(COUNT(*) * 0.1) FROM student_stamps) THEN 'MVP'
+        ELSE NULL
+      END AS overall_award,
+      CASE 
+        WHEN ROW_NUMBER() OVER (PARTITION BY s.studentGroup ORDER BY ss.total_score DESC, ss.stamp_count DESC) = 1 THEN '금'
+        WHEN ROW_NUMBER() OVER (PARTITION BY s.studentGroup ORDER BY ss.total_score DESC, ss.stamp_count DESC) = 2 THEN '은'
+        WHEN ROW_NUMBER() OVER (PARTITION BY s.studentGroup ORDER BY ss.total_score DESC, ss.stamp_count DESC) <= 5 THEN '동'
+        ELSE NULL
+      END AS group_award,
+      ss.created_at,
+      ss.updated_at
+    FROM student_stamps ss
+    JOIN students s ON ss.student_id = s.id
+    ${whereClause}
+    ORDER BY ss.total_score DESC, ss.stamp_count DESC
+  `;
+  
+  db.query(sql, queryParams, (err, results) => {
+    if (err) {
+      console.error('❌ Error fetching stamps for export:', err);
+      res.status(500).json({ error: 'Error fetching data for export', details: err.message });
+    } else {
+      try {
+        // 엑셀 데이터 변환
+        const excelData = results.map(item => ({
+          'ID': item.id,
+          '학생ID': item.student_id,
+          '학생명': item.koreanName || '',
+          '영어명': item.englishName || '',
+          '교회명': item.churchName || '',
+          '그룹': item.studentGroup || '',
+          '조': item.team || '',
+          '스탬프개수': item.stamp_count || 0,
+          '한글완성': item.korean_pin_complete ? 'O' : 'X',
+          '영어완성': item.english_pin_complete ? 'O' : 'X',
+          '총점': item.total_score || 0,
+          '전체순위': item.overall_rank,
+          '전체상': item.overall_award || '',
+          '그룹순위': item.group_rank,
+          '그룹상': item.group_award || '',
+          '생성일': item.created_at,
+          '수정일': item.updated_at
+        }));
+        
+        // 엑셀 파일 생성
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.json_to_sheet(excelData);
+        
+        // 열 너비 설정
+        worksheet['!cols'] = [
+          { width: 8 }, { width: 10 }, { width: 12 }, { width: 15 }, { width: 20 },
+          { width: 10 }, { width: 6 }, { width: 10 }, { width: 8 }, { width: 8 },
+          { width: 8 }, { width: 8 }, { width: 8 }, { width: 8 }, { width: 8 },
+          { width: 15 }, { width: 15 }
+        ];
+        
+        XLSX.utils.book_append_sheet(workbook, worksheet, '스탬프현황');
+        
+        // 엑셀 파일을 버퍼로 변환
+        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+        
+        // 응답 헤더 설정
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="stamps_export_${new Date().toISOString().split('T')[0]}.xlsx"`);
+        res.setHeader('Content-Length', buffer.length);
+        
+        console.log(`✅ Exported ${results.length} stamp records to Excel`);
+        res.send(buffer);
+        
+      } catch (excelError) {
+        console.error('❌ Error creating Excel file:', excelError);
+        res.status(500).json({ error: 'Error creating Excel file', details: excelError.message });
+      }
+    }
+  });
+});
+
 // 서버 시작
 app.listen(PORT, () => {
   console.log(`🚀 TNT Camp Backend Server running on http://localhost:${PORT}`);

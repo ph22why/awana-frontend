@@ -9,6 +9,7 @@ import LevelTestPage from './components/LevelTestPage';
 import ItemDistributionPage from './components/ItemDistributionPage';
 import ItemDistributionListPage from './components/ItemDistributionListPage';
 import DashboardPage from './components/DashboardPage';
+import StampPage from './components/StampPage';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
         <Route path='/item-distribution' element={<ItemDistributionPage />} />
         <Route path='/item-distribution-list' element={<ItemDistributionListPage />} />
         <Route path='/dashboard' element={<DashboardPage />} />
+        <Route path='/stamp' element={<StampPage />} />
       </Routes>
     </Router>
     </ThemeProvider>

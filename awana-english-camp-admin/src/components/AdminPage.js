@@ -597,6 +597,205 @@ const AdminPage = () => {
     }
   };
 
+  // 스탬프 순위별 엑셀 다운로드
+  const handleDownloadStampRankingExcel = async () => {
+    try {
+      showAlert("스탬프 순위별 엑셀을 생성 중입니다...", "info");
+      
+      // 스탬프 순위 데이터 조회 - 뷰를 사용하여 전체 순위와 그룹별 순위 포함
+      const response = await axios.get(`${BACKEND_URL}/stamps/rankings`);
+      const rankingData = response.data || [];
+      
+      console.log(`📊 Found ${rankingData.length} stamp ranking records`);
+      
+      if (rankingData.length === 0) {
+        showAlert("다운로드할 스탬프 데이터가 없습니다.", "warning");
+        return;
+      }
+
+      // 워크북 생성
+      const workbook = XLSX.utils.book_new();
+      
+      // 1. 전체 순위 시트
+      const overallRankingData = [];
+      overallRankingData.push([
+        '전체순위', '학생명', '영어명', '교회명', '그룹', '조', '스탬프수', 
+        '한글완성', '영어완성', '총점', '전체상'
+      ]);
+      
+      // 전체 순위로 정렬
+      const sortedOverall = rankingData
+        .filter(item => item.overall_rank)
+        .sort((a, b) => (a.overall_rank || 999) - (b.overall_rank || 999));
+      
+      sortedOverall.forEach(item => {
+        overallRankingData.push([
+          item.overall_rank,
+          item.koreanName || '',
+          item.englishName || '',
+          item.churchName || '',
+          item.studentGroup || '',
+          item.team || '',
+          item.stamp_count || 0,
+          item.korean_pin_complete ? 'O' : 'X',
+          item.english_pin_complete ? 'O' : 'X',
+          item.total_score || 0,
+          item.overall_award || ''
+        ]);
+      });
+      
+      const overallWorksheet = XLSX.utils.aoa_to_sheet(overallRankingData);
+      overallWorksheet['!cols'] = [
+        { width: 8 }, { width: 12 }, { width: 15 }, { width: 20 }, 
+        { width: 10 }, { width: 6 }, { width: 10 }, { width: 8 }, 
+        { width: 8 }, { width: 8 }, { width: 10 }
+      ];
+      XLSX.utils.book_append_sheet(workbook, overallWorksheet, '📈 전체순위');
+      
+      // 2. 그룹별 순위 시트들
+      const groups = ['KNOW', 'LOVE', 'SERVE', 'GLORY', 'HOLY', 'GRACE', 'HOPE'];
+      
+      groups.forEach(group => {
+        const groupData = rankingData.filter(item => item.studentGroup === group);
+        
+        if (groupData.length > 0) {
+          const groupSheetData = [];
+          groupSheetData.push([
+            '그룹순위', '학생명', '영어명', '교회명', '조', '스탬프수', 
+            '한글완성', '영어완성', '총점', '그룹상'
+          ]);
+          
+          // 그룹 내 순위로 정렬
+          const sortedGroup = groupData.sort((a, b) => (a.group_rank || 999) - (b.group_rank || 999));
+          
+          sortedGroup.forEach(item => {
+            groupSheetData.push([
+              item.group_rank,
+              item.koreanName || '',
+              item.englishName || '',
+              item.churchName || '',
+              item.team || '',
+              item.stamp_count || 0,
+              item.korean_pin_complete ? 'O' : 'X',
+              item.english_pin_complete ? 'O' : 'X',
+              item.total_score || 0,
+              item.group_award || ''
+            ]);
+          });
+          
+          const groupWorksheet = XLSX.utils.aoa_to_sheet(groupSheetData);
+          groupWorksheet['!cols'] = [
+            { width: 8 }, { width: 12 }, { width: 15 }, { width: 20 }, 
+            { width: 6 }, { width: 10 }, { width: 8 }, { width: 8 }, 
+            { width: 8 }, { width: 10 }
+          ];
+          
+          const groupNumber = groups.indexOf(group) + 1;
+          XLSX.utils.book_append_sheet(workbook, groupWorksheet, `${groupNumber}그룹-${group}`);
+        }
+      });
+      
+      // 3. 수상자 요약 시트
+      const awardSummaryData = [];
+      awardSummaryData.push(['구분', '학생명', '영어명', '교회명', '그룹', '조', '총점', '상격']);
+      awardSummaryData.push([]); // 빈 줄
+      
+      // MVP (전체 상위 10%)
+      const mvpStudents = sortedOverall.filter(item => item.overall_award === 'MVP');
+      if (mvpStudents.length > 0) {
+        awardSummaryData.push(['🏆 MVP (상위 10%)', '', '', '', '', '', '', '']);
+        mvpStudents.forEach(item => {
+          awardSummaryData.push([
+            `${item.overall_rank}위`,
+            item.koreanName || '',
+            item.englishName || '',
+            item.churchName || '',
+            item.studentGroup || '',
+            item.team || '',
+            item.total_score || 0,
+            'MVP'
+          ]);
+        });
+        awardSummaryData.push([]); // 빈 줄
+      }
+      
+      // 그룹별 수상자
+      groups.forEach(group => {
+        const groupWinners = rankingData
+          .filter(item => item.studentGroup === group && item.group_award)
+          .sort((a, b) => (a.group_rank || 999) - (b.group_rank || 999));
+        
+        if (groupWinners.length > 0) {
+          const groupNumber = groups.indexOf(group) + 1;
+          awardSummaryData.push([`🏅 ${groupNumber}그룹 (${group}) 수상자`, '', '', '', '', '', '', '']);
+          
+          groupWinners.forEach(item => {
+            awardSummaryData.push([
+              `${item.group_rank}위`,
+              item.koreanName || '',
+              item.englishName || '',
+              item.churchName || '',
+              item.studentGroup || '',
+              item.team || '',
+              item.total_score || 0,
+              item.group_award || ''
+            ]);
+          });
+          awardSummaryData.push([]); // 빈 줄
+        }
+      });
+      
+      // 통계 추가
+      awardSummaryData.push(['📊 수상 통계', '', '', '', '', '', '', '']);
+      awardSummaryData.push(['MVP 수상자', mvpStudents.length, '명', '', '', '', '', '']);
+      awardSummaryData.push(['금상 수상자', rankingData.filter(item => item.group_award === '금').length, '명', '', '', '', '', '']);
+      awardSummaryData.push(['은상 수상자', rankingData.filter(item => item.group_award === '은').length, '명', '', '', '', '', '']);
+      awardSummaryData.push(['동상 수상자', rankingData.filter(item => item.group_award === '동').length, '명', '', '', '', '', '']);
+      awardSummaryData.push(['총 참가자', rankingData.length, '명', '', '', '', '', '']);
+      
+      const awardSummaryWorksheet = XLSX.utils.aoa_to_sheet(awardSummaryData);
+      awardSummaryWorksheet['!cols'] = [
+        { width: 20 }, { width: 12 }, { width: 15 }, { width: 20 }, 
+        { width: 10 }, { width: 6 }, { width: 8 }, { width: 10 }
+      ];
+      
+      // 수상자 요약을 맨 앞에 추가
+      XLSX.utils.book_append_sheet(workbook, awardSummaryWorksheet, '🏆 수상자요약');
+      
+      // 시트 순서 재정렬
+      const sheetNames = ['🏆 수상자요약', '📈 전체순위'];
+      groups.forEach(group => {
+        const groupNumber = groups.indexOf(group) + 1;
+        const sheetName = `${groupNumber}그룹-${group}`;
+        if (workbook.Sheets[sheetName]) {
+          sheetNames.push(sheetName);
+        }
+      });
+      workbook.SheetNames = sheetNames;
+      
+      // 파일 다운로드
+      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `AWANA_스탬프_순위별_수상자_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      showAlert(
+        `스탬프 순위별 엑셀 파일이 생성되었습니다! (MVP ${mvpStudents.length}명, 총 ${rankingData.length}명)`, 
+        "success"
+      );
+      
+    } catch (error) {
+      console.error('Error creating stamp ranking Excel:', error);
+      showAlert(`스탬프 순위별 엑셀 생성 중 오류가 발생했습니다: ${error.message}`, "error");
+    }
+  };
+
   const getColumns = () => {
     switch (type) {
       case "students":
@@ -679,6 +878,24 @@ const AdminPage = () => {
           { displayName: "총점", key: "total" },
           { displayName: "등급", key: "rank" },
         ];
+      case "stamps":
+        return [
+          { displayName: "ID", key: "id", readOnly: true },
+          { displayName: "학생 ID", key: "student_id", readOnly: true },
+          { displayName: "학생명", key: "koreanName", readOnly: true },
+          { displayName: "영어명", key: "englishName", readOnly: true },
+          { displayName: "교회명", key: "churchName", readOnly: true },
+          { displayName: "그룹", key: "studentGroup", readOnly: true },
+          { displayName: "조", key: "team", readOnly: true },
+          { displayName: "스탬프 개수", key: "stamp_count" },
+          { displayName: "한글완성", key: "korean_pin_complete" },
+          { displayName: "영어완성", key: "english_pin_complete" },
+          { displayName: "총점", key: "total_score", readOnly: true },
+          { displayName: "전체순위", key: "overall_rank", readOnly: true },
+          { displayName: "전체상", key: "overall_award", readOnly: true },
+          { displayName: "그룹순위", key: "group_rank", readOnly: true },
+          { displayName: "그룹상", key: "group_award", readOnly: true },
+        ];
       default:
         return [];
     }
@@ -687,6 +904,9 @@ const AdminPage = () => {
   const formatCellValue = (item, column) => {
     if (column.key === 'gender') {
       return item[column.key] === 'male' ? '남자' : item[column.key] === 'female' ? '여자' : item[column.key];
+    }
+    if (column.key === 'korean_pin_complete' || column.key === 'english_pin_complete') {
+      return item[column.key] ? 'O' : 'X';
     }
     return item[column.key];
   };
@@ -699,7 +919,8 @@ const AdminPage = () => {
       staff: "스태프",
       churches: "교회",
       attendance: "출석",
-      scores: "성적"
+      scores: "성적",
+      stamps: "스탬프"
     };
     return typeNames[type] || type;
   };
@@ -754,6 +975,7 @@ const AdminPage = () => {
                 <MenuItem value="churches">교회</MenuItem>
                 <MenuItem value="attendance">출석</MenuItem>
                 <MenuItem value="scores">성적</MenuItem>
+                <MenuItem value="stamps">스탬프</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -844,6 +1066,26 @@ const AdminPage = () => {
                     레벨테스트 재배정
                   </Button> */}
                 </>
+              )}
+              {type === "stamps" && (
+                <Button
+                  variant="outlined"
+                  startIcon={<EmojiEvents />}
+                  onClick={handleDownloadStampRankingExcel}
+                  size="small"
+                  disabled={loading}
+                  color="warning"
+                  sx={{ 
+                    borderColor: 'warning.main',
+                    color: 'warning.main',
+                    '&:hover': {
+                      borderColor: 'warning.dark',
+                      backgroundColor: 'warning.light'
+                    }
+                  }}
+                >
+                  순위별 수상자 엑셀
+                </Button>
               )}
             </Stack>
           </Grid>
