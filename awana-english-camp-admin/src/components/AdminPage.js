@@ -604,7 +604,20 @@ const AdminPage = () => {
       
       // 스탬프 데이터 조회
       const response = await axios.get(`${BACKEND_URL}/stamps/all`);
-      const stampData = response.data || [];
+      let stampData = response.data || [];
+      
+      // 데이터 구조 확인 및 배열로 변환
+      if (!Array.isArray(stampData)) {
+        console.log('🔍 Stamp data is not array, checking structure:', typeof stampData);
+        if (stampData.data && Array.isArray(stampData.data)) {
+          stampData = stampData.data;
+        } else if (stampData.results && Array.isArray(stampData.results)) {
+          stampData = stampData.results;
+        } else {
+          console.error('❌ Unexpected stamp data structure:', stampData);
+          stampData = [];
+        }
+      }
       
       console.log(`📊 Found ${stampData.length} stamp records`);
       
@@ -790,6 +803,10 @@ const AdminPage = () => {
       const sortedOverall = rankingData
         .sort((a, b) => (b.stamp_count || 0) - (a.stamp_count || 0));
       
+      // MVP 컷오프 계산
+      const totalStudents = sortedOverall.length;
+      const mvpCutoff = Math.ceil(totalStudents * 0.1);
+      
       sortedOverall.forEach((item, index) => {
         const rank = index + 1;
         const isMVP = rank <= mvpCutoff;
@@ -865,8 +882,6 @@ const AdminPage = () => {
       awardSummaryData.push([]); // 빈 줄
       
       // MVP (전체 상위 10% - 스탬프 개수 기준)
-      const totalStudents = sortedOverall.length;
-      const mvpCutoff = Math.ceil(totalStudents * 0.1);
       const mvpStudents = sortedOverall.slice(0, mvpCutoff);
       if (mvpStudents.length > 0) {
         awardSummaryData.push(['🏆 MVP (상위 10%)', '', '', '', '', '', '', '']);

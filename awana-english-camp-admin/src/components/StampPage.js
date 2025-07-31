@@ -143,25 +143,29 @@ const StampPage = () => {
 
       // 스탬프 데이터를 student_id로 매핑
       const stampsMap = {};
-      allStamps.forEach(stamp => {
+      allStamps.forEach((stamp, index) => {
         if (stamp && stamp.student_id) {
-          stampsMap[stamp.student_id] = stamp;
-          console.log(`🔗 Mapped stamp for student ${stamp.student_id}:`, {
-            stamp_count: stamp.stamp_count,
-            korean_pin: stamp.korean_pin_complete,
-            english_pin: stamp.english_pin_complete
-          });
+          stampsMap[stamp.student_id] = {
+            id: stamp.id,
+            student_id: stamp.student_id,
+            stamp_count: parseInt(stamp.stamp_count) || 0,
+            korean_pin_complete: Boolean(stamp.korean_pin_complete),
+            english_pin_complete: Boolean(stamp.english_pin_complete),
+            total_score: parseFloat(stamp.total_score) || 0,
+            created_at: stamp.created_at,
+            updated_at: stamp.updated_at
+          };
+          
+          if (index < 5) { // 처음 5개만 로그
+            console.log(`🔗 Mapped stamp for student ${stamp.student_id}:`, stampsMap[stamp.student_id]);
+          }
+        } else {
+          console.warn(`⚠️ Invalid stamp data at index ${index}:`, stamp);
         }
       });
       
-      console.log('🔗 Sample stamp mapping:', Object.keys(stampsMap).slice(0, 5));
       console.log('🔗 Total stamp mappings:', Object.keys(stampsMap).length);
-      
-      // 스탬프 매핑 샘플 확인
-      const sampleMappings = Object.keys(stampsMap).slice(0, 3);
-      sampleMappings.forEach(studentId => {
-        console.log(`🔍 Student ${studentId} stamp data:`, stampsMap[studentId]);
-      });
+      console.log('🔗 Sample student IDs with stamps:', Object.keys(stampsMap).slice(0, 10));
       
       // 학생 데이터 샘플 확인
       if (allStudents.length > 0) {
@@ -223,18 +227,30 @@ const StampPage = () => {
           
           // 학생별 스탬프 정보 추가
           const studentsWithStamps = studentsInTeam.map(student => {
-            const stampData = stampsMap[student.id] || {
+            const existingStampData = stampsMap[student.id];
+            const stampData = existingStampData ? {
+              ...existingStampData
+            } : {
+              id: null,
+              student_id: student.id,
               stamp_count: 0,
               korean_pin_complete: false,
               english_pin_complete: false,
-              total_score: 0
+              total_score: 0,
+              created_at: null,
+              updated_at: null
             };
             
             // 디버깅: 스탬프 데이터 매핑 확인
-            if (stampsMap[student.id]) {
-              console.log(`✅ Found stamp data for ${student.name || student.koreanName} (ID: ${student.id}):`, stampData);
+            if (existingStampData) {
+              console.log(`✅ Found stamp data for ${student.name || student.koreanName} (ID: ${student.id}):`, {
+                stamps: stampData.stamp_count,
+                korean: stampData.korean_pin_complete,
+                english: stampData.english_pin_complete,
+                updated: stampData.updated_at
+              });
             } else {
-              console.log(`❌ No stamp data for ${student.name || student.koreanName} (ID: ${student.id})`);
+              console.log(`❌ No stamp data for ${student.name || student.koreanName} (ID: ${student.id}) - using defaults`);
             }
             
             return {
@@ -311,25 +327,32 @@ const StampPage = () => {
     // 편집 상태 초기화 - 기존 스탬프 데이터 로드
     const initialEditState = {};
     data.students.forEach(student => {
-      const hasStampData = student.stampData && Object.keys(student.stampData).length > 0;
       const stampData = student.stampData || {};
+      const hasExistingData = stampData.id !== null && stampData.id !== undefined;
       
-      console.log(`📋 Student ${student.name || student.koreanName}:`, {
-        hasStampData,
-        stampData,
-        stamp_count: stampData.stamp_count,
-        korean_pin: stampData.korean_pin_complete,
-        english_pin: stampData.english_pin_complete
+      // 타입 변환을 명확히 처리
+      const stampCount = Number(stampData.stamp_count) || 0;
+      const koreanPin = Boolean(stampData.korean_pin_complete);
+      const englishPin = Boolean(stampData.english_pin_complete);
+      
+      console.log(`📋 Student ${student.name || student.koreanName} (ID: ${student.id}):`, {
+        hasExistingData,
+        originalData: stampData,
+        processedData: {
+          stamp_count: stampCount,
+          korean_pin_complete: koreanPin,
+          english_pin_complete: englishPin
+        }
       });
       
       initialEditState[student.id] = {
-        stamp_count: stampData.stamp_count || 0,
-        korean_pin_complete: stampData.korean_pin_complete || false,
-        english_pin_complete: stampData.english_pin_complete || false
+        stamp_count: stampCount,
+        korean_pin_complete: koreanPin,
+        english_pin_complete: englishPin
       };
     });
     
-    console.log(`💾 Initial edit state:`, initialEditState);
+    console.log(`💾 Initial edit state for ${data.students.length} students:`, initialEditState);
     setEditingStamps(initialEditState);
     setStudentDialog(true);
   };
@@ -395,10 +418,9 @@ const StampPage = () => {
         console.log('💾 Stamps saved successfully, refreshing data...');
         
         // 다이얼로그 닫기 전에 잠시 대기하여 데이터 새로고침
-        setTimeout(() => {
-          handleCloseStudentDialog();
-          fetchData(); // 데이터 새로고침
-        }, 500);
+        // 즉시 데이터 새로고침
+        await fetchData();
+        handleCloseStudentDialog();
       } else {
         showAlert("저장 중 오류가 발생했습니다.", "error");
       }
