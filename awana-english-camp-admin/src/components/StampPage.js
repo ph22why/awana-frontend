@@ -347,10 +347,10 @@ const StampPage = () => {
 
       console.log(`💾 Saving ${updates.length} stamp updates...`);
       console.log('📤 Sending data:', { updates });
-      console.log('🌐 Target URL:', `http://localhost:8080/stamps/batch-update`);
+      console.log('🌐 Target URL:', `${BACKEND_URL}/stamps/batch-update`);
       
-      // 배치 업데이트 API 호출 (localhost로 하드코딩)
-      const response = await axios.post(`http://localhost:8080/stamps/batch-update`, {
+      // 배치 업데이트 API 호출
+      const response = await axios.post(`${BACKEND_URL}/stamps/batch-update`, {
         updates
       });
 
