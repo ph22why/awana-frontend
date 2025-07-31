@@ -90,40 +90,53 @@ const StampPage = () => {
     try {
       setLoading(true);
       
-      // 학생 데이터 조회
-      console.log('📋 Fetching students data...');
-      const studentsResponse = await axios.get(`${BACKEND_URL}/attendance/session1?userTypes=student`);
+      // DashboardPage와 동일한 방식으로 학생 데이터 조회
+      // 첫 번째 세션 사용 (day1_interview)
+      const defaultSession = 'day1_interview';
+      console.log('📋 Fetching students data from session:', defaultSession);
+      const studentsResponse = await axios.get(`${BACKEND_URL}/attendance/${defaultSession}?userTypes=student`);
       const allStudents = studentsResponse.data || [];
       
       console.log(`✅ Found ${allStudents.length} total students`);
-
-      // 스탬프 데이터 조회
-      console.log('🏆 Fetching stamps data...');
-      const stampsResponse = await axios.get(`${BACKEND_URL}/stamps/all`);
-      let allStamps = stampsResponse.data || [];
       
-      // 데이터 구조 확인 및 디버깅
-      console.log('🔍 Stamps response structure:', stampsResponse.data);
-      console.log('🔍 Type of stamps data:', typeof stampsResponse.data);
-      console.log('🔍 Is array:', Array.isArray(stampsResponse.data));
-      
-      // 만약 data가 객체이고 배열이 아니라면 적절히 처리
-      if (stampsResponse.data && typeof stampsResponse.data === 'object' && !Array.isArray(stampsResponse.data)) {
-        // 객체의 값들이 배열인 경우 (예: { data: [...] })
-        if (stampsResponse.data.data && Array.isArray(stampsResponse.data.data)) {
-          allStamps = stampsResponse.data.data;
-        } else if (stampsResponse.data.results && Array.isArray(stampsResponse.data.results)) {
-          allStamps = stampsResponse.data.results;
-        } else {
-          // 객체의 값들을 배열로 변환
-          allStamps = Object.values(stampsResponse.data);
-        }
+      // 학생 데이터 샘플 확인
+      if (allStudents.length > 0) {
+        console.log('👤 Sample student data:', allStudents[0]);
+        console.log('👤 Student fields:', Object.keys(allStudents[0]));
       }
+
+      // 스탬프 데이터 조회 (없어도 괜찮음)
+      console.log('🏆 Fetching stamps data...');
+      let allStamps = [];
       
-      // 최종 확인
-      if (!Array.isArray(allStamps)) {
-        console.error('❌ Stamps data is not an array:', allStamps);
-        allStamps = [];
+      try {
+        const stampsResponse = await axios.get(`${BACKEND_URL}/stamps/all`);
+        
+        // 데이터 구조 확인 및 디버깅
+        console.log('🔍 Stamps response structure:', stampsResponse.data);
+        console.log('🔍 Type of stamps data:', typeof stampsResponse.data);
+        console.log('🔍 Is array:', Array.isArray(stampsResponse.data));
+        
+        // 배열인지 확인하고 처리
+        if (Array.isArray(stampsResponse.data)) {
+          allStamps = stampsResponse.data;
+        } else if (stampsResponse.data && typeof stampsResponse.data === 'object') {
+          // 객체의 값들이 배열인 경우 (예: { data: [...] })
+          if (stampsResponse.data.data && Array.isArray(stampsResponse.data.data)) {
+            allStamps = stampsResponse.data.data;
+          } else if (stampsResponse.data.results && Array.isArray(stampsResponse.data.results)) {
+            allStamps = stampsResponse.data.results;
+          } else {
+            // 다른 구조라면 빈 배열로 시작
+            console.log('⚠️ Unexpected stamp data structure, starting with empty array');
+            allStamps = [];
+          }
+        } else {
+          allStamps = [];
+        }
+      } catch (error) {
+        console.log('⚠️ Could not fetch stamps (table might be empty):', error.message);
+        allStamps = []; // 스탬프 데이터 없어도 계속 진행
       }
       
       console.log(`✅ Found ${allStamps.length} stamp records`);
@@ -164,9 +177,27 @@ const StampPage = () => {
       groups.forEach(group => {
         teams.forEach(team => {
           const key = `${group}-${team}`;
-          const studentsInTeam = allStudents.filter(student => 
-            student.studentGroup === group && student.team === team
-          );
+          
+          // DashboardPage와 동일한 방식으로 필터링 (여러 방식 시도)
+          const studentsInTeam = allStudents.filter(student => {
+            // 방법 1: 직접 매칭
+            const groupMatch1 = student.studentGroup === group;
+            const teamMatch1 = student.team === team;
+            
+            // 방법 2: 문자열 매칭
+            const groupMatch2 = student.studentGroup === group;
+            const teamMatch2 = String(student.team) === String(team);
+            
+            // 방법 3: 숫자 매칭
+            const groupMatch3 = student.studentGroup === group;
+            const teamMatch3 = Number(student.team) === Number(team);
+            
+            const finalMatch = groupMatch1 && (teamMatch1 || teamMatch2 || teamMatch3);
+            
+            // 디버깅 로그는 필터링 후에 처리
+            
+            return finalMatch;
+          });
           
           if (studentsInTeam.length > 0) {
             console.log(`👥 ${key}: Found ${studentsInTeam.length} students`);
@@ -209,6 +240,20 @@ const StampPage = () => {
         });
       });
 
+      // 그룹별 분포 로그 (DashboardPage 방식)
+      const groupBreakdown = {};
+      allStudents.forEach(student => {
+        if (!groupBreakdown[student.studentGroup]) {
+          groupBreakdown[student.studentGroup] = { total: 0 };
+        }
+        groupBreakdown[student.studentGroup].total++;
+      });
+      console.log('📈 Group breakdown:', groupBreakdown);
+      
+      // 최종 결과 확인
+      const totalGroupedStudents = Object.values(groupedStudents).reduce((sum, data) => sum + (data?.total || 0), 0);
+      console.log(`📊 Total students grouped: ${totalGroupedStudents}/${allStudents.length}`);
+      
       setStudentsData(groupedStudents);
       setStampsData(groupedStamps);
       console.log('📊 Data grouped successfully');
