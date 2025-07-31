@@ -796,7 +796,7 @@ const AdminPage = () => {
       const overallRankingData = [];
       overallRankingData.push([
         '전체순위', '학생명', '영어명', '교회명', '그룹', '조', '스탬프수', 
-        '한글완성', '영어완성', '총점', '전체상'
+        '한글완성', '영어완성', '스탬프점수', '전체상'
       ]);
       
       // 전체 순위로 정렬 (스탬프 개수 기준)
@@ -843,15 +843,21 @@ const AdminPage = () => {
           const groupSheetData = [];
           groupSheetData.push([
             '그룹순위', '학생명', '영어명', '교회명', '조', '스탬프수', 
-            '한글완성', '영어완성', '총점', '그룹상'
+            '한글완성', '영어완성', '스탬프점수', '그룹상'
           ]);
           
           // 그룹 내 순위로 정렬 (스탬프 개수 기준)
           const sortedGroup = groupData.sort((a, b) => (b.stamp_count || 0) - (a.stamp_count || 0));
           
-          sortedGroup.forEach(item => {
+          sortedGroup.forEach((item, index) => {
+            const groupRank = index + 1;
+            let groupAward = '';
+            if (groupRank === 1) groupAward = '금';
+            else if (groupRank === 2) groupAward = '은';
+            else if (groupRank <= 5) groupAward = '동';
+            
             groupSheetData.push([
-              item.group_rank,
+              groupRank,
               item.koreanName || '',
               item.englishName || '',
               item.churchName || '',
@@ -859,8 +865,8 @@ const AdminPage = () => {
               item.stamp_count || 0,
               item.korean_pin_complete ? 'O' : 'X',
               item.english_pin_complete ? 'O' : 'X',
-              item.total_score || 0,
-              item.group_award || ''
+              item.stamp_count || 0, // 스탬프 개수가 곧 점수
+              groupAward
             ]);
           });
           
@@ -878,7 +884,7 @@ const AdminPage = () => {
       
       // 3. 수상자 요약 시트
       const awardSummaryData = [];
-      awardSummaryData.push(['구분', '학생명', '영어명', '교회명', '그룹', '조', '총점', '상격']);
+      awardSummaryData.push(['구분', '학생명', '영어명', '교회명', '그룹', '조', '스탬프점수', '상격']);
       awardSummaryData.push([]); // 빈 줄
       
       // MVP (전체 상위 10% - 스탬프 개수 기준)
@@ -905,26 +911,28 @@ const AdminPage = () => {
         const groupData = rankingData.filter(item => item.studentGroup === group);
         const sortedGroupData = groupData.sort((a, b) => (b.stamp_count || 0) - (a.stamp_count || 0));
         // 각 그룹에서 상위 5명이 수상자 (1등:금, 2등:은, 3-5등:동)
-        const groupWinners = sortedGroupData.slice(0, 5).map((item, index) => ({
-          ...item,
-          group_award: index === 0 ? '금' : index === 1 ? '은' : '동',
-          group_rank: index + 1
-        }));
+        const groupWinners = sortedGroupData.slice(0, 5);
         
         if (groupWinners.length > 0) {
           const groupNumber = groups.indexOf(group) + 1;
           awardSummaryData.push([`🏅 ${groupNumber}그룹 (${group}) 수상자`, '', '', '', '', '', '', '']);
           
-          groupWinners.forEach(item => {
+          groupWinners.forEach((item, index) => {
+            const groupRank = index + 1;
+            let groupAward = '';
+            if (groupRank === 1) groupAward = '금';
+            else if (groupRank === 2) groupAward = '은';
+            else if (groupRank <= 5) groupAward = '동';
+            
             awardSummaryData.push([
-              `${item.group_rank}위`,
+              `${groupRank}위`,
               item.koreanName || '',
               item.englishName || '',
               item.churchName || '',
               item.studentGroup || '',
               item.team || '',
               item.stamp_count || 0,
-              item.group_award || ''
+              groupAward
             ]);
           });
           awardSummaryData.push([]); // 빈 줄
@@ -933,13 +941,17 @@ const AdminPage = () => {
       
       // 통계 추가
       awardSummaryData.push(['📊 수상 통계', '', '', '', '', '', '', '']);
-      // 그룹별 수상자 통계 계산
+      // 그룹별 수상자 통계 계산 (스탬프 개수 기준)
       let goldCount = 0, silverCount = 0, bronzeCount = 0;
       groups.forEach(group => {
         const groupData = rankingData.filter(item => item.studentGroup === group);
-        if (groupData.length > 0) goldCount++; // 각 그룹당 1명
-        if (groupData.length > 1) silverCount++; // 각 그룹당 1명
-        if (groupData.length > 2) bronzeCount += Math.min(3, groupData.length - 2); // 각 그룹당 최대 3명
+        const sortedGroup = groupData.sort((a, b) => (b.stamp_count || 0) - (a.stamp_count || 0));
+        
+        if (sortedGroup.length >= 1) goldCount++; // 각 그룹 1등: 금
+        if (sortedGroup.length >= 2) silverCount++; // 각 그룹 2등: 은  
+        if (sortedGroup.length >= 3) {
+          bronzeCount += Math.min(3, sortedGroup.length - 2); // 각 그룹 3-5등: 동 (최대 3명)
+        }
       });
       
       awardSummaryData.push(['MVP 수상자', mvpStudents.length, '명', '', '', '', '', '']);
@@ -1085,7 +1097,7 @@ const AdminPage = () => {
           { displayName: "스탬프 개수", key: "stamp_count" },
           { displayName: "한글완성", key: "korean_pin_complete" },
           { displayName: "영어완성", key: "english_pin_complete" },
-          { displayName: "총점", key: "total_score", readOnly: true },
+          { displayName: "스탬프점수", key: "stamp_count", readOnly: true },
           { displayName: "전체순위", key: "overall_rank", readOnly: true },
           { displayName: "전체상", key: "overall_award", readOnly: true },
           { displayName: "그룹순위", key: "group_rank", readOnly: true },
