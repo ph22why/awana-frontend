@@ -42,8 +42,7 @@ import {
   Person,
   Save
 } from '@mui/icons-material';
-// import { BACKEND_URL } from "../config";
-const BACKEND_URL = 'http://localhost:8080';
+import { BACKEND_URL } from "../config";
 
 const StampPage = () => {
   const [isPinVerified, setIsPinVerified] = useState(false);
@@ -348,10 +347,10 @@ const StampPage = () => {
 
       console.log(`💾 Saving ${updates.length} stamp updates...`);
       console.log('📤 Sending data:', { updates });
-      console.log('🌐 Target URL:', `${BACKEND_URL}/stamps/batch-update`);
+      console.log('🌐 Target URL:', `http://localhost:8080/stamps/batch-update`);
       
-      // 배치 업데이트 API 호출
-      const response = await axios.post(`${BACKEND_URL}/stamps/batch-update`, {
+      // 배치 업데이트 API 호출 (localhost로 하드코딩)
+      const response = await axios.post(`http://localhost:8080/stamps/batch-update`, {
         updates
       });
 
