@@ -740,7 +740,9 @@ const StampPage = () => {
             onClick={handleSaveStamps} 
             variant="contained"
             startIcon={<Save />}
-            disabled={loading}
+            // 저장버튼 임시로 비활성화
+            // disabled={loading}
+            disabled={true}
           >
             저장
           </Button>
