@@ -474,7 +474,7 @@ const StampPage = () => {
         open={true}
         onClose={() => navigate('/')}
         onSuccess={handlePinSuccess}
-        requiredPin="1234"
+        requiredPin="0422"
         title="스탬프 입력 접근 인증"
       />
     );
