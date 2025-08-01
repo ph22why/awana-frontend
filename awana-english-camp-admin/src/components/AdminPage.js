@@ -833,48 +833,105 @@ const AdminPage = () => {
       ];
       XLSX.utils.book_append_sheet(workbook, overallWorksheet, '📈 전체순위');
       
-      // 2. 그룹별 순위 시트들
+      // 2. 그룹별 순위 시트들 (조별 평균 기준)
       const groups = ['KNOW', 'LOVE', 'SERVE', 'GLORY', 'HOLY', 'GRACE', 'HOPE'];
       
       groups.forEach(group => {
         const groupData = rankingData.filter(item => item.studentGroup === group);
         
         if (groupData.length > 0) {
+          // 조별 평균 계산
+          const teams = [1, 2, 3, 4, 5];
+          const teamAverages = [];
+          
+          teams.forEach(team => {
+            const teamStudents = groupData.filter(item => 
+              item.team === team || item.team === `${team}`
+            );
+            
+            if (teamStudents.length > 0) {
+              // 스탬프 개수가 0보다 큰 학생들만 평균 계산에 포함
+              const studentsWithStamps = teamStudents.filter(student => 
+                (student.stamp_count || 0) > 0
+              );
+              
+              let average = 0;
+              if (studentsWithStamps.length > 0) {
+                const totalStamps = studentsWithStamps.reduce((sum, student) => 
+                  sum + (student.stamp_count || 0), 0
+                );
+                average = totalStamps / studentsWithStamps.length;
+              }
+              
+              teamAverages.push({
+                team: team,
+                totalStudents: teamStudents.length,
+                studentsWithStamps: studentsWithStamps.length,
+                totalStamps: teamStudents.reduce((sum, student) => sum + (student.stamp_count || 0), 0),
+                average: average,
+                students: teamStudents
+              });
+            }
+          });
+          
+          // 조별 평균으로 정렬 (평균 높은 순)
+          teamAverages.sort((a, b) => b.average - a.average);
+          
           const groupSheetData = [];
           groupSheetData.push([
-            '그룹순위', '학생명', '영어명', '교회명', '조', '스탬프수', 
-            '한글완성', '영어완성', '스탬프점수', '그룹상'
+            '조순위', '조', '조원수', '스탬프보유자', '조스탬프합계', '조평균', '상격'
           ]);
+          groupSheetData.push([]); // 빈 줄
           
-          // 그룹 내 순위로 정렬 (스탬프 개수 기준)
-          const sortedGroup = groupData.sort((a, b) => (b.stamp_count || 0) - (a.stamp_count || 0));
-          
-          sortedGroup.forEach((item, index) => {
-            const groupRank = index + 1;
-            let groupAward = '';
-            if (groupRank === 1) groupAward = '금';
-            else if (groupRank === 2) groupAward = '은';
-            else if (groupRank <= 5) groupAward = '동';
+          // 조별 순위 및 상격 결정
+          teamAverages.forEach((teamData, index) => {
+            const teamRank = index + 1;
+            let teamAward = '';
+            if (teamRank === 1) teamAward = '금';
+            else if (teamRank === 2) teamAward = '은';
+            else if (teamRank <= 5) teamAward = '동';
             
             groupSheetData.push([
-              groupRank,
-              item.koreanName || '',
-              item.englishName || '',
-              item.churchName || '',
-              item.team || '',
-              item.stamp_count || 0,
-              item.korean_pin_complete ? 'O' : 'X',
-              item.english_pin_complete ? 'O' : 'X',
-              item.stamp_count || 0, // 스탬프 개수가 곧 점수
-              groupAward
+              teamRank,
+              `${teamData.team}조`,
+              teamData.totalStudents,
+              teamData.studentsWithStamps,
+              teamData.totalStamps,
+              teamData.average.toFixed(2),
+              teamAward
             ]);
+          });
+          
+          groupSheetData.push([]); // 빈 줄
+          groupSheetData.push(['세부 학생 명단', '', '', '', '', '', '']);
+          groupSheetData.push([
+            '조', '학생명', '영어명', '교회명', '스탬프수', '한글완성', '영어완성'
+          ]);
+          
+          // 조별로 학생 명단 추가 (순위 순으로)
+          teamAverages.forEach(teamData => {
+            // 해당 조 학생들을 스탬프 개수 순으로 정렬
+            const sortedStudents = teamData.students.sort((a, b) => 
+              (b.stamp_count || 0) - (a.stamp_count || 0)
+            );
+            
+            sortedStudents.forEach(student => {
+              groupSheetData.push([
+                `${teamData.team}조`,
+                student.koreanName || '',
+                student.englishName || '',
+                student.churchName || '',
+                student.stamp_count || 0,
+                student.korean_pin_complete ? 'O' : 'X',
+                student.english_pin_complete ? 'O' : 'X'
+              ]);
+            });
           });
           
           const groupWorksheet = XLSX.utils.aoa_to_sheet(groupSheetData);
           groupWorksheet['!cols'] = [
-            { width: 8 }, { width: 12 }, { width: 15 }, { width: 20 }, 
-            { width: 6 }, { width: 10 }, { width: 8 }, { width: 8 }, 
-            { width: 8 }, { width: 10 }
+            { width: 8 }, { width: 8 }, { width: 8 }, { width: 12 }, 
+            { width: 12 }, { width: 10 }, { width: 8 }
           ];
           
           const groupNumber = groups.indexOf(group) + 1;
@@ -884,7 +941,7 @@ const AdminPage = () => {
       
       // 3. 수상자 요약 시트
       const awardSummaryData = [];
-      awardSummaryData.push(['구분', '학생명', '영어명', '교회명', '그룹', '조', '스탬프점수', '상격']);
+      awardSummaryData.push(['구분', '수상조', '대표학생', '조원정보', '그룹', '조', '총스탬프', '상격']);
       awardSummaryData.push([]); // 빈 줄
       
       // MVP (전체 상위 10% - 스탬프 개수 기준)
@@ -906,64 +963,139 @@ const AdminPage = () => {
         awardSummaryData.push([]); // 빈 줄
       }
       
-      // 그룹별 수상자 (스탬프 개수 기준)
+      // 그룹별 수상자 (조별 평균 기준)
       groups.forEach(group => {
         const groupData = rankingData.filter(item => item.studentGroup === group);
-        const sortedGroupData = groupData.sort((a, b) => (b.stamp_count || 0) - (a.stamp_count || 0));
-        // 각 그룹에서 상위 5명이 수상자 (1등:금, 2등:은, 3-5등:동)
-        const groupWinners = sortedGroupData.slice(0, 5);
         
-        if (groupWinners.length > 0) {
-          const groupNumber = groups.indexOf(group) + 1;
-          awardSummaryData.push([`🏅 ${groupNumber}그룹 (${group}) 수상자`, '', '', '', '', '', '', '']);
+        if (groupData.length > 0) {
+          // 조별 평균 계산
+          const teams = [1, 2, 3, 4, 5];
+          const teamAverages = [];
           
-          groupWinners.forEach((item, index) => {
-            const groupRank = index + 1;
-            let groupAward = '';
-            if (groupRank === 1) groupAward = '금';
-            else if (groupRank === 2) groupAward = '은';
-            else if (groupRank <= 5) groupAward = '동';
+          teams.forEach(team => {
+            const teamStudents = groupData.filter(item => 
+              item.team === team || item.team === `${team}`
+            );
             
-            awardSummaryData.push([
-              `${groupRank}위`,
-              item.koreanName || '',
-              item.englishName || '',
-              item.churchName || '',
-              item.studentGroup || '',
-              item.team || '',
-              item.stamp_count || 0,
-              groupAward
-            ]);
+            if (teamStudents.length > 0) {
+              // 스탬프 개수가 0보다 큰 학생들만 평균 계산에 포함
+              const studentsWithStamps = teamStudents.filter(student => 
+                (student.stamp_count || 0) > 0
+              );
+              
+              let average = 0;
+              if (studentsWithStamps.length > 0) {
+                const totalStamps = studentsWithStamps.reduce((sum, student) => 
+                  sum + (student.stamp_count || 0), 0
+                );
+                average = totalStamps / studentsWithStamps.length;
+              }
+              
+              teamAverages.push({
+                team: team,
+                totalStudents: teamStudents.length,
+                studentsWithStamps: studentsWithStamps.length,
+                totalStamps: teamStudents.reduce((sum, student) => sum + (student.stamp_count || 0), 0),
+                average: average,
+                students: teamStudents
+              });
+            }
           });
-          awardSummaryData.push([]); // 빈 줄
+          
+          // 조별 평균으로 정렬 (평균 높은 순)
+          teamAverages.sort((a, b) => b.average - a.average);
+          
+          // 각 그룹에서 상위 5개 조가 수상 (1등:금, 2등:은, 3-5등:동)
+          const teamWinners = teamAverages.slice(0, 5);
+          
+          if (teamWinners.length > 0) {
+            const groupNumber = groups.indexOf(group) + 1;
+            awardSummaryData.push([`🏅 ${groupNumber}그룹 (${group}) 수상조`, '', '', '', '', '', '', '']);
+            
+            teamWinners.forEach((teamData, index) => {
+              const teamRank = index + 1;
+              let teamAward = '';
+              if (teamRank === 1) teamAward = '금';
+              else if (teamRank === 2) teamAward = '은';
+              else if (teamRank <= 5) teamAward = '동';
+              
+              // 해당 조의 대표 학생 (스탬프가 가장 많은 학생) 정보 가져오기
+              const topStudent = teamData.students.sort((a, b) => 
+                (b.stamp_count || 0) - (a.stamp_count || 0)
+              )[0];
+              
+              awardSummaryData.push([
+                `${teamRank}위`,
+                `${teamData.team}조 (평균: ${teamData.average.toFixed(2)})`,
+                `대표: ${topStudent?.koreanName || ''}`,
+                `조원 ${teamData.totalStudents}명`,
+                group,
+                `${teamData.team}조`,
+                teamData.totalStamps,
+                teamAward
+              ]);
+            });
+            awardSummaryData.push([]); // 빈 줄
+          }
         }
       });
       
       // 통계 추가
       awardSummaryData.push(['📊 수상 통계', '', '', '', '', '', '', '']);
-      // 그룹별 수상자 통계 계산 (스탬프 개수 기준)
+      // 그룹별 수상조 통계 계산 (조별 평균 기준)
       let goldCount = 0, silverCount = 0, bronzeCount = 0;
       groups.forEach(group => {
         const groupData = rankingData.filter(item => item.studentGroup === group);
-        const sortedGroup = groupData.sort((a, b) => (b.stamp_count || 0) - (a.stamp_count || 0));
         
-        if (sortedGroup.length >= 1) goldCount++; // 각 그룹 1등: 금
-        if (sortedGroup.length >= 2) silverCount++; // 각 그룹 2등: 은  
-        if (sortedGroup.length >= 3) {
-          bronzeCount += Math.min(3, sortedGroup.length - 2); // 각 그룹 3-5등: 동 (최대 3명)
+        if (groupData.length > 0) {
+          // 조별 평균 계산
+          const teams = [1, 2, 3, 4, 5];
+          const teamAverages = [];
+          
+          teams.forEach(team => {
+            const teamStudents = groupData.filter(item => 
+              item.team === team || item.team === `${team}`
+            );
+            
+            if (teamStudents.length > 0) {
+              const studentsWithStamps = teamStudents.filter(student => 
+                (student.stamp_count || 0) > 0
+              );
+              
+              let average = 0;
+              if (studentsWithStamps.length > 0) {
+                const totalStamps = studentsWithStamps.reduce((sum, student) => 
+                  sum + (student.stamp_count || 0), 0
+                );
+                average = totalStamps / studentsWithStamps.length;
+              }
+              
+              teamAverages.push({ team, average });
+            }
+          });
+          
+          // 조별 평균으로 정렬
+          teamAverages.sort((a, b) => b.average - a.average);
+          
+          // 각 그룹에서 수상조 카운트
+          if (teamAverages.length >= 1) goldCount++; // 각 그룹 1등조: 금
+          if (teamAverages.length >= 2) silverCount++; // 각 그룹 2등조: 은  
+          if (teamAverages.length >= 3) {
+            bronzeCount += Math.min(3, teamAverages.length - 2); // 각 그룹 3-5등조: 동 (최대 3조)
+          }
         }
       });
       
-      awardSummaryData.push(['MVP 수상자', mvpStudents.length, '명', '', '', '', '', '']);
-      awardSummaryData.push(['금상 수상자', goldCount, '명', '', '', '', '', '']);
-      awardSummaryData.push(['은상 수상자', silverCount, '명', '', '', '', '', '']);
-      awardSummaryData.push(['동상 수상자', bronzeCount, '명', '', '', '', '', '']);
+      awardSummaryData.push(['MVP 수상자 (개인)', mvpStudents.length, '명', '', '', '', '', '']);
+      awardSummaryData.push(['금상 수상조', goldCount, '조', '', '', '', '', '']);
+      awardSummaryData.push(['은상 수상조', silverCount, '조', '', '', '', '', '']);
+      awardSummaryData.push(['동상 수상조', bronzeCount, '조', '', '', '', '', '']);
       awardSummaryData.push(['총 참가자', rankingData.length, '명', '', '', '', '', '']);
       
       const awardSummaryWorksheet = XLSX.utils.aoa_to_sheet(awardSummaryData);
       awardSummaryWorksheet['!cols'] = [
-        { width: 20 }, { width: 12 }, { width: 15 }, { width: 20 }, 
-        { width: 10 }, { width: 6 }, { width: 8 }, { width: 10 }
+        { width: 20 }, { width: 20 }, { width: 15 }, { width: 15 }, 
+        { width: 10 }, { width: 8 }, { width: 12 }, { width: 10 }
       ];
       
       // 수상자 요약을 맨 앞에 추가
@@ -993,7 +1125,7 @@ const AdminPage = () => {
       window.URL.revokeObjectURL(url);
       
       showAlert(
-        `스탬프 순위별 엑셀 파일이 생성되었습니다! (MVP ${mvpStudents.length}명, 총 ${rankingData.length}명)`, 
+        `스탬프 순위별 엑셀 파일이 생성되었습니다! (MVP ${mvpStudents.length}명, 금상 ${goldCount}조, 은상 ${silverCount}조, 동상 ${bronzeCount}조)`, 
         "success"
       );
       
