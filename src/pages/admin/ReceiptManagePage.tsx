@@ -150,12 +150,12 @@ const ReceiptManagePage: React.FC = () => {
       subId: ''
     },
     churchName: '',
-    managerName: '',
+    managerName: '.',
     managerPhone: '010-0000-0000',
-    partTotal: '',
-    partStudent: '',
-    partTeacher: '',
-    partYM: '',
+    partTotal: '0',
+    partStudent: '0',
+    partTeacher: '0',
+    partYM: '0',
     costs: '',
   });
 
@@ -246,7 +246,7 @@ const ReceiptManagePage: React.FC = () => {
           subId: church.subId
         },
         churchName: church.name,
-        managerName: church.managerName || ''
+        managerName: '.'
       }));
     }
   };
@@ -416,12 +416,12 @@ const ReceiptManagePage: React.FC = () => {
         subId: ''
       },
       churchName: '',
-      managerName: '',
+      managerName: '.',
       managerPhone: '010-0000-0000',
-      partTotal: '',
-      partStudent: '',
-      partTeacher: '',
-      partYM: '',
+      partTotal: '0',
+      partStudent: '0',
+      partTeacher: '0',
+      partYM: '0',
       costs: '',
     });
     setIsEditMode(false);
