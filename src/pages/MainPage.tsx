@@ -41,6 +41,35 @@ const MainPage: React.FC = () => {
     fetchEvents();
   }, []);
 
+  // 날짜/일시 포맷 유틸리티
+  const formatKoreanDate = (date: Date) =>
+    date.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+  const formatKoreanDateTime = (date: Date) =>
+    date.toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  const buildDateOrDateTime = (
+    dateString?: string | null,
+    timeString?: string | null
+  ): Date | null => {
+    if (!dateString) return null;
+    const datePart = dateString.split("T")[0];
+    if (timeString) {
+      return new Date(`${datePart}T${timeString}:00`);
+    }
+    return new Date(datePart);
+  };
+
   return (
     <Box>
       {/* Hero Section */}
@@ -296,9 +325,34 @@ const MainPage: React.FC = () => {
                             return null;
                           })()}
                         </Typography>
-                        <Typography color="text.secondary" sx={{ mb: 2 }}>
-                          {event.event_Place}
+                        <Typography
+                          color="text.secondary"
+                          sx={{
+                            mb: 2,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <span>{event.event_Place}</span>
+                          <span>·</span>
+                          <span>
+                            {(() => {
+                              if (!event.event_Start_Date || event.event_Start_Date === "미정") {
+                                return `행사일정: 미정`;
+                              }
+                              if (event.event_End_Date) {
+                                return `행사일정: ${formatKoreanDate(
+                                  new Date(event.event_Start_Date)
+                                )} ~ ${formatKoreanDate(new Date(event.event_End_Date))}`;
+                              }
+                              return `행사일정: ${formatKoreanDate(new Date(event.event_Start_Date))}`;
+                            })()}
+                          </span>
                         </Typography>
+
+                        {/* 접수기간 */}
                         <Typography
                           variant="body2"
                           color="primary"
@@ -307,32 +361,29 @@ const MainPage: React.FC = () => {
                             alignItems: "center",
                             gap: 1,
                             fontWeight: 500,
+                            mt: 0.5,
                           }}
                         >
                           <CalendarMonth fontSize="small" />
-                          {event.event_Start_Date === "미정"
-                            ? "미정"
-                            : event.event_End_Date
-                            ? `${new Date(
-                                event.event_Start_Date
-                              ).toLocaleDateString("ko-KR", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })} ~ ${new Date(
-                                event.event_End_Date
-                              ).toLocaleDateString("ko-KR", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })}`
-                            : new Date(
-                                event.event_Start_Date
-                              ).toLocaleDateString("ko-KR", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })}
+                          {(() => {
+                            const regStart = buildDateOrDateTime(
+                              event.event_Registration_Start_Date,
+                              event.event_Registration_Start_Time
+                            );
+                            const regEnd = buildDateOrDateTime(
+                              event.event_Registration_End_Date,
+                              event.event_Registration_End_Time
+                            );
+
+                            if (!regStart && !regEnd) return `접수기간: 미정`;
+                            const startText = regStart
+                              ? formatKoreanDateTime(regStart)
+                              : "-";
+                            const endText = regEnd
+                              ? formatKoreanDateTime(regEnd)
+                              : "-";
+                            return `접수기간: ${startText} ~ ${endText}`;
+                          })()}
                         </Typography>
                       </CardContent>
                       <Divider sx={{ mx: 2 }} />
