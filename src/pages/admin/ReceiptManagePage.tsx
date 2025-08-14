@@ -30,6 +30,10 @@ import {
   Snackbar,
   Backdrop,
   Pagination,
+  Tabs,
+  Tab,
+  Chip,
+  Stack,
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -167,6 +171,16 @@ const ReceiptManagePage: React.FC = () => {
 
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+
+  // 좌측 탭과 고정 이벤트/신규/재등록 상태
+  const [specialMode, setSpecialMode] = useState<'new' | 'renew' | null>(null);
+  const [fixedNewEventId, setFixedNewEventId] = useState<string>('');
+  const [fixedRenewEventId, setFixedRenewEventId] = useState<string>('');
+  const [newChurchName, setNewChurchName] = useState<string>('');
+  const [newChurchLocation, setNewChurchLocation] = useState<string>('');
+  const [renewChurch, setRenewChurch] = useState<Church | null>(null);
+  const [renewClubs, setRenewClubs] = useState<string>('1');
+  const [renewCounts, setRenewCounts] = useState<{ done: number; pending: number }>({ done: 0, pending: 0 });
 
   const addNewReceiptRow = () => {
     setReceiptsToAdd(prev => [...prev, {
@@ -763,6 +777,7 @@ const ReceiptManagePage: React.FC = () => {
         setGroups(groupsForYear);
         setSelectedEvent('');
         setSelectedSelection(''); // 선택 초기화
+        await ensureFixedEventsForYear();
       } catch (err) {
         console.error('Error fetching events for year:', err);
         setError('이벤트 목록을 불러오는데 실패했습니다.');
@@ -793,6 +808,157 @@ const ReceiptManagePage: React.FC = () => {
     return group.eventIds[0] || null;
   };
 
+  // 0000 다음 사용 가능한 subId 찾기 (a-z)
+  const getNextSubIdFor0000 = async (): Promise<string | null> => {
+    try {
+      const res = await churchApi.searchChurches({ getAllResults: true });
+      if (!res.success) return null;
+      const zeros = (res.data || []).filter(c => c.mainId === '0000');
+      const used = new Set(zeros.map(c => (c.subId || '').toLowerCase()));
+      for (let code = 97; code <= 122; code++) {
+        const ch = String.fromCharCode(code);
+        if (!used.has(ch)) return ch;
+      }
+      return null;
+    } catch (e) {
+      console.error('getNextSubIdFor0000 error', e);
+      return null;
+    }
+  };
+
+  // 신규등록 처리 (교회 생성 + 30만원 영수증)
+  const handleCreateNewChurchAndReceipt = async () => {
+    if (!newChurchName.trim()) {
+      setError('교회명을 입력해주세요.');
+      return;
+    }
+    if (!selectedYear) {
+      setError('연도를 먼저 선택해주세요.');
+      return;
+    }
+    try {
+      setLoading(true);
+      const eventId = fixedNewEventId || await ensureFixedEvent('신규등록');
+      if (!fixedNewEventId) setFixedNewEventId(eventId);
+      const nextSub = await getNextSubIdFor0000();
+      if (!nextSub) {
+        setError('사용 가능한 하위 ID가 없습니다.');
+        return;
+      }
+      // 교회 생성
+      const createdChurchRes = await churchApi.createChurch({
+        mainId: '0000',
+        subId: nextSub,
+        name: newChurchName.trim(),
+        location: newChurchLocation.trim(),
+      } as any);
+      if (!createdChurchRes.success) {
+        setError('교회 생성에 실패했습니다.');
+        return;
+      }
+      // 영수증 생성
+      const receiptData: Omit<Receipt, 'id' | 'createdAt' | 'updatedAt'> = {
+        eventId,
+        churchId: { mainId: '0000', subId: nextSub },
+        churchName: newChurchName.trim(),
+        managerName: '.',
+        managerPhone: '010-0000-0000',
+        partTotal: 0,
+        partStudent: 0,
+        partTeacher: 0,
+        partYM: 0,
+        costs: 300000,
+        paymentMethod: 'cash',
+        paymentStatus: 'pending',
+        paymentDate: new Date().toISOString(),
+        description: '신규등록 자동발급'
+      };
+      const res = await receiptApi.createReceipt(receiptData);
+      if (res.success) {
+        setSnackbar({ open: true, message: '신규등록 완료: 영수증이 발급되었습니다.', severity: 'success' });
+        setSelectedSelection(`event:${eventId}`);
+        setSelectedEvent(`event:${eventId}`);
+        await fetchReceipts({ eventId }, true, searchText);
+        setNewChurchName('');
+        setNewChurchLocation('');
+      }
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.message || '신규등록 처리 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 재등록 처리 (클럽 수 * 50,000원 영수증)
+  const handleCreateRenewReceipt = async () => {
+    if (!renewChurch) {
+      setError('교회를 선택해주세요.');
+      return;
+    }
+    const clubs = parseInt(renewClubs, 10) || 0;
+    if (clubs <= 0) {
+      setError('클럽 수를 1 이상 입력해주세요.');
+      return;
+    }
+    if (!selectedYear) {
+      setError('연도를 먼저 선택해주세요.');
+      return;
+    }
+    try {
+      setLoading(true);
+      const eventId = fixedRenewEventId || await ensureFixedEvent('재등록');
+      if (!fixedRenewEventId) setFixedRenewEventId(eventId);
+      const receiptData: Omit<Receipt, 'id' | 'createdAt' | 'updatedAt'> = {
+        eventId,
+        churchId: { mainId: renewChurch.mainId, subId: renewChurch.subId },
+        churchName: renewChurch.name,
+        managerName: '.',
+        managerPhone: '010-0000-0000',
+        partTotal: 0,
+        partStudent: 0,
+        partTeacher: 0,
+        partYM: 0,
+        costs: clubs * 50000,
+        paymentMethod: 'cash',
+        paymentStatus: 'pending',
+        paymentDate: new Date().toISOString(),
+        description: `재등록 (클럽 ${clubs}개)`
+      };
+      const res = await receiptApi.createReceipt(receiptData);
+      if (res.success) {
+        setSnackbar({ open: true, message: '재등록 완료: 영수증이 발급되었습니다.', severity: 'success' });
+        setSelectedSelection(`event:${eventId}`);
+        setSelectedEvent(`event:${eventId}`);
+        await fetchReceipts({ eventId }, true, searchText);
+        await refreshRenewCounts(eventId);
+        setRenewChurch(null);
+        setRenewClubs('1');
+      }
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.message || '재등록 처리 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshRenewCounts = async (eventId: string) => {
+    try {
+      const [churchRes, receiptRes] = await Promise.all([
+        churchApi.searchChurches({ getAllResults: true, page: 1, limit: 10000 }),
+        receiptApi.getReceipts({ eventId, limit: 5000 })
+      ]);
+      const totalChurches = churchRes.success ? (churchRes.data?.length || 0) : 0;
+      const completedSet = new Set((receiptRes.data || []).map(r => `${r.churchId.mainId}-${r.churchId.subId}`));
+      const done = completedSet.size;
+      const pending = Math.max(0, totalChurches - done);
+      setRenewCounts({ done, pending });
+    } catch (e) {
+      console.error('Failed to refresh renew counts', e);
+    }
+  };
+
   const handleYearChange = (event: SelectChangeEvent<number>) => {
     const year = event.target.value as number;
     setSelectedYear(year);
@@ -818,6 +984,46 @@ const ReceiptManagePage: React.FC = () => {
       partYM: '',
       costs: '',
     });
+  };
+
+  // 연도 기반 고정 이벤트 존재 보장/생성
+  const ensureFixedEvent = async (kind: '신규등록' | '재등록'): Promise<string> => {
+    if (!selectedYear) throw new Error('연도를 먼저 선택해주세요.');
+    const targetName = `${kind} ${selectedYear}`;
+    const found = events.find(ev => ev.event_Name === targetName);
+    if (found) return found._id;
+    const todayIso = new Date().toISOString();
+    const month = new Date().getMonth() + 1;
+    const payload: EventFormData = {
+      event_Name: targetName,
+      event_Location: '시스템',
+      event_Year: Number(selectedYear),
+      event_Start_Date: todayIso,
+      event_End_Date: todayIso,
+      event_Registration_Start_Date: todayIso,
+      event_Registration_End_Date: todayIso,
+      event_Open_Available: '비공개',
+      event_Place: '시스템',
+      event_Month: month
+    };
+    const created = await eventApi.createEvent(payload);
+    setEvents(prev => [created, ...prev]);
+    return created._id;
+  };
+
+  const ensureFixedEventsForYear = async () => {
+    if (!selectedYear) return;
+    try {
+      setLoading(true);
+      const newId = await ensureFixedEvent('신규등록');
+      const renewId = await ensureFixedEvent('재등록');
+      setFixedNewEventId(newId);
+      setFixedRenewEventId(renewId);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchReceipts = async (
@@ -1297,55 +1503,164 @@ const ReceiptManagePage: React.FC = () => {
         영수증 관리
       </Typography>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>연도</InputLabel>
-              <Select
-                value={selectedYear}
-                label="연도"
-                onChange={handleYearChange}
-              >
-                {availableYears.map((year) => (
-                  <MenuItem key={year} value={year}>
-                    {year}년
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth>
-              <InputLabel>이벤트/그룹</InputLabel>
-              <Select
-                value={selectedSelection}
-                label="이벤트/그룹"
-                onChange={(e) => setSelectedSelection(e.target.value)}
-                disabled={!selectedYear || (!events || events.length === 0) && (!groups || groups.length === 0)}
-              >
-                {groups && groups.length > 0 && (
-                  <MenuItem value="" disabled>— 그룹 —</MenuItem>
-                )}
-                {groups && groups.map((g) => (
-                  <MenuItem key={g._id} value={`group:${g._id}`}>
-                    그룹: {g.name} ({g.eventIds.length}건)
-                  </MenuItem>
-                ))}
-                {ungroupedEvents && ungroupedEvents.length > 0 && (
-                  <MenuItem value="" disabled>— 개별 이벤트 —</MenuItem>
-                )}
-                {ungroupedEvents && ungroupedEvents.map((event) => (
-                  <MenuItem key={event._id} value={`event:${event._id}`}>
-                    {event.event_Name} ({event.event_Place})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 1 }}>
+            <Tabs
+              orientation="vertical"
+              value={specialMode || 'none'}
+              onChange={(_, v) => {
+                if (v === 'new') {
+                  setSpecialMode('new');
+                  if (selectedYear) {
+                    ensureFixedEvent('신규등록').then((id) => {
+                      setFixedNewEventId(id);
+                      setSelectedSelection(`event:${id}`);
+                      fetchReceipts({ eventId: id }, true);
+                    });
+                  }
+                } else if (v === 'renew') {
+                  setSpecialMode('renew');
+                  if (selectedYear) {
+                    ensureFixedEvent('재등록').then(async (id) => {
+                      setFixedRenewEventId(id);
+                      setSelectedSelection(`event:${id}`);
+                      await fetchReceipts({ eventId: id }, true);
+                      await refreshRenewCounts(id);
+                    });
+                  }
+                } else {
+                  setSpecialMode(null);
+                }
+              }}
+            >
+              <Tab label="신규등록" value="new" />
+              <Tab label="재등록" value="renew" />
+            </Tabs>
+            {specialMode === 'renew' && (
+              <Box sx={{ mt: 2 }}>
+                <Stack direction="row" spacing={1}>
+                  <Chip color="success" label={`재등록 완료 ${renewCounts.done}`} />
+                  <Chip color="default" label={`미완료 ${renewCounts.pending}`} />
+                </Stack>
+              </Box>
+            )}
+          </Paper>
         </Grid>
-      </Paper>
+        <Grid item xs={12} md={9}>
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>연도</InputLabel>
+                  <Select
+                    value={selectedYear}
+                    label="연도"
+                    onChange={handleYearChange}
+                  >
+                    {availableYears.map((year) => (
+                      <MenuItem key={year} value={year}>
+                        {year}년
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>이벤트/그룹</InputLabel>
+                  <Select
+                    value={selectedSelection}
+                    label="이벤트/그룹"
+                    onChange={(e) => setSelectedSelection(e.target.value)}
+                    disabled={!selectedYear || (!events || events.length === 0) && (!groups || groups.length === 0)}
+                  >
+                    {(fixedNewEventId || fixedRenewEventId) && (
+                      <MenuItem value="" disabled>— 고정 이벤트 —</MenuItem>
+                    )}
+                    {fixedNewEventId && (
+                      <MenuItem value={`event:${fixedNewEventId}`}>신규등록 {selectedYear}</MenuItem>
+                    )}
+                    {fixedRenewEventId && (
+                      <MenuItem value={`event:${fixedRenewEventId}`}>재등록 {selectedYear}</MenuItem>
+                    )}
+                    {groups && groups.length > 0 && (
+                      <MenuItem value="" disabled>— 그룹 —</MenuItem>
+                    )}
+                    {groups && groups.map((g) => (
+                      <MenuItem key={g._id} value={`group:${g._id}`}>
+                        그룹: {g.name} ({g.eventIds.length}건)
+                      </MenuItem>
+                    ))}
+                    {ungroupedEvents && ungroupedEvents.length > 0 && (
+                      <MenuItem value="" disabled>— 개별 이벤트 —</MenuItem>
+                    )}
+                    {ungroupedEvents && ungroupedEvents.map((event) => (
+                      <MenuItem key={event._id} value={`event:${event._id}`}>
+                        {event.event_Name} ({event.event_Place})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Paper>
+
+          {specialMode === 'new' && (
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom>신규등록</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={8}>
+                  <TextField fullWidth label="교회명" value={newChurchName} onChange={(e) => setNewChurchName(e.target.value)} />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField fullWidth label="주소/지역" value={newChurchLocation} onChange={(e) => setNewChurchLocation(e.target.value)} />
+                </Grid>
+                <Grid item xs={12}>
+                  <Alert severity="info">신규등록 시 교회ID 0000 / 하위ID a-z 중 비어있는 값이 자동 배정되며, 300,000원 영수증이 즉시 발급됩니다.</Alert>
+                </Grid>
+                <Grid item xs={12}>
+                  <Button variant="contained" color="primary" onClick={handleCreateNewChurchAndReceipt} disabled={loading}>
+                    {loading ? <CircularProgress size={24} /> : '신규등록 처리'}
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
+          )}
+
+          {specialMode === 'renew' && (
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom>재등록</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={8}>
+                  <Autocomplete
+                    value={renewChurch}
+                    onChange={(_, v) => setRenewChurch(v)}
+                    options={churches}
+                    onInputChange={(_, v) => { if (v.length >= 2) handleChurchSearch(v); }}
+                    getOptionLabel={(o) => (o ? `${o.name} (${o.mainId}-${o.subId})` : '')}
+                    renderInput={(params) => (<TextField {...params} label="교회 선택(이름/등록번호)" fullWidth />)}
+                    isOptionEqualToValue={(o, v) => o.mainId === v.mainId && o.subId === v.subId}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField fullWidth label="클럽 수" type="number" inputProps={{ min: 1 }} value={renewClubs} onChange={(e) => setRenewClubs(e.target.value)} helperText="클럽당 50,000원" />
+                </Grid>
+                <Grid item xs={12}>
+                  <Stack direction="row" spacing={1}>
+                    <Chip label={`예상 비용: ${(Math.max(1, parseInt(renewClubs || '0', 10) || 0) * 50000).toLocaleString()}원`} />
+                  </Stack>
+                </Grid>
+                <Grid item xs={12}>
+                  <Button variant="contained" color="primary" onClick={handleCreateRenewReceipt} disabled={loading}>
+                    {loading ? <CircularProgress size={24} /> : '재등록 처리'}
+                  </Button>
+                </Grid>
+              </Grid>
+            </Paper>
+          )}
+        </Grid>
+      </Grid>
 
       {selectedSelection && (
         <Paper sx={{ p: 3, mb: 3 }}>
