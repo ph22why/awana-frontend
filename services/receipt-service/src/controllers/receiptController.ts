@@ -4,10 +4,21 @@ import { Receipt } from '../models/Receipt';
 // 영수증 목록 조회
 export const getAllReceipts = async (req: Request, res: Response) => {
   try {
-    const { eventId, churchId, page = 1, limit = 10 } = req.query;
+    const { eventId, eventIds, churchId, page = 1, limit = 10 } = req.query as any;
     const query: any = {};
 
-    if (eventId) query.eventId = eventId;
+    if (eventIds) {
+      const idsArray = Array.isArray(eventIds)
+        ? eventIds
+        : typeof eventIds === 'string'
+          ? eventIds.split(',').map((s) => s.trim()).filter(Boolean)
+          : [];
+      if (idsArray.length > 0) {
+        query.eventId = { $in: idsArray };
+      }
+    } else if (eventId) {
+      query.eventId = eventId;
+    }
     if (churchId) query.churchId = churchId;
 
     const skip = (Number(page) - 1) * Number(limit);

@@ -42,7 +42,7 @@ import {
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import type { EventFormData, SampleEvent } from '../../types/event';
 import type { ReceiptFormData } from '../../types/receipt';
-import { eventApi, IEvent } from '../../services/api/eventApi';
+import { eventApi, IEvent, IEventGroup } from '../../services/api/eventApi';
 import { churchApi, Church, ChurchResponse } from '../../services/api/churchApi';
 import { receiptApi, Receipt, ReceiptResponse } from '../../services/api/receiptApi';
 import Dialog from '@mui/material/Dialog';
@@ -75,7 +75,11 @@ const ReceiptManagePage: React.FC = () => {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | ''>('');
   const [selectedEvent, setSelectedEvent] = useState<string>('');
+  const [selectedSelection, setSelectedSelection] = useState<string>(''); // 'event:<id>' | 'group:<id>'
   const [events, setEvents] = useState<IEvent[]>([]);
+  const [groups, setGroups] = useState<IEventGroup[]>([]);
+  // 그룹 선택 시, 그룹 내 어떤 이벤트에 영수증을 귀속시킬지 결정하기 위한 보조값
+  const [selectedConcreteEventId, setSelectedConcreteEventId] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [churches, setChurches] = useState<Church[]>([]);
@@ -147,7 +151,7 @@ const ReceiptManagePage: React.FC = () => {
     },
     churchName: '',
     managerName: '',
-    managerPhone: '',
+    managerPhone: '010-0000-0000',
     partTotal: '',
     partStudent: '',
     partTeacher: '',
@@ -248,8 +252,9 @@ const ReceiptManagePage: React.FC = () => {
   };
 
   const handleSaveAll = async () => {
-    if (!selectedEvent) {
-      setError('이벤트를 선택해주세요.');
+    const activeEventId = getActiveEventId();
+    if (!activeEventId) {
+      setError('이벤트(또는 그룹 내 대상 이벤트)를 선택해주세요.');
       return;
     }
 
@@ -279,7 +284,7 @@ const ReceiptManagePage: React.FC = () => {
       for (const receipt of receiptsToAdd) {
         try {
           const receiptData: Omit<Receipt, 'id' | 'createdAt' | 'updatedAt'> = {
-            eventId: selectedEvent.toString(),
+            eventId: activeEventId,
             churchId: {
               mainId: receipt.churchId.mainId,
               subId: receipt.churchId.subId
@@ -333,7 +338,13 @@ const ReceiptManagePage: React.FC = () => {
         })));
 
         // 영수증 목록 새로고침
-        await fetchReceipts(selectedEvent, true, searchText);
+        if (selectedSelection) {
+          const [mode, id] = selectedSelection.split(':');
+          const selection = mode === 'group'
+            ? { eventIds: groups.find(g => g._id === id)?.eventIds || [] }
+            : { eventId: id };
+          await fetchReceipts(selection, true, searchText);
+        }
       }
 
       if (failedReceipts.length > 0) {
@@ -406,7 +417,7 @@ const ReceiptManagePage: React.FC = () => {
       },
       churchName: '',
       managerName: '',
-      managerPhone: '',
+      managerPhone: '010-0000-0000',
       partTotal: '',
       partStudent: '',
       partTeacher: '',
@@ -462,7 +473,12 @@ const ReceiptManagePage: React.FC = () => {
   const handleSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
-    if (!selectedEvent || !currentReceipt.churchId.mainId || !currentReceipt.managerPhone || !currentReceipt.managerName) {
+    const activeEventId = getActiveEventId();
+    const phoneToUse = (currentReceipt.managerPhone && currentReceipt.managerPhone.trim().length > 0)
+      ? currentReceipt.managerPhone
+      : '010-0000-0000';
+
+    if (!activeEventId || !currentReceipt.churchId.mainId || !currentReceipt.managerName) {
       setError('필수 정보를 모두 입력해주세요.');
       return;
     }
@@ -477,12 +493,17 @@ const ReceiptManagePage: React.FC = () => {
       setLoading(true);
       console.log('Current receipt state:', currentReceipt);
 
+      // 폰 번호 기본값 보정(입력 비었을 때 기본값 적용)
+      if (!currentReceipt.managerPhone || currentReceipt.managerPhone.trim().length === 0) {
+        setCurrentReceipt(prev => ({ ...prev, managerPhone: phoneToUse }));
+      }
+
       const receiptData = {
-        eventId: selectedEvent.toString(),
+        eventId: activeEventId,
         churchId: currentReceipt.churchId,
         churchName: currentReceipt.churchName,
         managerName: currentReceipt.managerName,
-        managerPhone: currentReceipt.managerPhone,
+        managerPhone: phoneToUse,
         partTotal: parseInt(currentReceipt.partTotal) || 0,
         partStudent: parseInt(currentReceipt.partStudent) || 0,
         partTeacher: parseInt(currentReceipt.partTeacher) || 0,
@@ -516,8 +537,12 @@ const ReceiptManagePage: React.FC = () => {
         resetForm();
 
         // Refresh receipt list immediately
-        if (selectedEvent) {
-          await fetchReceipts(selectedEvent, true, searchText);
+        if (selectedSelection) {
+          const [mode, id] = selectedSelection.split(':');
+          const selection = mode === 'group'
+            ? { eventIds: groups.find(g => g._id === id)?.eventIds || [] }
+            : { eventId: id };
+          await fetchReceipts(selection, true, searchText);
         }
       }
     } catch (err: any) {
@@ -720,7 +745,7 @@ const ReceiptManagePage: React.FC = () => {
     fetchAvailableYears();
   }, []);
 
-  // 선택된 연도에 해당하는 이벤트 로드
+  // 선택된 연도에 해당하는 이벤트/그룹 로드
   useEffect(() => {
     const fetchEventsByYear = async () => {
       try {
@@ -731,7 +756,13 @@ const ReceiptManagePage: React.FC = () => {
           new Date(b.event_Start_Date).getTime() - new Date(a.event_Start_Date).getTime()
         );
         setEvents(sortedEvents);
-        setSelectedEvent(''); // 이벤트 선택 초기화
+        // 그룹 목록 로드 후 해당 연도의 이벤트와 교집합이 있는 그룹만 노출
+        const allGroups = await eventApi.getEventGroups();
+        const eventIdSet = new Set(sortedEvents.map(e => e._id));
+        const groupsForYear = allGroups.filter(g => g.eventIds.some(id => eventIdSet.has(id)));
+        setGroups(groupsForYear);
+        setSelectedEvent('');
+        setSelectedSelection(''); // 선택 초기화
       } catch (err) {
         console.error('Error fetching events for year:', err);
         setError('이벤트 목록을 불러오는데 실패했습니다.');
@@ -743,6 +774,25 @@ const ReceiptManagePage: React.FC = () => {
     fetchEventsByYear();
   }, [selectedYear]);
 
+  // 그룹에 속한 이벤트는 개별 이벤트 목록에서 숨김
+  const groupedEventIdSet = new Set<string>(groups.flatMap(g => g.eventIds));
+  const ungroupedEvents = events.filter(e => !groupedEventIdSet.has(e._id));
+
+  // 현재 선택(이벤트/그룹)을 기반으로 실제 eventId를 산출
+  const getActiveEventId = (): string | null => {
+    if (!selectedSelection) return null;
+    const [mode, id] = selectedSelection.split(':');
+    if (mode === 'event') return id;
+    const group = groups.find((g) => g._id === id);
+    if (!group) return null;
+    // 우선 사용자가 선택한 보조 이벤트 ID가 그룹에 포함되어 있으면 그것을 우선 사용
+    if (selectedConcreteEventId && group.eventIds.includes(selectedConcreteEventId)) {
+      return selectedConcreteEventId;
+    }
+    // 그렇지 않으면 그룹의 첫 이벤트를 사용
+    return group.eventIds[0] || null;
+  };
+
   const handleYearChange = (event: SelectChangeEvent<number>) => {
     const year = event.target.value as number;
     setSelectedYear(year);
@@ -750,6 +800,7 @@ const ReceiptManagePage: React.FC = () => {
 
   const handleEventChange = (event: SelectChangeEvent<string>) => {
     setSelectedEvent(event.target.value);
+    setSelectedSelection(event.target.value);
     setShowForm(false); // Reset form when event changes
     setSelectedChurch(null); // Reset selected church
     setSearchText(''); // Reset search when event changes
@@ -769,21 +820,28 @@ const ReceiptManagePage: React.FC = () => {
     });
   };
 
-  const fetchReceipts = async (eventId: string, resetPage: boolean = false, searchQuery?: string) => {
+  const fetchReceipts = async (
+    selection: { eventId?: string; eventIds?: string[] },
+    resetPage: boolean = false,
+    searchQuery?: string
+  ) => {
     try {
       setLoading(true);
-      console.log('Fetching receipts for eventId:', eventId, 'searchQuery:', searchQuery);
+      console.log('Fetching receipts for selection:', selection, 'searchQuery:', searchQuery);
       
       if (resetPage) {
         setPage(1);
       }
       
       // 검색어가 있으면 전체 데이터를 가져와서 필터링, 없으면 페이지네이션 적용
+      const baseParams: any = selection.eventIds && selection.eventIds.length > 0
+        ? { eventIds: selection.eventIds.join(',') }
+        : { eventId: selection.eventId };
       const requestParams = searchQuery ? {
-        eventId: eventId,
+        ...baseParams,
         limit: 5000 // 전체 데이터를 가져오기 위해 큰 수치 설정
       } : {
-        eventId: eventId,
+        ...baseParams,
         page: resetPage ? 1 : page,
         limit: pageSize
       };
@@ -858,34 +916,50 @@ const ReceiptManagePage: React.FC = () => {
     }
   };
 
-  // 선택된 이벤트가 변경될 때마다 영수증 목록 조회
+  // 선택(이벤트/그룹)이 변경될 때마다 영수증 목록 조회
   useEffect(() => {
-    if (selectedEvent) {
-      console.log('Selected event changed, fetching receipts for:', selectedEvent);
-      fetchReceipts(selectedEvent, true); // Pass true to reset pagination, no search
+    if (selectedSelection) {
+      const [mode, id] = selectedSelection.split(':');
+      const selection = mode === 'group'
+        ? { eventIds: groups.find(g => g._id === id)?.eventIds || [] }
+        : { eventId: id };
+      console.log('Selection changed, fetching receipts for:', selection);
+      fetchReceipts(selection, true); // Pass true to reset pagination, no search
     }
-  }, [selectedEvent]);
+  }, [selectedSelection]);
 
-  // 저장 성공 후 목록 갱신을 위한 useEffect
+  // 저장 성공 후 목록 갱신
   useEffect(() => {
-    if (selectedEvent && snackbar.severity === 'success') {
-      console.log('Receipt saved successfully, refreshing list for:', selectedEvent);
-      fetchReceipts(selectedEvent, true, searchText); // Pass true to reset pagination
+    if (selectedSelection && snackbar.severity === 'success') {
+      const [mode, id] = selectedSelection.split(':');
+      const selection = mode === 'group'
+        ? { eventIds: groups.find(g => g._id === id)?.eventIds || [] }
+        : { eventId: id };
+      console.log('Receipt saved successfully, refreshing list for:', selection);
+      fetchReceipts(selection, true, searchText);
     }
   }, [snackbar.severity]);
 
-  // Add effect to handle page changes
+  // 페이지 변경 처리
   useEffect(() => {
-    if (selectedEvent && page > 1 && !searchText.trim()) {
-      console.log('Page changed, fetching receipts for:', selectedEvent);
-      fetchReceipts(selectedEvent, false);
+    if (selectedSelection && page > 1 && !searchText.trim()) {
+      const [mode, id] = selectedSelection.split(':');
+      const selection = mode === 'group'
+        ? { eventIds: groups.find(g => g._id === id)?.eventIds || [] }
+        : { eventId: id };
+      console.log('Page changed, fetching receipts for:', selection);
+      fetchReceipts(selection, false);
     }
   }, [page]);
 
   // 검색 실행 함수
   const handleSearch = () => {
-    if (selectedEvent) {
-      fetchReceipts(selectedEvent, true, searchText);
+    if (selectedSelection) {
+      const [mode, id] = selectedSelection.split(':');
+      const selection = mode === 'group'
+        ? { eventIds: groups.find(g => g._id === id)?.eventIds || [] }
+        : { eventId: id };
+      fetchReceipts(selection, true, searchText);
     }
   };
 
@@ -911,8 +985,12 @@ const ReceiptManagePage: React.FC = () => {
         severity: 'success'
       });
       // Refresh the list
-      if (selectedEvent) {
-        fetchReceipts(selectedEvent, true, searchText);
+      if (selectedSelection) {
+        const [mode, id] = selectedSelection.split(':');
+        const selection = mode === 'group'
+          ? { eventIds: groups.find(g => g._id === id)?.eventIds || [] }
+          : { eventId: id };
+        fetchReceipts(selection, true, searchText);
       }
     } catch (err) {
       console.error('Error deleting receipt:', err);
@@ -938,17 +1016,18 @@ const ReceiptManagePage: React.FC = () => {
   };
 
   const handleDBDownload = async () => {
-    if (!selectedEvent) {
+    if (!selectedSelection) {
       setError('이벤트를 선택해주세요.');
       return;
     }
 
     try {
       setLoading(true);
-      const response = await receiptApi.getReceipts({
-        eventId: selectedEvent,
-        limit: 1000 // Fetch all receipts
-      });
+      const [mode, id] = selectedSelection.split(':');
+      const params = mode === 'group'
+        ? { eventIds: (groups.find(g => g._id === id)?.eventIds || []).join(','), limit: 1000 }
+        : { eventId: id, limit: 1000 } as any;
+      const response = await receiptApi.getReceipts(params);
 
       if (response.success) {
         const receipts = response.data;
@@ -993,7 +1072,16 @@ const ReceiptManagePage: React.FC = () => {
         XLSX.utils.book_append_sheet(workbook, worksheet, '영수증');
         const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
-        saveAs(data, `${selectedEvent}_영수증_상세목록.xlsx`);
+        const filenameKey = (() => {
+          const [m, i] = selectedSelection.split(':');
+          if (m === 'group') {
+            const g = groups.find(g => g._id === i);
+            return `그룹_${g?.name || i}`;
+          }
+          const ev = events.find(e => e._id === i);
+          return `이벤트_${ev?.event_Name || i}`;
+        })();
+        saveAs(data, `${filenameKey}_영수증_상세목록.xlsx`);
 
         setSnackbar({
           open: true,
@@ -1174,7 +1262,13 @@ const ReceiptManagePage: React.FC = () => {
         // input value 초기화(같은 파일 재업로드 가능)
         if (event.target) event.target.value = '';
         // 업로드 후 목록 새로고침
-        if (selectedEvent) fetchReceipts(selectedEvent, true, searchText);
+        if (selectedSelection) {
+          const [mode, id] = selectedSelection.split(':');
+          const selection = mode === 'group'
+            ? { eventIds: groups.find(g => g._id === id)?.eventIds || [] }
+            : { eventId: id };
+          fetchReceipts(selection, true, searchText);
+        }
       };
       reader.readAsArrayBuffer(file);
     } catch (err) {
@@ -1224,15 +1318,26 @@ const ReceiptManagePage: React.FC = () => {
           
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth>
-              <InputLabel>이벤트</InputLabel>
+              <InputLabel>이벤트/그룹</InputLabel>
               <Select
-                value={selectedEvent}
-                label="이벤트"
-                onChange={handleEventChange}
-                disabled={!selectedYear || !events || events.length === 0}
+                value={selectedSelection}
+                label="이벤트/그룹"
+                onChange={(e) => setSelectedSelection(e.target.value)}
+                disabled={!selectedYear || (!events || events.length === 0) && (!groups || groups.length === 0)}
               >
-                {events && events.map((event) => (
-                  <MenuItem key={event._id} value={event._id}>
+                {groups && groups.length > 0 && (
+                  <MenuItem value="" disabled>— 그룹 —</MenuItem>
+                )}
+                {groups && groups.map((g) => (
+                  <MenuItem key={g._id} value={`group:${g._id}`}>
+                    그룹: {g.name} ({g.eventIds.length}건)
+                  </MenuItem>
+                ))}
+                {ungroupedEvents && ungroupedEvents.length > 0 && (
+                  <MenuItem value="" disabled>— 개별 이벤트 —</MenuItem>
+                )}
+                {ungroupedEvents && ungroupedEvents.map((event) => (
+                  <MenuItem key={event._id} value={`event:${event._id}`}>
                     {event.event_Name} ({event.event_Place})
                   </MenuItem>
                 ))}
@@ -1242,7 +1347,7 @@ const ReceiptManagePage: React.FC = () => {
         </Grid>
       </Paper>
 
-      {selectedEvent && (
+      {selectedSelection && (
         <Paper sx={{ p: 3, mb: 3 }}>
           <Typography variant="h6" gutterBottom>
             {isEditMode ? '영수증 수정' : '영수증 추가'}
@@ -1345,7 +1450,7 @@ const ReceiptManagePage: React.FC = () => {
                 />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="담당자 전화번호"
@@ -1455,7 +1560,7 @@ const ReceiptManagePage: React.FC = () => {
         </Paper>
       )}
 
-      {selectedEvent && (
+      {selectedSelection && (
         <>
           <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
             <TextField
@@ -1473,7 +1578,7 @@ const ReceiptManagePage: React.FC = () => {
               color="primary"
               startIcon={<SearchIcon />}
               onClick={handleSearch}
-              disabled={loading || !selectedEvent}
+              disabled={loading || !selectedSelection}
               sx={{ minWidth: 80 }}
             >
               검색
@@ -1484,8 +1589,12 @@ const ReceiptManagePage: React.FC = () => {
                 color="secondary"
                 onClick={() => {
                   setSearchText('');
-                  if (selectedEvent) {
-                    fetchReceipts(selectedEvent, true);
+                  if (selectedSelection) {
+                    const [mode, id] = selectedSelection.split(':');
+                    const selection = mode === 'group'
+                      ? { eventIds: groups.find(g => g._id === id)?.eventIds || [] }
+                      : { eventId: id };
+                    fetchReceipts(selection, true);
                   }
                 }}
                 disabled={loading}
@@ -1502,8 +1611,12 @@ const ReceiptManagePage: React.FC = () => {
                 onChange={(e) => {
                   setPageSize(Number(e.target.value));
                   setPage(1); // Reset to first page when changing page size
-                  if (selectedEvent) {
-                    fetchReceipts(selectedEvent, true, searchText || undefined);
+                  if (selectedSelection) {
+                    const [mode, id] = selectedSelection.split(':');
+                    const selection = mode === 'group'
+                      ? { eventIds: groups.find(g => g._id === id)?.eventIds || [] }
+                      : { eventId: id };
+                    fetchReceipts(selection, true, searchText || undefined);
                   }
                 }}
               >
@@ -1517,7 +1630,7 @@ const ReceiptManagePage: React.FC = () => {
               color="primary"
               startIcon={<DownloadIcon />}
               onClick={handleDBDownload}
-              disabled={loading || !selectedEvent}
+              disabled={loading || !selectedSelection}
               sx={{ minWidth: 140 }}
             >
               DB 다운로드
@@ -1614,8 +1727,12 @@ const ReceiptManagePage: React.FC = () => {
                 page={page}
                 onChange={(_, value) => {
                   setPage(value);
-                  if (selectedEvent) {
-                    fetchReceipts(selectedEvent, false);
+                  if (selectedSelection) {
+                    const [mode, id] = selectedSelection.split(':');
+                    const selection = mode === 'group'
+                      ? { eventIds: groups.find(g => g._id === id)?.eventIds || [] }
+                      : { eventId: id };
+                    fetchReceipts(selection, false);
                   }
                 }}
                 color="primary"

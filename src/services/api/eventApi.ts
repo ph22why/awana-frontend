@@ -46,6 +46,15 @@ export interface IEvent extends IEventCreate {
   event_Link?: string;
 }
 
+export interface IEventGroup {
+  _id: string;
+  name: string;
+  location?: string;
+  eventIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface EventApiResponse {
   success: boolean;
   data: IEvent[];
@@ -105,6 +114,55 @@ export const eventApi = {
         config: error.config
       });
       throw new Error(error.response?.data?.error || error.message || '이벤트 목록을 불러오는데 실패했습니다.');
+    }
+  },
+
+  // 이벤트 그룹 목록 조회
+  getEventGroups: async (): Promise<IEventGroup[]> => {
+    try {
+      const fullUrl = `${BASE_URL}/api/event-groups`;
+      const response = await axios.get<{ success: boolean; data: IEventGroup[] }>(fullUrl);
+      return response.data.data || [];
+    } catch (error: any) {
+      console.error('Error fetching event groups:', error);
+      return [];
+    }
+  },
+
+  // 이벤트 그룹 생성
+  createEventGroup: async (payload: { name: string; location?: string; eventIds: string[] }): Promise<IEventGroup> => {
+    try {
+      const fullUrl = `${BASE_URL}/api/event-groups`;
+      const response = await axios.post<{ success: boolean; data: IEventGroup }>(fullUrl, payload);
+      if (!response.data.success) throw new Error('그룹 생성 실패');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error creating event group:', error);
+      throw error;
+    }
+  },
+
+  // 이벤트 그룹 수정
+  updateEventGroup: async (id: string, payload: Partial<{ name: string; location?: string; eventIds: string[] }>): Promise<IEventGroup> => {
+    try {
+      const fullUrl = `${BASE_URL}/api/event-groups/${id}`;
+      const response = await axios.put<{ success: boolean; data: IEventGroup }>(fullUrl, payload);
+      if (!response.data.success) throw new Error('그룹 수정 실패');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error updating event group:', error);
+      throw error;
+    }
+  },
+
+  // 이벤트 그룹 삭제
+  deleteEventGroup: async (id: string): Promise<void> => {
+    try {
+      const fullUrl = `${BASE_URL}/api/event-groups/${id}`;
+      await axios.delete(fullUrl);
+    } catch (error: any) {
+      console.error('Error deleting event group:', error);
+      throw error;
     }
   },
 

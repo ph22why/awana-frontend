@@ -63,7 +63,7 @@ export const receiptApi = {
     }
   },
 
-  getReceipts: async (params?: { eventId?: string; churchId?: string; page?: number; limit?: number }) => {
+  getReceipts: async (params?: { eventId?: string; eventIds?: string[] | string; churchId?: string; page?: number; limit?: number }) => {
     try {
       const response = await receiptAxios.get<ReceiptResponse>(API_PATHS.RECEIPTS, { params });
       return response.data;

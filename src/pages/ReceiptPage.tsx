@@ -22,13 +22,13 @@ import {
 } from '@mui/material';
 import { receiptApi, Receipt } from '../services/api/receiptApi';
 import { eventApi } from '../services/api/eventApi';
-import type { IEvent } from '../services/api/eventApi';
+import type { IEvent, IEventGroup } from '../services/api/eventApi';
 import { churchApi, Church } from '../services/api/churchApi';
 
 const ReceiptPage: React.FC = () => {
   const navigate = useNavigate();
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
-  const [selectedEvent, setSelectedEvent] = useState<string>('');
+  const [selectedSelection, setSelectedSelection] = useState<string>(''); // 'event:<id>' | 'group:<id>'
   const [registrationNumber, setRegistrationNumber] = useState<string>('');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [churches, setChurches] = useState<Church[]>([]);
@@ -37,6 +37,7 @@ const ReceiptPage: React.FC = () => {
   const [showNoChurchMessage, setShowNoChurchMessage] = useState<boolean>(false);
   const [events, setEvents] = useState<IEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [groups, setGroups] = useState<IEventGroup[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [receiptYears, setReceiptYears] = useState<string[]>([]);
   const [filteredReceiptEvents, setFilteredReceiptEvents] = useState<IEvent[]>([]);
@@ -49,16 +50,20 @@ const ReceiptPage: React.FC = () => {
 
   // 이벤트 목록 불러오기 (DB에서)
   useEffect(() => {
-    const fetchEvents = async () => {
+    const fetchData = async () => {
       try {
-        const dbEvents = await eventApi.getEvents();
+        const [dbEvents, dbGroups] = await Promise.all([
+          eventApi.getEvents(),
+          eventApi.getEventGroups(),
+        ]);
         setEvents(dbEvents);
+        setGroups(dbGroups || []);
       } catch (err) {
-        setError('이벤트 목록을 불러오는데 실패했습니다.');
-        console.error('Error fetching events:', err);
+        setError('이벤트/그룹 목록을 불러오는데 실패했습니다.');
+        console.error('Error fetching events/groups:', err);
       }
     };
-    fetchEvents();
+    fetchData();
   }, []);
 
   // 년도별 이벤트 필터링 (DB 이벤트 기준)
@@ -68,6 +73,9 @@ const ReceiptPage: React.FC = () => {
   const filteredEvents = events.filter(event => 
     event.event_Year.toString() === selectedYear
   );
+  const groupsForYear = groups.filter(g => g.eventIds.some(id => filteredEvents.some(e => e._id === id)));
+  const groupedEventIdSet = new Set<string>(groupsForYear.flatMap(g => g.eventIds));
+  const ungroupedFilteredEvents = filteredEvents.filter(e => !groupedEventIdSet.has(e._id));
 
   // 전화번호 포맷팅 함수
   const formatPhoneNumber = (value: string) => {
@@ -177,8 +185,15 @@ const ReceiptPage: React.FC = () => {
     if (selectedYear) {
       filtered = filtered.filter(r => new Date(r.paymentDate || r.createdAt).getFullYear().toString() === selectedYear);
     }
-    if (selectedEvent) {
-      filtered = filtered.filter(r => r.eventId === selectedEvent);
+    if (selectedSelection) {
+      const [mode, id] = selectedSelection.split(':');
+      if (mode === 'group') {
+        const group = groups.find(g => g._id === id);
+        const eventIdSet = new Set(group ? group.eventIds : []);
+        filtered = filtered.filter(r => eventIdSet.has(r.eventId));
+      } else {
+        filtered = filtered.filter(r => r.eventId === id);
+      }
     }
     if (registrationNumber.length === 4) {
       filtered = filtered.filter(r => r.churchId.mainId.endsWith(registrationNumber));
@@ -195,7 +210,7 @@ const ReceiptPage: React.FC = () => {
       filtered = filtered.filter(r => r.managerPhone.replace(/-/g, '').includes(phoneNumber.replace(/-/g, '')));
     }
     setFilteredReceipts(filtered);
-  }, [selectedYear, selectedEvent, registrationNumber, phoneNumber, receipts, selectedChurch, churches]);
+  }, [selectedYear, selectedSelection, registrationNumber, phoneNumber, receipts, selectedChurch, churches, groups]);
 
   if (error) {
     return (
@@ -236,15 +251,26 @@ const ReceiptPage: React.FC = () => {
 
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>이벤트 선택</InputLabel>
+                <InputLabel>이벤트/그룹 선택</InputLabel>
                 <Select
-                  value={selectedEvent}
-                  label="이벤트 선택"
-                  onChange={(e: SelectChangeEvent) => setSelectedEvent(e.target.value)}
+                  value={selectedSelection}
+                  label="이벤트/그룹 선택"
+                  onChange={(e: SelectChangeEvent) => setSelectedSelection(e.target.value)}
                   disabled={!selectedYear}
                 >
-                  {filteredEvents.map((event) => (
-                    <MenuItem key={event._id} value={event._id}>
+                  {groupsForYear.length > 0 && (
+                    <MenuItem value="" disabled>— 그룹 —</MenuItem>
+                  )}
+                  {groupsForYear.map((g) => (
+                    <MenuItem key={g._id} value={`group:${g._id}`}>
+                      그룹: {g.name}
+                    </MenuItem>
+                  ))}
+                  {ungroupedFilteredEvents.length > 0 && (
+                    <MenuItem value="" disabled>— 개별 이벤트 —</MenuItem>
+                  )}
+                  {ungroupedFilteredEvents.map((event) => (
+                    <MenuItem key={event._id} value={`event:${event._id}`}>
                       {event.event_Name} ({event.event_Place})
                     </MenuItem>
                   ))}

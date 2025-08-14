@@ -3,6 +3,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import eventRoutes from './routes/event.routes';
+import eventGroupRoutes from './routes/eventGroup.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { setupLogging } from './utils/logging';
 
@@ -29,6 +30,7 @@ setupLogging(app);
 
 // Routes
 app.use('/api/events', eventRoutes);
+app.use('/api/event-groups', eventGroupRoutes);
 
 // 기본 라우트 (테스트용)
 app.get('/', (req, res) => {
