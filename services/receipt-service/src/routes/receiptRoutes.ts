@@ -102,13 +102,6 @@ router.get('/event/:eventId', param('eventId').notEmpty(), receiptController.get
 // 교회 정보 조회
 router.get('/church/:mainId', receiptController.getChurchByMainId);
 
-// GET /api/receipts
-router.get('/', async (req, res) => {
-  try {
-    res.json({ message: 'Receipts list endpoint' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch receipts' });
-  }
-});
+
 
 export { router as receiptRoutes }; 

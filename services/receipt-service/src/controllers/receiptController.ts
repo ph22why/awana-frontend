@@ -32,6 +32,7 @@ export const getAllReceipts = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: receipts,
+      count: total,
       pagination: {
         total,
         page: Number(page),
