@@ -95,7 +95,16 @@ const ChurchManagerPage = () => {
   };
 
   const searchChurches = async (searchQuery) => {
-    if (!searchQuery || searchQuery.length < 2) {
+    if (!searchQuery) {
+      setChurchOptions([]);
+      return;
+    }
+
+    // 등록번호 검색의 경우 3자리부터, 교회명 검색의 경우 2자리부터
+    const isNumeric = /^\d+$/.test(searchQuery);
+    const minLength = isNumeric ? 3 : 2;
+    
+    if (searchQuery.length < minLength) {
       setChurchOptions([]);
       return;
     }
@@ -106,7 +115,7 @@ const ChurchManagerPage = () => {
       const response = await fetch(`${apiUrl}/api/bt/churches/search?query=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
       
-      console.log('교회 검색 응답:', data);
+      console.log(`교회 검색 응답 (${isNumeric ? '등록번호' : '교회명'}):`, data);
       
       if (data.success) {
         setChurchOptions(data.data || []);
@@ -198,8 +207,9 @@ const ChurchManagerPage = () => {
                   {...params}
                   required
                   label="교회명 또는 등록번호로 검색"
+                  placeholder="예: 서울중앙교회 또는 1234"
                   variant="outlined"
-                  helperText="교회명이나 등록번호를 입력하여 검색하세요"
+                  helperText="교회명 또는 등록번호(3-4자리)를 입력하여 검색하세요"
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 2,

@@ -401,26 +401,57 @@ export const searchChurches = async (req: Request, res: Response, next: NextFunc
       ? 'http://localhost:3002' 
       : 'http://church-service:3002';
     
-    // ChurchManagePage 방식으로 수정: /api/churches?search=query
-    const searchUrl = `${baseUrl}/api/churches?search=${encodeURIComponent(query as string)}&limit=50`;
-    console.log(`교회 검색 요청: ${searchUrl}`);
+    console.log(`교회 검색 요청 (검색어: ${query})`);
     
-    const response = await fetch(searchUrl);
-    const data = await response.json();
+    // 검색어가 숫자인지 확인 (등록번호 검색)
+    const isNumeric = /^\d+$/.test(query as string);
+    
+    if (isNumeric && (query as string).length >= 3) {
+      // 등록번호로 검색: 모든 교회를 가져온 후 mainId로 필터링 (ReceiptPage 방식)
+      console.log('등록번호로 검색 중...');
+      const getAllUrl = `${baseUrl}/api/churches?limit=1000`;
+      
+      const response = await fetch(getAllUrl);
+      const data = await response.json();
 
-    console.log('교회 검색 응답:', data);
+      if (!response.ok) {
+        console.error('Church service 오류:', data);
+        throw new Error(data.message || 'Church service에서 교회 검색 실패');
+      }
 
-    if (!response.ok) {
-      console.error('Church service 오류:', data);
-      throw new Error(data.message || 'Church service에서 교회 검색 실패');
+      // mainId에 검색어가 포함된 교회들만 필터링
+      const filteredChurches = (data.data || []).filter((church: any) => 
+        church.mainId && church.mainId.includes(query as string)
+      );
+
+      console.log(`등록번호 검색 결과: ${filteredChurches.length}개 교회 발견`);
+
+      res.json({
+        success: true,
+        data: filteredChurches,
+        count: filteredChurches.length,
+      });
+    } else {
+      // 교회명으로 검색 (기존 방식)
+      console.log('교회명으로 검색 중...');
+      const searchUrl = `${baseUrl}/api/churches?search=${encodeURIComponent(query as string)}&limit=50`;
+      
+      const response = await fetch(searchUrl);
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Church service 오류:', data);
+        throw new Error(data.message || 'Church service에서 교회 검색 실패');
+      }
+
+      console.log(`교회명 검색 결과: ${(data.data || []).length}개 교회 발견`);
+
+      res.json({
+        success: true,
+        data: data.data || [],
+        count: data.count || 0,
+      });
     }
-
-    // church-service의 응답 형식에 맞춰 반환
-    res.json({
-      success: true,
-      data: data.data || [],
-      count: data.count || 0,
-    });
   } catch (error) {
     console.error('교회 검색 오류:', error);
     res.status(500).json({
