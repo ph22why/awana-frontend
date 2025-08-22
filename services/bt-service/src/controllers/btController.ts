@@ -824,7 +824,7 @@ export const checkInWithQR = async (req: Request, res: Response, next: NextFunct
     // 교사 정보 업데이트
     teacher.lastAttendanceDate = new Date();
     teacher.attendanceRecords = teacher.attendanceRecords || [];
-    teacher.attendanceRecords.push(attendance._id);
+    teacher.attendanceRecords.push(attendance._id as any);
     await teacher.save();
 
     res.json({

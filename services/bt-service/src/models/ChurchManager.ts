@@ -147,13 +147,13 @@ ChurchManagerSchema.index({ registrationDate: -1 });
 ChurchManagerSchema.index({ paymentStatus: 1 });
 
 // 가상 필드: 키 사용률
-ChurchManagerSchema.virtual('keyUsageRate').get(function() {
+ChurchManagerSchema.virtual('keyUsageRate').get(function(this: any) {
   if (this.keysGenerated === 0) return 0;
   return Math.round((this.keysUsed / this.keysGenerated) * 100);
 });
 
 // 가상 필드: 남은 키 수
-ChurchManagerSchema.virtual('remainingKeys').get(function() {
+ChurchManagerSchema.virtual('remainingKeys').get(function(this: any) {
   return this.keysGenerated - this.keysAssigned;
 });
 

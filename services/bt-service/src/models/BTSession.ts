@@ -151,18 +151,18 @@ BTSessionSchema.index({ createdBy: 1 });
 BTSessionSchema.index({ sessionType: 1 });
 
 // 가상 필드: 참가 가능 여부
-BTSessionSchema.virtual('isAvailable').get(function() {
+BTSessionSchema.virtual('isAvailable').get(function(this: any) {
   return this.currentParticipants < this.maxParticipants && this.status === 'scheduled';
 });
 
 // 가상 필드: 참가율
-BTSessionSchema.virtual('participationRate').get(function() {
+BTSessionSchema.virtual('participationRate').get(function(this: any) {
   if (this.maxParticipants === 0) return 0;
   return Math.round((this.currentParticipants / this.maxParticipants) * 100);
 });
 
 // 가상 필드: 세션 지속 시간 (분)
-BTSessionSchema.virtual('durationMinutes').get(function() {
+BTSessionSchema.virtual('durationMinutes').get(function(this: any) {
   const start = this.startTime.split(':').map(Number);
   const end = this.endTime.split(':').map(Number);
   const startMinutes = start[0] * 60 + start[1];
@@ -180,31 +180,31 @@ BTSessionSchema.statics.generateSessionId = function(date: Date, sessionType: st
 };
 
 // 세션 활성화 메서드
-BTSessionSchema.methods.activate = function() {
+BTSessionSchema.methods.activate = function(this: any) {
   this.status = 'active';
   return this.save();
 };
 
 // 세션 완료 처리 메서드
-BTSessionSchema.methods.complete = function() {
+BTSessionSchema.methods.complete = function(this: any) {
   this.status = 'completed';
   return this.save();
 };
 
 // 세션 취소 메서드
-BTSessionSchema.methods.cancel = function() {
+BTSessionSchema.methods.cancel = function(this: any) {
   this.status = 'cancelled';
   return this.save();
 };
 
 // 참가자 수 업데이트 메서드
-BTSessionSchema.methods.updateParticipantCount = function(increment: number = 1) {
+BTSessionSchema.methods.updateParticipantCount = function(this: any, increment: number = 1) {
   this.currentParticipants = Math.max(0, this.currentParticipants + increment);
   return this.save();
 };
 
 // 유효성 검사: 종료 시간이 시작 시간보다 늦은지 확인
-BTSessionSchema.pre('save', function(next: (error?: Error) => void) {
+BTSessionSchema.pre('save', function(this: any, next: (error?: Error) => void) {
   const start = this.startTime.split(':').map(Number);
   const end = this.endTime.split(':').map(Number);
   const startMinutes = start[0] * 60 + start[1];
