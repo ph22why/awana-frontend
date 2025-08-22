@@ -629,7 +629,7 @@ export const generateKeysForChurch = async (req: Request, res: Response, next: N
     const churchId = churchManager.metadata?.mainId || '001';
     
     for (let i = 1; i <= keyCount; i++) {
-      const keyCode = BTKey.generateKeyCode(churchId, i);
+      const keyCode = (BTKey as any).generateKeyCode(churchId, i);
       const key = new BTKey({
         keyCode,
         churchManagerId,
@@ -715,7 +715,7 @@ export const assignKeyToTeacher = async (req: Request, res: Response, next: Next
     await teacher.save();
 
     // ChurchManager 키 할당 수 업데이트
-    await ChurchManager.findByIdAndUpdate(key.churchManagerId, {
+    await ChurchManager.findByIdAndUpdate(key.churchManagerId.toString(), {
       $inc: { keysAssigned: 1 }
     });
 
@@ -759,7 +759,7 @@ export const useKey = async (req: Request, res: Response, next: NextFunction) =>
     await key.save();
 
     // ChurchManager 키 사용 수 업데이트
-    await ChurchManager.findByIdAndUpdate(key.churchManagerId, {
+    await ChurchManager.findByIdAndUpdate(key.churchManagerId.toString(), {
       $inc: { keysUsed: 1 }
     });
 
