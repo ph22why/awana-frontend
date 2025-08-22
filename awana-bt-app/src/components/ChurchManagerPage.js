@@ -124,31 +124,22 @@ const ChurchManagerPage = () => {
 
     setChurchLoading(true);
     try {
-      // ReceiptPage 방식: church-service에 직접 요청
+      // ReceiptPage 방식 완전 복사: church-service에 직접 요청
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3004';
+      const requestUrl = `${apiUrl}/api/churches`;
       
-      let requestUrl;
       let params;
       
-      if (isMainId) {
-        // 4자리 등록번호로 검색
-        requestUrl = `${apiUrl}/api/churches`;
+      if (isMainId || isPartialMainId) {
+        // 등록번호 검색: ReceiptPage와 동일하게 전체 데이터를 가져와서 클라이언트에서 필터링
         params = new URLSearchParams({
-          mainId: searchQuery,
-          getAllResults: 'true'
-        });
-      } else if (isPartialMainId) {
-        // 3자리 등록번호로 검색: 전체 결과를 가져와서 필터링
-        requestUrl = `${apiUrl}/api/churches`;
-        params = new URLSearchParams({
-          getAllResults: 'true'
+          limit: '10000' // ReceiptPage와 동일한 큰 값 사용
         });
       } else {
         // 교회명으로 검색
-        requestUrl = `${apiUrl}/api/churches`;
         params = new URLSearchParams({
-          name: searchQuery,
-          getAllResults: 'true'
+          search: searchQuery,
+          limit: '10000' // ReceiptPage와 동일한 큰 값 사용
         });
       }
       
@@ -156,15 +147,17 @@ const ChurchManagerPage = () => {
       const data = await response.json();
       
       console.log(`교회 검색 응답 (${isMainId ? '4자리 등록번호' : isPartialMainId ? '3자리 등록번호' : '교회명'}):`, data);
+      console.log('전체 데이터 개수:', data.count, '받은 데이터 개수:', data.data?.length);
       
       if (data.success || data.data) {
         let churches = data.data || [];
         
-        // 3자리 등록번호의 경우 클라이언트에서 추가 필터링
-        if (isPartialMainId) {
+        // 등록번호 검색의 경우 클라이언트에서 필터링 (ReceiptPage 방식)
+        if (isMainId || isPartialMainId) {
           churches = churches.filter(church => 
             church.mainId && church.mainId.includes(searchQuery)
           );
+          console.log('등록번호 필터링 후:', churches.length, '개 교회');
         }
         
         setChurchOptions(churches);
