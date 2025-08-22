@@ -19,7 +19,7 @@ const SelectRolePage = () => {
   const navigate = useNavigate();
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #4A90E2 0%, #2C5282 100%)' }}>
       {/* Header */}
       <Box
         sx={{
@@ -82,7 +82,7 @@ const SelectRolePage = () => {
                   flexDirection: 'column',
                   borderRadius: 4,
                   border: '2px solid transparent',
-                  background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #667eea, #764ba2) border-box',
+                  background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #4A90E2, #2C5282) border-box',
                   boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
                   transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                   cursor: 'pointer',
@@ -109,7 +109,7 @@ const SelectRolePage = () => {
                     width: 120,
                     height: 120,
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                                            background: 'linear-gradient(135deg, #4A90E2, #2C5282)',
                     transition: 'all 0.4s ease',
                     zIndex: 0,
                   }}
@@ -118,7 +118,7 @@ const SelectRolePage = () => {
                 <CardContent sx={{ flexGrow: 1, textAlign: 'center', py: 6, position: 'relative', zIndex: 1 }}>
                   <Avatar
                     sx={{
-                      background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                                              background: 'linear-gradient(135deg, #4A90E2, #2C5282)',
                       width: 100,
                       height: 100,
                       mx: 'auto',
@@ -183,7 +183,7 @@ const SelectRolePage = () => {
                       px: 6, 
                       py: 1.5,
                       borderRadius: 3,
-                      background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                                              background: 'linear-gradient(135deg, #4A90E2, #2C5282)',
                       fontWeight: 600,
                       fontSize: '1.1rem',
                       textTransform: 'none',

@@ -396,16 +396,38 @@ export const searchChurches = async (req: Request, res: Response, next: NextFunc
       });
     }
 
-    const response = await fetch(`http://church-service:3002/api/churches/search?query=${encodeURIComponent(query as string)}`);
+    // 개발 환경과 프로덕션 환경 분기
+    const baseUrl = process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:3002' 
+      : 'http://church-service:3002';
+    
+    // ChurchManagePage 방식으로 수정: /api/churches?search=query
+    const searchUrl = `${baseUrl}/api/churches?search=${encodeURIComponent(query as string)}&limit=50`;
+    console.log(`교회 검색 요청: ${searchUrl}`);
+    
+    const response = await fetch(searchUrl);
     const data = await response.json();
 
+    console.log('교회 검색 응답:', data);
+
     if (!response.ok) {
+      console.error('Church service 오류:', data);
       throw new Error(data.message || 'Church service에서 교회 검색 실패');
     }
 
-    res.json(data);
+    // church-service의 응답 형식에 맞춰 반환
+    res.json({
+      success: true,
+      data: data.data || [],
+      count: data.count || 0,
+    });
   } catch (error) {
-    next(error);
+    console.error('교회 검색 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '교회 검색 중 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 

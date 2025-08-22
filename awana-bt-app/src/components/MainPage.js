@@ -18,7 +18,7 @@ const MainPage = () => {
   const navigate = useNavigate();
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #4A90E2 0%, #2C5282 100%)' }}>
       {/* Hero Section */}
       <Box
         sx={{

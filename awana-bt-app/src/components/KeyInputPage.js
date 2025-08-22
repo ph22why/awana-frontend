@@ -59,7 +59,7 @@ const KeyInputPage = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #48BB78 0%, #38A169 100%)' }}>
       {/* Header */}
       <Box
         sx={{
@@ -126,7 +126,7 @@ const KeyInputPage = () => {
                     width: 120,
                     height: 120,
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #f093fb, #f5576c)',
+                    background: 'linear-gradient(135deg, #48BB78, #38A169)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -363,7 +363,7 @@ const KeyInputPage = () => {
                     px: 8,
                     py: 2.5,
                     borderRadius: 3,
-                    background: 'linear-gradient(135deg, #f093fb, #f5576c)',
+                    background: 'linear-gradient(135deg, #48BB78, #38A169)',
                     fontWeight: 600,
                     fontSize: '1.2rem',
                     textTransform: 'none',

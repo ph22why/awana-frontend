@@ -103,12 +103,15 @@ const ChurchManagerPage = () => {
     setChurchLoading(true);
     try {
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3004';
-      const response = await fetch(`${apiUrl}/api/churches/search?query=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(`${apiUrl}/api/bt/churches/search?query=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
+      
+      console.log('교회 검색 응답:', data);
       
       if (data.success) {
         setChurchOptions(data.data || []);
       } else {
+        console.error('교회 검색 실패:', data.message);
         setChurchOptions([]);
       }
     } catch (error) {
@@ -145,7 +148,7 @@ const ChurchManagerPage = () => {
     >
       <Box
         sx={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #4A90E2 0%, #2C5282 100%)',
           color: 'white',
           p: 4,
           textAlign: 'center',
@@ -278,7 +281,7 @@ const ChurchManagerPage = () => {
               px: 6,
               py: 2,
               borderRadius: 3,
-              background: 'linear-gradient(135deg, #667eea, #764ba2)',
+              background: 'linear-gradient(135deg, #4A90E2, #2C5282)',
               fontWeight: 600,
               fontSize: '1.1rem',
               textTransform: 'none',
@@ -543,7 +546,7 @@ const ChurchManagerPage = () => {
       {/* Header */}
       <Box
         sx={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #4A90E2 0%, #2C5282 100%)',
           color: 'white',
           py: 4,
         }}

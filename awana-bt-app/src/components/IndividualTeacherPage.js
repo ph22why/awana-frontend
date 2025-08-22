@@ -109,7 +109,7 @@ const IndividualTeacherPage = () => {
     >
       <Box
         sx={{
-          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+          background: 'linear-gradient(135deg, #48BB78 0%, #38A169 100%)',
           color: 'white',
           p: 4,
           textAlign: 'center',
@@ -204,7 +204,7 @@ const IndividualTeacherPage = () => {
               px: 6,
               py: 2,
               borderRadius: 3,
-              background: 'linear-gradient(135deg, #f093fb, #f5576c)',
+              background: 'linear-gradient(135deg, #48BB78, #38A169)',
               fontWeight: 600,
               fontSize: '1.1rem',
               textTransform: 'none',
@@ -652,7 +652,7 @@ const IndividualTeacherPage = () => {
       {/* Header */}
       <Box
         sx={{
-          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+          background: 'linear-gradient(135deg, #48BB78 0%, #38A169 100%)',
           color: 'white',
           py: 4,
         }}
