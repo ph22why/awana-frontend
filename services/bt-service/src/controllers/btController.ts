@@ -403,64 +403,59 @@ export const searchChurches = async (req: Request, res: Response, next: NextFunc
     
     console.log(`교회 검색 요청 (검색어: ${query})`);
     
-    // 검색어가 숫자인지 확인 (등록번호 검색)
-    const isNumeric = /^\d+$/.test(query as string);
+    // ReceiptManagePage 방식 적용: 4자리 숫자인지 확인
+    const isMainId = /^\d{4}$/.test(query as string);
+    const isPartialMainId = /^\d{3}$/.test(query as string); // 3자리 숫자
     
-    if (isNumeric && (query as string).length >= 3) {
-      // 등록번호로 검색: 기존 search 방식을 먼저 시도하고, 없으면 전체에서 필터링
-      console.log('등록번호로 검색 중...');
-      
-      // 1차: 기존 search API로 시도
-      let searchUrl = `${baseUrl}/api/churches?search=${encodeURIComponent(query as string)}&limit=50`;
-      let response = await fetch(searchUrl);
-      let data = await response.json();
+    let searchParams = {};
+    let searchUrl = '';
+    
+    if (isMainId) {
+      // 4자리 등록번호로 검색
+      console.log('4자리 등록번호로 검색 중...');
+      searchParams = { mainId: query as string, getAllResults: true };
+      searchUrl = `${baseUrl}/api/churches?mainId=${encodeURIComponent(query as string)}&getAllResults=true`;
+    } else if (isPartialMainId) {
+      // 3자리 등록번호로 검색 (전체 목록에서 필터링)
+      console.log('3자리 등록번호로 검색 중...');
+      searchUrl = `${baseUrl}/api/churches?getAllResults=true`;
+    } else {
+      // 교회명으로 검색
+      console.log('교회명으로 검색 중...');
+      searchParams = { name: query as string, getAllResults: true };
+      searchUrl = `${baseUrl}/api/churches?name=${encodeURIComponent(query as string)}&getAllResults=true`;
+    }
+    
+    const response = await fetch(searchUrl);
+    
+    if (!response.ok) {
+      console.error(`Church service HTTP 오류: ${response.status} ${response.statusText}`);
+      throw new Error(`Church service HTTP 오류: ${response.status}`);
+    }
 
-      if (response.ok && data.success && data.data && data.data.length > 0) {
-        console.log(`등록번호 검색 결과 (search API): ${data.data.length}개 교회 발견`);
-        return res.json(data);
-      }
+    const data = await response.json();
+    
+    if (!data.success) {
+      console.error('Church service 응답 오류:', data);
+      throw new Error(data.message || 'Church service에서 교회 검색 실패');
+    }
 
-      // 2차: 전체 교회 목록에서 mainId로 필터링
-      console.log('전체 목록에서 등록번호 필터링 중...');
-      const getAllUrl = `${baseUrl}/api/churches?limit=1000`;
-      response = await fetch(getAllUrl);
-      data = await response.json();
-
-      if (!response.ok) {
-        console.error('Church service 오류:', data);
-        throw new Error(data.message || 'Church service에서 교회 검색 실패');
-      }
-
-      // mainId에 검색어가 포함된 교회들만 필터링
-      const filteredChurches = (data.data || []).filter((church: any) => 
+    let filteredChurches = data.data || [];
+    
+    // 3자리 등록번호의 경우 클라이언트에서 추가 필터링
+    if (isPartialMainId) {
+      filteredChurches = filteredChurches.filter((church: any) => 
         church.mainId && church.mainId.includes(query as string)
       );
-
-      console.log(`등록번호 검색 결과 (필터링): ${filteredChurches.length}개 교회 발견`);
-
-      res.json({
-        success: true,
-        data: filteredChurches,
-        count: filteredChurches.length,
-      });
-    } else {
-      // 교회명으로 검색 (기존 방식 완전 보존)
-      console.log('교회명으로 검색 중...');
-      const searchUrl = `${baseUrl}/api/churches?search=${encodeURIComponent(query as string)}&limit=50`;
-      
-      const response = await fetch(searchUrl);
-      
-      if (!response.ok) {
-        console.error(`Church service HTTP 오류: ${response.status} ${response.statusText}`);
-        throw new Error(`Church service HTTP 오류: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log(`교회명 검색 결과: ${(data.data || []).length}개 교회 발견`);
-
-      // church-service의 응답을 그대로 전달
-      res.json(data);
     }
+    
+    console.log(`교회 검색 결과: ${filteredChurches.length}개 교회 발견`);
+
+    res.json({
+      success: true,
+      data: filteredChurches,
+      count: filteredChurches.length,
+    });
   } catch (error) {
     console.error('교회 검색 오류:', error);
     res.status(500).json({

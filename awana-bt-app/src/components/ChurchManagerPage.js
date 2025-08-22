@@ -100,11 +100,24 @@ const ChurchManagerPage = () => {
       return;
     }
 
-    // 등록번호 검색의 경우 3자리부터, 교회명 검색의 경우 2자리부터
+    // ReceiptManagePage 방식 적용: 4자리 숫자는 즉시 검색, 3자리는 3자리부터, 교회명은 2자리부터
+    const isMainId = /^\d{4}$/.test(searchQuery); // 4자리 등록번호
+    const isPartialMainId = /^\d{3}$/.test(searchQuery); // 3자리 등록번호
     const isNumeric = /^\d+$/.test(searchQuery);
-    const minLength = isNumeric ? 3 : 2;
     
-    if (searchQuery.length < minLength) {
+    let shouldSearch = false;
+    if (isMainId) {
+      // 4자리 등록번호는 즉시 검색
+      shouldSearch = true;
+    } else if (isPartialMainId) {
+      // 3자리 등록번호는 3자리부터 검색
+      shouldSearch = true;
+    } else if (!isNumeric && searchQuery.length >= 2) {
+      // 교회명은 2자리부터 검색
+      shouldSearch = true;
+    }
+    
+    if (!shouldSearch) {
       setChurchOptions([]);
       return;
     }
@@ -115,10 +128,18 @@ const ChurchManagerPage = () => {
       const response = await fetch(`${apiUrl}/api/bt/churches/search?query=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
       
-      console.log(`교회 검색 응답 (${isNumeric ? '등록번호' : '교회명'}):`, data);
+      console.log(`교회 검색 응답 (${isMainId ? '4자리 등록번호' : isPartialMainId ? '3자리 등록번호' : '교회명'}):`, data);
       
       if (data.success) {
-        setChurchOptions(data.data || []);
+        const churches = data.data || [];
+        setChurchOptions(churches);
+        
+        // ReceiptManagePage 방식: 4자리 등록번호로 정확히 1개 교회가 검색되면 자동 선택
+        if (isMainId && churches.length === 1) {
+          const church = churches[0];
+          console.log('4자리 등록번호로 정확히 1개 교회 발견, 자동 선택:', church);
+          handleChurchSelect(church);
+        }
       } else {
         console.error('교회 검색 실패:', data.message);
         setChurchOptions([]);
