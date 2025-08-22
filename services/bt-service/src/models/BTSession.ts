@@ -19,6 +19,15 @@ export interface IBTSession extends Document {
   createdBy: Schema.Types.ObjectId; // 생성자 ID
   createdAt: Date;
   updatedAt: Date;
+  // 인스턴스 메서드
+  activate(): Promise<IBTSession>;
+  complete(): Promise<IBTSession>;
+  cancel(): Promise<IBTSession>;
+  updateParticipantCount(increment?: number): Promise<IBTSession>;
+}
+
+export interface IBTSessionModel extends mongoose.Model<IBTSession> {
+  generateSessionId(date: Date, sessionType: string): string;
 }
 
 const BTSessionSchema: Schema = new Schema({
@@ -195,7 +204,7 @@ BTSessionSchema.methods.updateParticipantCount = function(increment: number = 1)
 };
 
 // 유효성 검사: 종료 시간이 시작 시간보다 늦은지 확인
-BTSessionSchema.pre('save', function(next) {
+BTSessionSchema.pre('save', function(next: (error?: Error) => void) {
   const start = this.startTime.split(':').map(Number);
   const end = this.endTime.split(':').map(Number);
   const startMinutes = start[0] * 60 + start[1];
@@ -209,4 +218,4 @@ BTSessionSchema.pre('save', function(next) {
   next();
 });
 
-export default mongoose.model<IBTSession>('BTSession', BTSessionSchema);
+export default mongoose.model<IBTSession, IBTSessionModel>('BTSession', BTSessionSchema);

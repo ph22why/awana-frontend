@@ -26,6 +26,12 @@ export interface IChurchManager extends Document {
   };
   createdAt: Date;
   updatedAt: Date;
+  // 인스턴스 메서드
+  generateKeys(): Promise<IChurchManager>;
+  assignKey(): Promise<IChurchManager>;
+  useKey(): Promise<IChurchManager>;
+  approve(approvedBy: Schema.Types.ObjectId): Promise<IChurchManager>;
+  confirmPayment(): Promise<IChurchManager>;
 }
 
 const ChurchManagerSchema: Schema = new Schema({
@@ -152,7 +158,7 @@ ChurchManagerSchema.virtual('remainingKeys').get(function() {
 });
 
 // 승인 시 키 생성 메서드
-ChurchManagerSchema.methods.generateKeys = async function() {
+ChurchManagerSchema.methods.generateKeys = async function(this: IChurchManager) {
   if (this.status !== 'approved') {
     throw new Error('승인된 신청만 키를 생성할 수 있습니다.');
   }
@@ -165,7 +171,7 @@ ChurchManagerSchema.methods.generateKeys = async function() {
 };
 
 // 키 할당 메서드
-ChurchManagerSchema.methods.assignKey = function() {
+ChurchManagerSchema.methods.assignKey = function(this: IChurchManager) {
   if (this.keysAssigned >= this.keysGenerated) {
     throw new Error('모든 키가 할당되었습니다.');
   }
@@ -175,7 +181,7 @@ ChurchManagerSchema.methods.assignKey = function() {
 };
 
 // 키 사용 메서드
-ChurchManagerSchema.methods.useKey = function() {
+ChurchManagerSchema.methods.useKey = function(this: IChurchManager) {
   if (this.keysUsed >= this.keysAssigned) {
     throw new Error('할당된 키보다 많이 사용할 수 없습니다.');
   }
@@ -185,7 +191,7 @@ ChurchManagerSchema.methods.useKey = function() {
 };
 
 // 승인 처리 메서드
-ChurchManagerSchema.methods.approve = function(approvedBy: Schema.Types.ObjectId) {
+ChurchManagerSchema.methods.approve = function(this: IChurchManager, approvedBy: Schema.Types.ObjectId) {
   this.status = 'approved';
   this.approvedAt = new Date();
   this.approvedBy = approvedBy;
@@ -193,7 +199,7 @@ ChurchManagerSchema.methods.approve = function(approvedBy: Schema.Types.ObjectId
 };
 
 // 결제 확인 메서드
-ChurchManagerSchema.methods.confirmPayment = function() {
+ChurchManagerSchema.methods.confirmPayment = function(this: IChurchManager) {
   this.paymentStatus = 'confirmed';
   this.paymentDate = new Date();
   return this.save();

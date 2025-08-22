@@ -119,7 +119,7 @@ BTAttendanceSchema.methods.isLate = function(): boolean {
 };
 
 // 출결 상태 자동 업데이트
-BTAttendanceSchema.pre('save', function(next) {
+BTAttendanceSchema.pre('save', function(next: (error?: Error) => void) {
   if (this.isNew && this.isLate()) {
     this.status = 'late';
   }

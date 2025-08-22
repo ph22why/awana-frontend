@@ -19,6 +19,13 @@ export interface IBTKey extends Document {
   };
   createdAt: Date;
   updatedAt: Date;
+  // 인스턴스 메서드
+  isExpired(): boolean;
+  isAvailable(): boolean;
+}
+
+export interface IBTKeyModel extends mongoose.Model<IBTKey> {
+  generateKeyCode(churchId: string, sequence: number): string;
 }
 
 const BTKeySchema: Schema = new Schema({
@@ -118,4 +125,4 @@ BTKeySchema.methods.isAvailable = function(): boolean {
   return this.status === 'available' && !this.isExpired();
 };
 
-export default mongoose.model<IBTKey>('BTKey', BTKeySchema);
+export default mongoose.model<IBTKey, IBTKeyModel>('BTKey', BTKeySchema);

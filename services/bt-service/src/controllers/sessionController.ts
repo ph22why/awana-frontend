@@ -23,7 +23,7 @@ export const createBTSession = async (req: Request, res: Response, next: NextFun
 
     // 세션 ID 자동 생성
     const sessionDate = new Date(date);
-    const sessionId = BTSession.generateSessionId(sessionDate, sessionType);
+    const sessionId = (BTSession as any).generateSessionId(sessionDate, sessionType);
 
     // 중복 세션 확인
     const existingSession = await BTSession.findOne({ sessionId });
@@ -239,13 +239,13 @@ export const updateBTSessionStatus = async (req: Request, res: Response, next: N
     // 상태 변경 로직에 따른 메서드 호출
     switch (status) {
       case 'active':
-        await session.activate();
+        await (session as any).activate();
         break;
       case 'completed':
-        await session.complete();
+        await (session as any).complete();
         break;
       case 'cancelled':
-        await session.cancel();
+        await (session as any).cancel();
         break;
       default:
         session.status = status;
