@@ -519,7 +519,7 @@ export const getBTStatistics = async (req: Request, res: Response, next: NextFun
     ]);
 
     // receipt-service에서 BT 영수증 통계 조회
-    let btReceiptStats = [];
+    let btReceiptStats: Array<{ _id: string; count: number; totalAmount: number }> = [];
     let totalBTReceipts = 0;
     
     try {
