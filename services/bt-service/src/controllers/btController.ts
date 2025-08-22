@@ -3,6 +3,9 @@ import fetch from 'node-fetch';
 import ChurchManager, { IChurchManager } from '../models/ChurchManager';
 import IndividualTeacher, { IIndividualTeacher } from '../models/IndividualTeacher';
 import BTTeacher, { IBTTeacher } from '../models/BTTeacher';
+import BTKey from '../models/BTKey';
+import BTAttendance from '../models/BTAttendance';
+import BTSession from '../models/BTSession';
 
 // Church Manager Controllers
 export const createChurchManager = async (req: Request, res: Response, next: NextFunction) => {
@@ -583,6 +586,322 @@ export const getBTStatistics = async (req: Request, res: Response, next: NextFun
           total: totalBTTeachers,
           byStatus: btTeacherStats,
         },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ===== 키 관리 컨트롤러 =====
+
+// 교회담당자 승인 시 키 생성
+export const generateKeysForChurch = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { churchManagerId, eventId, keyCount } = req.body;
+    
+    const churchManager = await ChurchManager.findById(churchManagerId);
+    if (!churchManager) {
+      return res.status(404).json({
+        success: false,
+        message: '교회담당자 정보를 찾을 수 없습니다.',
+      });
+    }
+
+    if (churchManager.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: '승인된 신청만 키를 생성할 수 있습니다.',
+      });
+    }
+
+    // 기존 키가 있는지 확인
+    const existingKeys = await BTKey.countDocuments({ churchManagerId });
+    if (existingKeys > 0) {
+      return res.status(400).json({
+        success: false,
+        message: '이미 키가 생성되어 있습니다.',
+      });
+    }
+
+    // 키 생성
+    const keys = [];
+    const churchId = churchManager.metadata?.mainId || '001';
+    
+    for (let i = 1; i <= keyCount; i++) {
+      const keyCode = BTKey.generateKeyCode(churchId, i);
+      const key = new BTKey({
+        keyCode,
+        churchManagerId,
+        eventId,
+        keyType: 'church',
+        status: 'available',
+        metadata: {
+          churchName: churchManager.churchName,
+          churchId: churchManager.metadata?.churchId,
+          managerPhone: churchManager.managerPhone,
+        },
+      });
+      keys.push(key);
+    }
+
+    await BTKey.insertMany(keys);
+    
+    // ChurchManager 업데이트
+    churchManager.keysGenerated = keyCount;
+    await churchManager.save();
+
+    res.json({
+      success: true,
+      message: `${keyCount}개의 키가 생성되었습니다.`,
+      data: {
+        keys: keys.map(k => ({ keyCode: k.keyCode, status: k.status })),
+        churchManagerId,
+        eventId,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 교회담당자별 키 목록 조회
+export const getKeysByChurchManager = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { churchManagerId } = req.params;
+    
+    const keys = await BTKey.find({ churchManagerId })
+      .populate('assignedTeacherId', 'teacherName teacherPhone')
+      .sort({ keyCode: 1 });
+
+    res.json({
+      success: true,
+      data: keys,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 키 할당 (교사에게)
+export const assignKeyToTeacher = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { keyCode, teacherId } = req.body;
+    
+    const key = await BTKey.findOne({ keyCode, status: 'available' });
+    if (!key) {
+      return res.status(404).json({
+        success: false,
+        message: '사용 가능한 키를 찾을 수 없습니다.',
+      });
+    }
+
+    const teacher = await BTTeacher.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: '교사 정보를 찾을 수 없습니다.',
+      });
+    }
+
+    // 키 할당
+    key.status = 'assigned';
+    key.assignedTeacherId = teacherId;
+    key.assignedDate = new Date();
+    await key.save();
+
+    // 교사 정보에 키 코드 연결
+    teacher.keyCode = keyCode;
+    await teacher.save();
+
+    // ChurchManager 키 할당 수 업데이트
+    await ChurchManager.findByIdAndUpdate(key.churchManagerId, {
+      $inc: { keysAssigned: 1 }
+    });
+
+    res.json({
+      success: true,
+      message: '키가 교사에게 할당되었습니다.',
+      data: key,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 키 사용 (QR 생성 시)
+export const useKey = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { keyCode, teacherId } = req.body;
+    
+    const key = await BTKey.findOne({ keyCode, assignedTeacherId: teacherId });
+    if (!key) {
+      return res.status(404).json({
+        success: false,
+        message: '할당된 키를 찾을 수 없습니다.',
+      });
+    }
+
+    if (key.status !== 'assigned') {
+      return res.status(400).json({
+        success: false,
+        message: '할당된 키만 사용할 수 있습니다.',
+      });
+    }
+
+    // QR 코드 생성
+    const qrCode = `${keyCode}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
+    
+    key.status = 'used';
+    key.usedDate = new Date();
+    key.qrCode = qrCode;
+    key.qrGeneratedAt = new Date();
+    await key.save();
+
+    // ChurchManager 키 사용 수 업데이트
+    await ChurchManager.findByIdAndUpdate(key.churchManagerId, {
+      $inc: { keysUsed: 1 }
+    });
+
+    res.json({
+      success: true,
+      message: '키가 사용되었습니다.',
+      data: {
+        keyCode,
+        qrCode,
+        usedDate: key.usedDate,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ===== 출결 관리 컨트롤러 =====
+
+// QR 코드로 출결 체크인
+export const checkInWithQR = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { qrCode, sessionId, sessionType, location } = req.body;
+    
+    // QR 코드로 교사 찾기
+    const teacher = await BTTeacher.findOne({ qrCode });
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: '유효하지 않은 QR 코드입니다.',
+      });
+    }
+
+    // 이미 해당 세션에 출결했는지 확인
+    const existingAttendance = await BTAttendance.findOne({
+      teacherId: teacher._id,
+      sessionId,
+    });
+
+    if (existingAttendance) {
+      return res.status(400).json({
+        success: false,
+        message: '이미 출결한 세션입니다.',
+      });
+    }
+
+    // 출결 기록 생성
+    const attendance = new BTAttendance({
+      teacherId: teacher._id,
+      keyCode: teacher.keyCode,
+      eventId: teacher.eventId,
+      sessionId,
+      sessionType,
+      checkInTime: new Date(),
+      location,
+      method: 'qr',
+      status: 'present',
+    });
+
+    await attendance.save();
+
+    // 교사 정보 업데이트
+    teacher.lastAttendanceDate = new Date();
+    teacher.attendanceRecords = teacher.attendanceRecords || [];
+    teacher.attendanceRecords.push(attendance._id);
+    await teacher.save();
+
+    res.json({
+      success: true,
+      message: '출결이 완료되었습니다.',
+      data: {
+        teacherName: teacher.teacherName,
+        checkInTime: attendance.checkInTime,
+        sessionId,
+        location,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 출결 기록 조회
+export const getAttendanceRecords = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { teacherId, eventId, sessionId, startDate, endDate } = req.query;
+    
+    const filter: any = {};
+    if (teacherId) filter.teacherId = teacherId;
+    if (eventId) filter.eventId = eventId;
+    if (sessionId) filter.sessionId = sessionId;
+    if (startDate || endDate) {
+      filter.checkInTime = {};
+      if (startDate) filter.checkInTime.$gte = new Date(startDate as string);
+      if (endDate) filter.checkInTime.$lte = new Date(endDate as string);
+    }
+
+    const attendanceRecords = await BTAttendance.find(filter)
+      .populate('teacherId', 'teacherName teacherPhone churchName')
+      .sort({ checkInTime: -1 });
+
+    res.json({
+      success: true,
+      data: attendanceRecords,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 출결 통계
+export const getAttendanceStatistics = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { eventId, sessionId } = req.query;
+    
+    const filter: any = {};
+    if (eventId) filter.eventId = eventId;
+    if (sessionId) filter.sessionId = sessionId;
+
+    const stats = await BTAttendance.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const total = await BTAttendance.countDocuments(filter);
+    const present = stats.find(s => s._id === 'present')?.count || 0;
+    const late = stats.find(s => s._id === 'late')?.count || 0;
+    const absent = stats.find(s => s._id === 'absent')?.count || 0;
+
+    res.json({
+      success: true,
+      data: {
+        total,
+        present,
+        late,
+        absent,
+        attendanceRate: total > 0 ? Math.round((present / total) * 100) : 0,
       },
     });
   } catch (error) {

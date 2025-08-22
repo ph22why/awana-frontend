@@ -9,62 +9,81 @@ import {
   CardContent,
   TextField,
   Grid,
-  Stepper,
-  Step,
-  StepLabel,
   Paper,
   Divider,
   Autocomplete,
   CircularProgress,
+  Stack,
+  Chip,
+  Alert,
+  IconButton,
+  Avatar,
 } from '@mui/material';
-import { ArrowBack, School, Send, Check } from '@mui/icons-material';
-
-const steps = ['교회 정보 입력', '담당자 정보 입력', '신청 완료'];
+import { 
+  ArrowBack, 
+  School, 
+  Send, 
+  Check, 
+  Pending,
+  ContentCopy,
+  Person,
+  Key,
+  AccountBalance
+} from '@mui/icons-material';
 
 const ChurchManagerPage = () => {
   const navigate = useNavigate();
-  const [activeStep, setActiveStep] = useState(0);
+  const [step, setStep] = useState('input'); // 'input', 'pending', 'approved'
   const [churchData, setChurchData] = useState({
     churchName: '',
     churchAddress: '',
-    churchPhone: '',
-    managerName: '',
     managerPhone: '',
-    managerEmail: '',
-    participants: '',
+    selectedChurch: null,
   });
   const [churchOptions, setChurchOptions] = useState([]);
   const [churchLoading, setChurchLoading] = useState(false);
-  const [selectedChurch, setSelectedChurch] = useState(null);
+  const [submissionData, setSubmissionData] = useState(null);
 
-  const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
-  };
-
-  const handleInputChange = (field) => (event) => {
-    setChurchData({
-      ...churchData,
-      [field]: event.target.value,
-    });
-  };
+  // Mock data for demonstration - keys would come from backend after approval
+  const [teacherKeys] = useState([
+    { id: 1, key: 'BT2025-CH001-001', name: '', phone: '', assigned: false },
+    { id: 2, key: 'BT2025-CH001-002', name: '', phone: '', assigned: false },
+    { id: 3, key: 'BT2025-CH001-003', name: '', phone: '', assigned: false },
+    { id: 4, key: 'BT2025-CH001-004', name: '', phone: '', assigned: false },
+    { id: 5, key: 'BT2025-CH001-005', name: '', phone: '', assigned: false },
+  ]);
 
   const handleSubmit = async () => {
     try {
-      const response = await fetch('/api/bt/church-managers', {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3004';
+      const submitData = {
+        churchName: churchData.churchName,
+        churchAddress: churchData.churchAddress,
+        managerPhone: churchData.managerPhone,
+        churchId: churchData.selectedChurch ? {
+          mainId: churchData.selectedChurch.mainId,
+          subId: churchData.selectedChurch.subId
+        } : null,
+      };
+
+      const response = await fetch(`${apiUrl}/api/church-managers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(churchData),
+        body: JSON.stringify(submitData),
       });
       
       if (response.ok) {
-        console.log('교회 정보 제출 성공:', churchData);
-        handleNext();
+        const result = await response.json();
+        setSubmissionData(result);
+        // For demo, simulate different states
+        setStep('pending'); // Initially pending
+        
+        // Simulate approval after 3 seconds (in real app, this would be handled by admin)
+        setTimeout(() => {
+          setStep('approved');
+        }, 3000);
       } else {
         const errorData = await response.json();
         alert(`신청 중 오류가 발생했습니다: ${errorData.error || '알 수 없는 오류'}`);
@@ -75,7 +94,6 @@ const ChurchManagerPage = () => {
     }
   };
 
-  // 교회 검색 함수
   const searchChurches = async (searchQuery) => {
     if (!searchQuery || searchQuery.length < 2) {
       setChurchOptions([]);
@@ -84,7 +102,8 @@ const ChurchManagerPage = () => {
 
     setChurchLoading(true);
     try {
-      const response = await fetch(`/api/bt/churches/search?query=${encodeURIComponent(searchQuery)}`);
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3004';
+      const response = await fetch(`${apiUrl}/api/churches/search?query=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
       
       if (data.success) {
@@ -100,228 +119,431 @@ const ChurchManagerPage = () => {
     }
   };
 
-  // 교회 선택 시 정보 자동 입력
   const handleChurchSelect = (church) => {
-    setSelectedChurch(church);
     setChurchData(prev => ({
       ...prev,
+      selectedChurch: church,
       churchName: church.name,
       churchAddress: church.location,
-      churchPhone: '', // 교회 전화번호는 별도 입력
     }));
   };
 
-  const renderStepContent = (step) => {
-    switch (step) {
-      case 0:
-        return (
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Autocomplete
-                options={churchOptions}
-                getOptionLabel={(option) => option.name || ''}
-                renderOption={(props, option) => (
-                  <Box component="li" {...props}>
-                    <Box>
-                      <Typography variant="body1">{option.name}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {option.location} ({option.mainId}-{option.subId})
-                      </Typography>
-                    </Box>
-                  </Box>
-                )}
-                onInputChange={(event, newInputValue) => {
-                  searchChurches(newInputValue);
-                }}
-                onChange={(event, newValue) => {
-                  if (newValue) {
-                    handleChurchSelect(newValue);
-                  }
-                }}
-                loading={churchLoading}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    required
-                    label="교회명 검색"
-                    variant="outlined"
-                    helperText="교회명을 입력하여 검색하세요"
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {churchLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                    }}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                required
-                fullWidth
-                label="교회 주소"
-                value={churchData.churchAddress}
-                onChange={handleInputChange('churchAddress')}
-                variant="outlined"
-                multiline
-                rows={2}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                required
-                fullWidth
-                label="교회 전화번호"
-                value={churchData.churchPhone}
-                onChange={handleInputChange('churchPhone')}
-                variant="outlined"
-              />
-            </Grid>
-          </Grid>
-        );
-      case 1:
-        return (
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="담당자 이름"
-                value={churchData.managerName}
-                onChange={handleInputChange('managerName')}
-                variant="outlined"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="담당자 전화번호"
-                value={churchData.managerPhone}
-                onChange={handleInputChange('managerPhone')}
-                variant="outlined"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                required
-                fullWidth
-                label="담당자 이메일"
-                type="email"
-                value={churchData.managerEmail}
-                onChange={handleInputChange('managerEmail')}
-                variant="outlined"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="예상 참가자 수"
-                type="number"
-                value={churchData.participants}
-                onChange={handleInputChange('participants')}
-                variant="outlined"
-                helperText="대략적인 참가자 수를 입력해주세요"
-              />
-            </Grid>
-          </Grid>
-        );
-      case 2:
-        return (
-          <Box textAlign="center">
-            <Check sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-              신청이 완료되었습니다!
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              {churchData.churchName}의 BT 프로그램 신청이 성공적으로 접수되었습니다.
-            </Typography>
-
-            {/* 신청 정보 */}
-            <Paper elevation={1} sx={{ p: 3, mt: 3, textAlign: 'left' }}>
-              <Typography variant="h6" gutterBottom>신청 정보</Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>교회명:</strong> {churchData.churchName}
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>담당자:</strong> {churchData.managerName}
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>연락처:</strong> {churchData.managerPhone}
-              </Typography>
-              <Typography variant="body2">
-                <strong>이메일:</strong> {churchData.managerEmail}
-              </Typography>
-            </Paper>
-
-            {/* 다음 단계 안내 */}
-            <Paper 
-              elevation={2} 
-              sx={{ 
-                p: 3, 
-                mt: 3, 
-                bgcolor: '#fff3e0', 
-                border: '1px solid #ffb74d',
-                textAlign: 'left' 
-              }}
-            >
-              <Typography variant="h6" gutterBottom sx={{ color: '#f57c00', fontWeight: 600 }}>
-                📋 다음 단계 안내
-              </Typography>
-              <Divider sx={{ mb: 2, bgcolor: '#ffb74d' }} />
-              
-              <Typography variant="body1" sx={{ mb: 2, fontWeight: 500 }}>
-                🔍 <strong>본부에서 확인 중입니다</strong>
-              </Typography>
-              
-              <Typography variant="body2" sx={{ mb: 2 }}>
-                신청서 검토 후 승인되면 아래 계좌로 참가비를 입금해주세요.
-              </Typography>
-
-              <Box sx={{ bgcolor: 'white', p: 2, borderRadius: 1, mb: 2 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                  💳 입금 계좌 정보
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>은행:</strong> 국민은행
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  <strong>계좌번호:</strong> 123456-78-901234
-                </Typography>
-                <Typography variant="body2">
-                  <strong>예금주:</strong> 한국아와나선교회
-                </Typography>
-              </Box>
-
-              <Typography variant="body2" sx={{ color: '#d84315', fontWeight: 500 }}>
-                ⚠️ 입금 확인 후 본부에서 최종 승인 처리됩니다.
-              </Typography>
-            </Paper>
-
-            {/* 문의 안내 */}
-            <Paper elevation={1} sx={{ p: 2, mt: 3, bgcolor: '#f5f5f5' }}>
-              <Typography variant="body2" color="text.secondary">
-                📞 문의사항이 있으시면 아와나 본부로 연락 주세요.
-              </Typography>
-            </Paper>
-          </Box>
-        );
-      default:
-        return null;
-    }
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      // You could add a toast notification here
+      console.log('복사 완료:', text);
+    });
   };
 
+  const renderInputStep = () => (
+    <Card 
+      sx={{ 
+        borderRadius: 4,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+        overflow: 'hidden',
+      }}
+    >
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          p: 4,
+          textAlign: 'center',
+        }}
+      >
+        <School sx={{ fontSize: 60, mb: 2 }} />
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+          교회 신청
+        </Typography>
+        <Typography variant="body1" sx={{ opacity: 0.9 }}>
+          교회 정보와 담당자 연락처를 입력해주세요
+        </Typography>
+      </Box>
+
+      <CardContent sx={{ p: 6 }}>
+        <Grid container spacing={4}>
+          <Grid item xs={12}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#2d3748' }}>
+              교회 검색
+            </Typography>
+            <Autocomplete
+              options={churchOptions}
+              getOptionLabel={(option) => option.name || ''}
+              renderOption={(props, option) => (
+                <Box component="li" {...props}>
+                  <Box sx={{ p: 1 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {option.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {option.location} ({option.mainId}-{option.subId})
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+              onInputChange={(event, newInputValue) => {
+                searchChurches(newInputValue);
+              }}
+              onChange={(event, newValue) => {
+                if (newValue) {
+                  handleChurchSelect(newValue);
+                }
+              }}
+              loading={churchLoading}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  required
+                  label="교회명 또는 등록번호로 검색"
+                  variant="outlined"
+                  helperText="교회명이나 등록번호를 입력하여 검색하세요"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                    }
+                  }}
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: (
+                      <>
+                        {churchLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+            />
+          </Grid>
+
+          {churchData.selectedChurch && (
+            <Grid item xs={12}>
+              <Paper 
+                elevation={2} 
+                sx={{ 
+                  p: 3, 
+                  borderRadius: 2,
+                  bgcolor: '#f8fafc',
+                  border: '1px solid #e2e8f0'
+                }}
+              >
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                  선택된 교회 정보
+                </Typography>
+                <Stack spacing={1}>
+                  <Typography variant="body2">
+                    <strong>교회명:</strong> {churchData.churchName}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>주소:</strong> {churchData.churchAddress}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>등록번호:</strong> {churchData.selectedChurch.mainId}-{churchData.selectedChurch.subId}
+                  </Typography>
+                </Stack>
+              </Paper>
+            </Grid>
+          )}
+
+          <Grid item xs={12}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#2d3748' }}>
+              담당자 연락처
+            </Typography>
+            <TextField
+              required
+              fullWidth
+              label="담당자 전화번호"
+              value={churchData.managerPhone}
+              onChange={(e) => setChurchData(prev => ({ ...prev, managerPhone: e.target.value }))}
+              variant="outlined"
+              placeholder="010-1234-5678"
+              helperText="교회 담당자의 연락처를 입력해주세요"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                }
+              }}
+            />
+          </Grid>
+        </Grid>
+
+        <Box sx={{ mt: 6, textAlign: 'center' }}>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={handleSubmit}
+            disabled={!churchData.selectedChurch || !churchData.managerPhone}
+            startIcon={<Send />}
+            sx={{
+              px: 6,
+              py: 2,
+              borderRadius: 3,
+              background: 'linear-gradient(135deg, #667eea, #764ba2)',
+              fontWeight: 600,
+              fontSize: '1.1rem',
+              textTransform: 'none',
+              boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
+              '&:hover': {
+                boxShadow: '0 8px 30px rgba(102, 126, 234, 0.6)',
+              },
+              '&:disabled': {
+                background: '#e2e8f0',
+                color: '#a0aec0',
+              }
+            }}
+          >
+            신청하기
+          </Button>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+
+  const renderPendingStep = () => (
+    <Card 
+      sx={{ 
+        borderRadius: 4,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+        overflow: 'hidden',
+      }}
+    >
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #f6ad55 0%, #ed8936 100%)',
+          color: 'white',
+          p: 4,
+          textAlign: 'center',
+        }}
+      >
+        <Pending sx={{ fontSize: 60, mb: 2 }} />
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+          검토 중
+        </Typography>
+        <Typography variant="body1" sx={{ opacity: 0.9 }}>
+          본부에서 신청 내용을 검토하고 있습니다
+        </Typography>
+      </Box>
+
+      <CardContent sx={{ p: 6, textAlign: 'center' }}>
+        <Alert 
+          severity="info" 
+          sx={{ 
+            mb: 4,
+            borderRadius: 2,
+            '& .MuiAlert-message': {
+              fontWeight: 500
+            }
+          }}
+        >
+          신청이 정상적으로 접수되었습니다. 승인 후 입금 안내가 제공됩니다.
+        </Alert>
+
+        <Paper elevation={1} sx={{ p: 4, borderRadius: 3, bgcolor: '#f8fafc' }}>
+          <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+            신청 정보
+          </Typography>
+          <Stack spacing={2} sx={{ textAlign: 'left' }}>
+            <Typography variant="body2">
+              <strong>교회명:</strong> {churchData.churchName}
+            </Typography>
+            <Typography variant="body2">
+              <strong>담당자 연락처:</strong> {churchData.managerPhone}
+            </Typography>
+            <Typography variant="body2">
+              <strong>신청일:</strong> {new Date().toLocaleDateString('ko-KR')}
+            </Typography>
+          </Stack>
+        </Paper>
+
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 4 }}>
+          승인 완료 시 키 관리 화면으로 자동 전환됩니다
+        </Typography>
+      </CardContent>
+    </Card>
+  );
+
+  const renderApprovedStep = () => (
+    <Card 
+      sx={{ 
+        borderRadius: 4,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+        overflow: 'hidden',
+      }}
+    >
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+          color: 'white',
+          p: 4,
+          textAlign: 'center',
+        }}
+      >
+        <Check sx={{ fontSize: 60, mb: 2 }} />
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+          승인 완료
+        </Typography>
+        <Typography variant="body1" sx={{ opacity: 0.9 }}>
+          키가 발급되었습니다. 교사별로 키를 배포해주세요
+        </Typography>
+      </Box>
+
+      <CardContent sx={{ p: 6 }}>
+        <Alert 
+          severity="success" 
+          sx={{ 
+            mb: 4,
+            borderRadius: 2,
+            '& .MuiAlert-message': {
+              fontWeight: 500
+            }
+          }}
+        >
+          입금이 확인되었습니다. 교사별 키를 확인하고 배포해주세요.
+        </Alert>
+
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AccountBalance />
+            입금 정보
+          </Typography>
+          <Paper elevation={1} sx={{ p: 3, borderRadius: 2, bgcolor: '#f0fff4' }}>
+            <Stack spacing={1}>
+              <Typography variant="body2">
+                <strong>입금 계좌:</strong> 국민은행 123456-78-901234
+              </Typography>
+              <Typography variant="body2">
+                <strong>예금주:</strong> 한국아와나선교회
+              </Typography>
+              <Typography variant="body2">
+                <strong>입금액:</strong> {(teacherKeys.length * 50000).toLocaleString()}원
+              </Typography>
+              <Typography variant="body2">
+                <strong>확인일:</strong> {new Date().toLocaleDateString('ko-KR')}
+              </Typography>
+            </Stack>
+          </Paper>
+        </Box>
+
+        <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Key />
+          교사별 키 관리 ({teacherKeys.length}개)
+        </Typography>
+
+        <Grid container spacing={3}>
+          {teacherKeys.map((keyData, index) => (
+            <Grid item xs={12} key={keyData.id}>
+              <Paper 
+                elevation={2} 
+                sx={{ 
+                  p: 3, 
+                  borderRadius: 3,
+                  border: '2px solid #e2e8f0',
+                  '&:hover': {
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                  }
+                }}
+              >
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Avatar
+                    sx={{
+                      bgcolor: '#667eea',
+                      width: 48,
+                      height: 48,
+                    }}
+                  >
+                    <Person />
+                  </Avatar>
+                  
+                  <Box sx={{ flex: 1 }}>
+                    <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
+                      <Chip 
+                        label={`교사 ${index + 1}`}
+                        size="small"
+                        sx={{ 
+                          bgcolor: '#e6fffa', 
+                          color: '#319795',
+                          fontWeight: 600 
+                        }}
+                      />
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          fontFamily: 'monospace',
+                          bgcolor: '#f7fafc',
+                          px: 2,
+                          py: 0.5,
+                          borderRadius: 1,
+                          fontWeight: 600,
+                          color: '#2d3748'
+                        }}
+                      >
+                        {keyData.key}
+                      </Typography>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => copyToClipboard(keyData.key)}
+                        sx={{ color: '#667eea' }}
+                      >
+                        <ContentCopy fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                    
+                    <Stack direction="row" spacing={2}>
+                      <TextField
+                        size="small"
+                        placeholder="교사 이름"
+                        variant="outlined"
+                        sx={{ flex: 1 }}
+                      />
+                      <TextField
+                        size="small"
+                        placeholder="연락처"
+                        variant="outlined"
+                        sx={{ flex: 1 }}
+                      />
+                    </Stack>
+                  </Box>
+                </Stack>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+
+        <Paper 
+          elevation={1} 
+          sx={{ 
+            p: 4, 
+            mt: 4, 
+            borderRadius: 3, 
+            bgcolor: '#fff5f5',
+            border: '1px solid #feb2b2'
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#c53030' }}>
+            📋 키 배포 안내
+          </Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2" color="#742a2a">
+              • 각 교사에게 해당하는 키 코드를 전달해주세요
+            </Typography>
+            <Typography variant="body2" color="#742a2a">
+              • 교사는 받은 키로 개인 참가 신청을 진행합니다
+            </Typography>
+            <Typography variant="body2" color="#742a2a">
+              • 키는 한 번만 사용 가능하니 안전하게 보관해주세요
+            </Typography>
+          </Stack>
+        </Paper>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <Box>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f7fafc' }}>
       {/* Header */}
       <Box
         sx={{
-          bgcolor: 'primary.main',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
           py: 4,
         }}
@@ -330,64 +552,35 @@ const ChurchManagerPage = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             <Button
               onClick={() => navigate('/select-role')}
-              sx={{ color: 'white', minWidth: 'auto' }}
+              sx={{ 
+                color: 'white', 
+                minWidth: 'auto',
+                p: 1,
+                borderRadius: 2,
+                '&:hover': {
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                }
+              }}
             >
               <ArrowBack />
             </Button>
-            <School sx={{ mr: 1 }} />
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
+            <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
               교회담당자 신청
             </Typography>
           </Box>
           <Typography variant="body1" sx={{ opacity: 0.9 }}>
-            교회 정보와 담당자 정보를 입력해주세요
+            {step === 'input' && '교회 정보와 담당자 정보를 입력해주세요'}
+            {step === 'pending' && '신청 검토가 진행 중입니다'}
+            {step === 'approved' && '승인이 완료되었습니다'}
           </Typography>
         </Container>
       </Box>
 
       {/* Content */}
       <Container sx={{ py: 6 }} maxWidth="md">
-        <Card sx={{ p: 4 }}>
-          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-
-          <CardContent>
-            {renderStepContent(activeStep)}
-          </CardContent>
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-            <Button
-              disabled={activeStep === 0}
-              onClick={handleBack}
-              sx={{ mr: 1 }}
-            >
-              이전
-            </Button>
-            <Box sx={{ flex: '1 1 auto' }} />
-            {activeStep === steps.length - 1 ? (
-              <Button
-                variant="contained"
-                onClick={() => navigate('/select-role')}
-                startIcon={<Check />}
-              >
-                완료
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                onClick={activeStep === steps.length - 2 ? handleSubmit : handleNext}
-                startIcon={activeStep === steps.length - 2 ? <Send /> : null}
-              >
-                {activeStep === steps.length - 2 ? '신청하기' : '다음'}
-              </Button>
-            )}
-          </Box>
-        </Card>
+        {step === 'input' && renderInputStep()}
+        {step === 'pending' && renderPendingStep()}
+        {step === 'approved' && renderApprovedStep()}
       </Container>
     </Box>
   );

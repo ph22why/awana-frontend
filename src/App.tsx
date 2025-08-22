@@ -21,6 +21,9 @@ import NewChurchRegistrationPage from './pages/admin/NewChurchRegistrationPage';
 import RenewChurchRegistrationPage from './pages/admin/RenewChurchRegistrationPage';
 import BTManagePage from './pages/admin/BTManagePage';
 import BTTeacherManagePage from './pages/admin/BTTeacherManagePage';
+import BTAdminPage from './pages/admin/BTAdminPage';
+import BTKeyManagePage from './pages/admin/BTKeyManagePage';
+import BTAttendancePage from './pages/admin/BTAttendancePage';
 
 // Theme wrapper component to handle theme switching
 const ThemedApp: React.FC = () => {
@@ -53,6 +56,9 @@ const ThemedApp: React.FC = () => {
           <Route path="receipts/events" element={<EventReceiptManagePage />} />
           <Route path="onsite" element={<OnsiteRegisterPage />} />
           <Route path="receipt-status" element={<ReceiptStatusPage />} />
+          <Route path="bt" element={<BTAdminPage />} />
+          <Route path="bt/keys/:churchManagerId" element={<BTKeyManagePage />} />
+          <Route path="bt/attendance/:sessionId" element={<BTAttendancePage />} />
           <Route path="bt-manage" element={<BTManagePage />} />
           <Route path="bt-teachers/:churchManagerId" element={<BTTeacherManagePage />} />
         </Route>

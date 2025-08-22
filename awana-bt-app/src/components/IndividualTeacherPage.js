@@ -9,23 +9,35 @@ import {
   CardContent,
   TextField,
   Grid,
-  Stepper,
-  Step,
-  StepLabel,
   Paper,
   Divider,
+  Stack,
+  Chip,
+  Alert,
+  Avatar,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
 } from '@mui/material';
-import { ArrowBack, Person, Send, Check } from '@mui/icons-material';
-
-const steps = ['개인 정보 입력', '자격 정보 입력', '신청 완료'];
+import { 
+  ArrowBack, 
+  Key, 
+  Send, 
+  QrCode,
+  Person,
+  CheckCircle,
+  School,
+  Phone,
+  Email,
+  LocationOn
+} from '@mui/icons-material';
 
 const IndividualTeacherPage = () => {
   const navigate = useNavigate();
-  const [activeStep, setActiveStep] = useState(0);
+  const [step, setStep] = useState('key-input'); // 'key-input', 'info-input', 'qr-generated'
+  const [keyCode, setKeyCode] = useState('');
+  const [keyValid, setKeyValid] = useState(false);
   const [teacherData, setTeacherData] = useState({
     name: '',
     phone: '',
@@ -34,38 +46,42 @@ const IndividualTeacherPage = () => {
     churchName: '',
     position: '',
     experience: '',
-    certification: '',
     motivation: '',
   });
 
-  const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
-  };
-
-  const handleInputChange = (field) => (event) => {
-    setTeacherData({
-      ...teacherData,
-      [field]: event.target.value,
-    });
-  };
-
-  const handleSubmit = async () => {
+  const handleKeySubmit = async () => {
     try {
-      const response = await fetch('/api/bt/individual-teachers', {
+      // Simulate key validation
+      if (keyCode.length >= 10) {
+        setKeyValid(true);
+        setStep('info-input');
+      } else {
+        alert('올바른 키 코드를 입력해주세요.');
+      }
+    } catch (error) {
+      console.error('키 검증 오류:', error);
+      alert('키 검증 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleTeacherSubmit = async () => {
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3004';
+      const submitData = {
+        ...teacherData,
+        keyCode: keyCode,
+      };
+
+      const response = await fetch(`${apiUrl}/api/individual-teachers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(teacherData),
+        body: JSON.stringify(submitData),
       });
       
       if (response.ok) {
-        console.log('개인교사 정보 제출 성공:', teacherData);
-        handleNext();
+        setStep('qr-generated');
       } else {
         const errorData = await response.json();
         alert(`신청 중 오류가 발생했습니다: ${errorData.error || '알 수 없는 오류'}`);
@@ -76,172 +92,567 @@ const IndividualTeacherPage = () => {
     }
   };
 
-  const renderStepContent = (step) => {
-    switch (step) {
-      case 0:
-        return (
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="이름"
-                value={teacherData.name}
-                onChange={handleInputChange('name')}
-                variant="outlined"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                required
-                fullWidth
-                label="전화번호"
-                value={teacherData.phone}
-                onChange={handleInputChange('phone')}
-                variant="outlined"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                required
-                fullWidth
-                label="이메일"
-                type="email"
-                value={teacherData.email}
-                onChange={handleInputChange('email')}
-                variant="outlined"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                required
-                fullWidth
-                label="주소"
-                value={teacherData.address}
-                onChange={handleInputChange('address')}
-                variant="outlined"
-                multiline
-                rows={2}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="소속 교회"
-                value={teacherData.churchName}
-                onChange={handleInputChange('churchName')}
-                variant="outlined"
-                helperText="소속 교회가 있다면 입력해주세요"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>교회 내 직책</InputLabel>
-                <Select
-                  value={teacherData.position}
-                  label="교회 내 직책"
-                  onChange={handleInputChange('position')}
-                >
-                  <MenuItem value="교사">교사</MenuItem>
-                  <MenuItem value="전도사">전도사</MenuItem>
-                  <MenuItem value="목사">목사</MenuItem>
-                  <MenuItem value="장로">장로</MenuItem>
-                  <MenuItem value="권사">권사</MenuItem>
-                  <MenuItem value="집사">집사</MenuItem>
-                  <MenuItem value="기타">기타</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
-        );
-      case 1:
-        return (
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="교육 경력"
-                value={teacherData.experience}
-                onChange={handleInputChange('experience')}
-                variant="outlined"
-                multiline
-                rows={3}
-                helperText="교육 관련 경력이나 경험을 자유롭게 작성해주세요"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="보유 자격증"
-                value={teacherData.certification}
-                onChange={handleInputChange('certification')}
-                variant="outlined"
-                multiline
-                rows={2}
-                helperText="교육 관련 자격증이나 수료증이 있다면 입력해주세요"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                required
-                fullWidth
-                label="참가 동기"
-                value={teacherData.motivation}
-                onChange={handleInputChange('motivation')}
-                variant="outlined"
-                multiline
-                rows={4}
-                helperText="BT 프로그램에 참가하려는 동기나 목표를 작성해주세요"
-              />
-            </Grid>
-          </Grid>
-        );
-      case 2:
-        return (
-          <Box textAlign="center">
-            <Check sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-              신청이 완료되었습니다!
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              {teacherData.name}님의 BT 프로그램 신청이 성공적으로 접수되었습니다.
-            </Typography>
-            <Paper elevation={1} sx={{ p: 3, mt: 3, textAlign: 'left' }}>
-              <Typography variant="h6" gutterBottom>신청 정보</Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>이름:</strong> {teacherData.name}
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>연락처:</strong> {teacherData.phone}
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>이메일:</strong> {teacherData.email}
-              </Typography>
-              {teacherData.churchName && (
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  <strong>소속 교회:</strong> {teacherData.churchName}
-                </Typography>
-              )}
-              {teacherData.position && (
-                <Typography variant="body2">
-                  <strong>직책:</strong> {teacherData.position}
-                </Typography>
-              )}
-            </Paper>
-          </Box>
-        );
-      default:
-        return null;
-    }
+  const handleInputChange = (field) => (event) => {
+    setTeacherData({
+      ...teacherData,
+      [field]: event.target.value,
+    });
   };
 
+  const renderKeyInputStep = () => (
+    <Card 
+      sx={{ 
+        borderRadius: 4,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+        overflow: 'hidden',
+      }}
+    >
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+          color: 'white',
+          p: 4,
+          textAlign: 'center',
+        }}
+      >
+        <Key sx={{ fontSize: 60, mb: 2 }} />
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+          키 코드 입력
+        </Typography>
+        <Typography variant="body1" sx={{ opacity: 0.9 }}>
+          교회담당자로부터 받은 키 코드를 입력해주세요
+        </Typography>
+      </Box>
+
+      <CardContent sx={{ p: 6 }}>
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <TextField
+            fullWidth
+            label="키 코드"
+            value={keyCode}
+            onChange={(e) => setKeyCode(e.target.value.toUpperCase())}
+            variant="outlined"
+            placeholder="BT2025-CH001-001"
+            helperText="키 코드는 대소문자를 구분하지 않습니다"
+            sx={{
+              maxWidth: 400,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 3,
+                fontSize: '1.2rem',
+                fontFamily: 'monospace',
+                textAlign: 'center',
+              },
+              '& .MuiInputLabel-root': {
+                fontSize: '1.1rem',
+                fontWeight: 600,
+              }
+            }}
+            InputProps={{
+              sx: {
+                py: 2,
+                fontWeight: 600,
+                letterSpacing: 1,
+              }
+            }}
+          />
+        </Box>
+
+        <Alert 
+          severity="info" 
+          sx={{ 
+            mb: 4,
+            borderRadius: 2,
+          }}
+        >
+          키 코드는 교회담당자가 본부 승인 후 발급받은 코드입니다. 
+          교회담당자에게 문의하여 키를 받아주세요.
+        </Alert>
+
+        <Paper 
+          elevation={1} 
+          sx={{ 
+            p: 4, 
+            borderRadius: 3, 
+            bgcolor: '#fef5e7',
+            border: '1px solid #f6ad55'
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#c05621' }}>
+            📌 키 코드 형식 안내
+          </Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2" color="#9c4221">
+              • 형식: BT2025-CH###-### (예: BT2025-CH001-001)
+            </Typography>
+            <Typography variant="body2" color="#9c4221">
+              • 각 키는 한 명의 교사에게만 할당됩니다
+            </Typography>
+            <Typography variant="body2" color="#9c4221">
+              • 키는 일회용이므로 정확히 입력해주세요
+            </Typography>
+          </Stack>
+        </Paper>
+
+        <Box sx={{ mt: 6, textAlign: 'center' }}>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={handleKeySubmit}
+            disabled={!keyCode.trim()}
+            startIcon={<Send />}
+            sx={{
+              px: 6,
+              py: 2,
+              borderRadius: 3,
+              background: 'linear-gradient(135deg, #f093fb, #f5576c)',
+              fontWeight: 600,
+              fontSize: '1.1rem',
+              textTransform: 'none',
+              boxShadow: '0 4px 20px rgba(240, 147, 251, 0.4)',
+              '&:hover': {
+                boxShadow: '0 8px 30px rgba(240, 147, 251, 0.6)',
+              },
+              '&:disabled': {
+                background: '#e2e8f0',
+                color: '#a0aec0',
+              }
+            }}
+          >
+            키 확인하기
+          </Button>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+
+  const renderInfoInputStep = () => (
+    <Card 
+      sx={{ 
+        borderRadius: 4,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+        overflow: 'hidden',
+      }}
+    >
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          p: 4,
+          textAlign: 'center',
+        }}
+      >
+        <Person sx={{ fontSize: 60, mb: 2 }} />
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+          개인 정보 입력
+        </Typography>
+        <Typography variant="body1" sx={{ opacity: 0.9 }}>
+          키가 확인되었습니다. 개인 정보를 입력해주세요
+        </Typography>
+      </Box>
+
+      <CardContent sx={{ p: 6 }}>
+        <Alert 
+          severity="success" 
+          sx={{ 
+            mb: 4,
+            borderRadius: 2,
+          }}
+        >
+          키 코드 {keyCode}가 정상적으로 확인되었습니다.
+        </Alert>
+
+        <Grid container spacing={4}>
+          {/* 기본 정보 */}
+          <Grid item xs={12}>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Person />
+              기본 정보
+            </Typography>
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              required
+              fullWidth
+              label="이름"
+              value={teacherData.name}
+              onChange={handleInputChange('name')}
+              variant="outlined"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <TextField
+              required
+              fullWidth
+              label="전화번호"
+              value={teacherData.phone}
+              onChange={handleInputChange('phone')}
+              variant="outlined"
+              placeholder="010-1234-5678"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <TextField
+              required
+              fullWidth
+              label="이메일"
+              type="email"
+              value={teacherData.email}
+              onChange={handleInputChange('email')}
+              variant="outlined"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="주소"
+              value={teacherData.address}
+              onChange={handleInputChange('address')}
+              variant="outlined"
+              multiline
+              rows={2}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </Grid>
+
+          {/* 소속 정보 */}
+          <Grid item xs={12}>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <School />
+              소속 정보
+            </Typography>
+          </Grid>
+
+          <Grid item xs={12} sm={8}>
+            <TextField
+              fullWidth
+              label="소속 교회"
+              value={teacherData.churchName}
+              onChange={handleInputChange('churchName')}
+              variant="outlined"
+              helperText="소속 교회가 있다면 입력해주세요"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={4}>
+            <FormControl fullWidth>
+              <InputLabel>교회 내 직책</InputLabel>
+              <Select
+                value={teacherData.position}
+                label="교회 내 직책"
+                onChange={handleInputChange('position')}
+                sx={{ borderRadius: 2 }}
+              >
+                <MenuItem value="교사">교사</MenuItem>
+                <MenuItem value="전도사">전도사</MenuItem>
+                <MenuItem value="목사">목사</MenuItem>
+                <MenuItem value="장로">장로</MenuItem>
+                <MenuItem value="권사">권사</MenuItem>
+                <MenuItem value="집사">집사</MenuItem>
+                <MenuItem value="기타">기타</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          {/* 추가 정보 */}
+          <Grid item xs={12}>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+              추가 정보
+            </Typography>
+          </Grid>
+
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label="교육 경력"
+              value={teacherData.experience}
+              onChange={handleInputChange('experience')}
+              variant="outlined"
+              multiline
+              rows={3}
+              helperText="교육 관련 경력이나 경험을 자유롭게 작성해주세요"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </Grid>
+
+          <Grid item xs={12}>
+            <TextField
+              required
+              fullWidth
+              label="참가 동기"
+              value={teacherData.motivation}
+              onChange={handleInputChange('motivation')}
+              variant="outlined"
+              multiline
+              rows={3}
+              helperText="BT 프로그램에 참가하려는 동기나 목표를 작성해주세요"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </Grid>
+        </Grid>
+
+        <Box sx={{ mt: 6, textAlign: 'center' }}>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={handleTeacherSubmit}
+            disabled={!teacherData.name || !teacherData.phone || !teacherData.email || !teacherData.motivation}
+            startIcon={<Send />}
+            sx={{
+              px: 6,
+              py: 2,
+              borderRadius: 3,
+              background: 'linear-gradient(135deg, #667eea, #764ba2)',
+              fontWeight: 600,
+              fontSize: '1.1rem',
+              textTransform: 'none',
+              boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
+              '&:hover': {
+                boxShadow: '0 8px 30px rgba(102, 126, 234, 0.6)',
+              },
+              '&:disabled': {
+                background: '#e2e8f0',
+                color: '#a0aec0',
+              }
+            }}
+          >
+            정보 제출하기
+          </Button>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+
+  const renderQRGeneratedStep = () => (
+    <Card 
+      sx={{ 
+        borderRadius: 4,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.12)',
+        overflow: 'hidden',
+      }}
+    >
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+          color: 'white',
+          p: 4,
+          textAlign: 'center',
+        }}
+      >
+        <QrCode sx={{ fontSize: 60, mb: 2 }} />
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+          등록 완료
+        </Typography>
+        <Typography variant="body1" sx={{ opacity: 0.9 }}>
+          QR 코드가 생성되었습니다
+        </Typography>
+      </Box>
+
+      <CardContent sx={{ p: 6, textAlign: 'center' }}>
+        <Alert 
+          severity="success" 
+          sx={{ 
+            mb: 4,
+            borderRadius: 2,
+          }}
+        >
+          {teacherData.name}님의 BT 프로그램 등록이 완료되었습니다!
+        </Alert>
+
+        {/* QR Code Section */}
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            p: 4, 
+            borderRadius: 4, 
+            bgcolor: 'white',
+            border: '3px solid #e6fffa',
+            mb: 4,
+            maxWidth: 300,
+            mx: 'auto'
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#2d3748' }}>
+            참가 QR 코드
+          </Typography>
+          
+          {/* Placeholder QR Code - in real app, this would be generated QR */}
+          <Box
+            sx={{
+              width: 200,
+              height: 200,
+              mx: 'auto',
+              mb: 3,
+              bgcolor: '#f7fafc',
+              border: '2px dashed #cbd5e0',
+              borderRadius: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+            }}
+          >
+            <QrCode sx={{ fontSize: 80, color: '#a0aec0', mb: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              QR 코드 영역
+            </Typography>
+          </Box>
+          
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontFamily: 'monospace',
+              bgcolor: '#f7fafc',
+              px: 2,
+              py: 1,
+              borderRadius: 1,
+              fontWeight: 600,
+              color: '#2d3748'
+            }}
+          >
+            ID: {keyCode}-{teacherData.name?.slice(0, 2)}
+          </Typography>
+        </Paper>
+
+        {/* 등록 정보 */}
+        <Paper 
+          elevation={1} 
+          sx={{ 
+            p: 4, 
+            borderRadius: 3, 
+            bgcolor: '#f8fafc',
+            textAlign: 'left',
+            mb: 4
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+            등록 정보
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Stack spacing={2}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Person sx={{ fontSize: 20, color: '#667eea' }} />
+                  <Typography variant="body2">
+                    <strong>이름:</strong> {teacherData.name}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Phone sx={{ fontSize: 20, color: '#667eea' }} />
+                  <Typography variant="body2">
+                    <strong>연락처:</strong> {teacherData.phone}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Email sx={{ fontSize: 20, color: '#667eea' }} />
+                  <Typography variant="body2">
+                    <strong>이메일:</strong> {teacherData.email}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Stack spacing={2}>
+                {teacherData.churchName && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <School sx={{ fontSize: 20, color: '#667eea' }} />
+                    <Typography variant="body2">
+                      <strong>소속 교회:</strong> {teacherData.churchName}
+                    </Typography>
+                  </Box>
+                )}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Key sx={{ fontSize: 20, color: '#667eea' }} />
+                  <Typography variant="body2">
+                    <strong>키 코드:</strong> {keyCode}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CheckCircle sx={{ fontSize: 20, color: '#667eea' }} />
+                  <Typography variant="body2">
+                    <strong>등록일:</strong> {new Date().toLocaleDateString('ko-KR')}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {/* 안내사항 */}
+        <Paper 
+          elevation={1} 
+          sx={{ 
+            p: 4, 
+            borderRadius: 3, 
+            bgcolor: '#fff5f5',
+            border: '1px solid #feb2b2'
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#c53030' }}>
+            📱 QR 코드 사용 안내
+          </Typography>
+          <Stack spacing={1} sx={{ textAlign: 'left' }}>
+            <Typography variant="body2" color="#742a2a">
+              • 교육 현장에서 QR 코드를 통해 출석체크가 진행됩니다
+            </Typography>
+            <Typography variant="body2" color="#742a2a">
+              • QR 코드를 스크린샷으로 저장하거나 인쇄하여 준비해주세요
+            </Typography>
+            <Typography variant="body2" color="#742a2a">
+              • QR 코드 분실 시 등록된 연락처로 문의해주세요
+            </Typography>
+          </Stack>
+        </Paper>
+
+        <Box sx={{ mt: 4 }}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/select-role')}
+            sx={{
+              mr: 2,
+              borderRadius: 2,
+              borderColor: '#667eea',
+              color: '#667eea',
+              '&:hover': {
+                borderColor: '#5a67d8',
+                bgcolor: 'rgba(102, 126, 234, 0.04)',
+              }
+            }}
+          >
+            처음으로
+          </Button>
+          <Button
+            variant="contained"
+            sx={{
+              borderRadius: 2,
+              background: 'linear-gradient(135deg, #48bb78, #38a169)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #38a169, #2f855a)',
+              }
+            }}
+          >
+            QR 저장
+          </Button>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <Box>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f7fafc' }}>
       {/* Header */}
       <Box
         sx={{
-          bgcolor: 'secondary.main',
+          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
           color: 'white',
           py: 4,
         }}
@@ -250,66 +661,35 @@ const IndividualTeacherPage = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             <Button
               onClick={() => navigate('/select-role')}
-              sx={{ color: 'white', minWidth: 'auto' }}
+              sx={{ 
+                color: 'white', 
+                minWidth: 'auto',
+                p: 1,
+                borderRadius: 2,
+                '&:hover': {
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                }
+              }}
             >
               <ArrowBack />
             </Button>
-            <Person sx={{ mr: 1 }} />
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
+            <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
               개인교사 신청
             </Typography>
           </Box>
           <Typography variant="body1" sx={{ opacity: 0.9 }}>
-            개인 정보와 자격 정보를 입력해주세요
+            {step === 'key-input' && '키 코드를 입력하여 참가 신청을 시작하세요'}
+            {step === 'info-input' && '개인 정보를 입력해주세요'}
+            {step === 'qr-generated' && 'QR 코드가 생성되었습니다'}
           </Typography>
         </Container>
       </Box>
 
       {/* Content */}
       <Container sx={{ py: 6 }} maxWidth="md">
-        <Card sx={{ p: 4 }}>
-          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-            {steps.map((label) => (
-              <Step key={label}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-
-          <CardContent>
-            {renderStepContent(activeStep)}
-          </CardContent>
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-            <Button
-              disabled={activeStep === 0}
-              onClick={handleBack}
-              sx={{ mr: 1 }}
-            >
-              이전
-            </Button>
-            <Box sx={{ flex: '1 1 auto' }} />
-            {activeStep === steps.length - 1 ? (
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={() => navigate('/select-role')}
-                startIcon={<Check />}
-              >
-                완료
-              </Button>
-            ) : (
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={activeStep === steps.length - 2 ? handleSubmit : handleNext}
-                startIcon={activeStep === steps.length - 2 ? <Send /> : null}
-              >
-                {activeStep === steps.length - 2 ? '신청하기' : '다음'}
-              </Button>
-            )}
-          </Box>
-        </Card>
+        {step === 'key-input' && renderKeyInputStep()}
+        {step === 'info-input' && renderInfoInputStep()}
+        {step === 'qr-generated' && renderQRGeneratedStep()}
       </Container>
     </Box>
   );

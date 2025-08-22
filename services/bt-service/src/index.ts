@@ -9,6 +9,13 @@ import btRoutes from './routes/btRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { validateRequest } from './middleware/validateRequest';
 
+// 모델들을 import하여 MongoDB 스키마 등록
+import './models/ChurchManager';
+import './models/BTTeacher';
+import './models/BTKey';
+import './models/BTAttendance';
+import './models/BTSession';
+
 dotenv.config();
 
 const app = express();
