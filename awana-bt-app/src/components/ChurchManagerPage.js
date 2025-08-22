@@ -124,24 +124,59 @@ const ChurchManagerPage = () => {
 
     setChurchLoading(true);
     try {
+      // ReceiptPage 방식: church-service에 직접 요청
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3004';
-      const response = await fetch(`${apiUrl}/api/bt/churches/search?query=${encodeURIComponent(searchQuery)}`);
+      
+      let requestUrl;
+      let params;
+      
+      if (isMainId) {
+        // 4자리 등록번호로 검색
+        requestUrl = `${apiUrl}/api/churches`;
+        params = new URLSearchParams({
+          mainId: searchQuery,
+          getAllResults: 'true'
+        });
+      } else if (isPartialMainId) {
+        // 3자리 등록번호로 검색: 전체 결과를 가져와서 필터링
+        requestUrl = `${apiUrl}/api/churches`;
+        params = new URLSearchParams({
+          getAllResults: 'true'
+        });
+      } else {
+        // 교회명으로 검색
+        requestUrl = `${apiUrl}/api/churches`;
+        params = new URLSearchParams({
+          name: searchQuery,
+          getAllResults: 'true'
+        });
+      }
+      
+      const response = await fetch(`${requestUrl}?${params}`);
       const data = await response.json();
       
       console.log(`교회 검색 응답 (${isMainId ? '4자리 등록번호' : isPartialMainId ? '3자리 등록번호' : '교회명'}):`, data);
       
-      if (data.success) {
-        const churches = data.data || [];
+      if (data.success || data.data) {
+        let churches = data.data || [];
+        
+        // 3자리 등록번호의 경우 클라이언트에서 추가 필터링
+        if (isPartialMainId) {
+          churches = churches.filter(church => 
+            church.mainId && church.mainId.includes(searchQuery)
+          );
+        }
+        
         setChurchOptions(churches);
         
-        // ReceiptManagePage 방식: 4자리 등록번호로 정확히 1개 교회가 검색되면 자동 선택
+        // ReceiptPage 방식: 4자리 등록번호로 정확히 1개 교회가 검색되면 자동 선택
         if (isMainId && churches.length === 1) {
           const church = churches[0];
           console.log('4자리 등록번호로 정확히 1개 교회 발견, 자동 선택:', church);
           handleChurchSelect(church);
         }
       } else {
-        console.error('교회 검색 실패:', data.message);
+        console.error('교회 검색 실패:', data.message || data.error);
         setChurchOptions([]);
       }
     } catch (error) {

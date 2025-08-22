@@ -74,7 +74,7 @@ services:
       - "3005:80"
     environment:
       - NODE_ENV=development
-      - REACT_APP_API_URL=http://localhost:3004
+      - REACT_APP_API_URL=http://bt-service:3004
     depends_on:
       - bt-service
     networks:
