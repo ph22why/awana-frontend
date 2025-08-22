@@ -53,6 +53,33 @@ services:
     networks:
       - awana-network
 
+  # BT Service
+  bt-service:
+    build: ./services/bt-service
+    ports:
+      - "3004:3004"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/bt-service
+      - PORT=3004
+      - NODE_ENV=development
+    depends_on:
+      - mongodb
+    networks:
+      - awana-network
+
+  # BT Frontend App
+  awana-bt-app:
+    build: ./awana-bt-app
+    ports:
+      - "3005:80"
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:3004
+    depends_on:
+      - bt-service
+    networks:
+      - awana-network
+
 volumes:
   mongodb_data:
 

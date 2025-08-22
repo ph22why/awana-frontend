@@ -50,19 +50,19 @@ const NewChurchRegistrationPage: React.FC = () => {
     const found = events.find(ev => ev.event_Name === targetName);
     if (found) return found._id;
     
-    const todayIso = new Date().toISOString();
-    const month = new Date().getMonth() + 1;
+    // 모든 날짜를 고정값으로 설정하여 중복 이벤트 생성 방지
+    const fixedDate = `${selectedYear}-01-01T00:00:00.000Z`;
     const payload: EventFormData = {
       event_Name: targetName,
       event_Location: '시스템',
       event_Year: Number(selectedYear),
-      event_Start_Date: todayIso,
-      event_End_Date: todayIso,
-      event_Registration_Start_Date: todayIso,
-      event_Registration_End_Date: todayIso,
+      event_Start_Date: fixedDate,
+      event_End_Date: fixedDate,
+      event_Registration_Start_Date: fixedDate,
+      event_Registration_End_Date: fixedDate,
       event_Open_Available: '비공개',
       event_Place: '시스템',
-      event_Month: month
+      event_Month: 1 // 고정값으로 설정하여 매달 새로운 이벤트 생성 방지
     };
     const created = await eventApi.createEvent(payload);
     setEvents(prev => [created, ...prev]);
@@ -319,3 +319,4 @@ const NewChurchRegistrationPage: React.FC = () => {
 };
 
 export default NewChurchRegistrationPage;
+

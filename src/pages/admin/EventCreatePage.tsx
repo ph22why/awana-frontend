@@ -76,14 +76,26 @@ const EventCreatePage: React.FC = () => {
     const selectedEvent = sampleEvents.find(event => event.sampleEvent_ID === eventId);
     if (selectedEvent) {
       const currentYear = new Date().getFullYear();
+      const eventName = selectedEvent.sampleEvent_Name;
+      
+      // BT 관련 이벤트인지 확인 (상반기 BT, 하반기 BT, 수시 BT)
+      const isBTEvent = eventName.includes('BT') || 
+                       eventName.includes('상반기 BT') || 
+                       eventName.includes('하반기 BT') || 
+                       eventName.includes('수시 BT');
+      
+      // BT 이벤트이면 기본 링크를 설정
+      const defaultLink = isBTEvent ? `${window.location.origin}/bt` : '';
+      
       setFormData(prev => ({
         ...prev,
-        event_Name: `${selectedEvent.sampleEvent_Name} ${currentYear}`,
+        event_Name: `${eventName} ${currentYear}`,
         event_Place: selectedEvent.sampleEvent_Place || '미정',
         event_Location: selectedEvent.sampleEvent_Location || '미정',
         event_Open_Available: selectedEvent.sampleEvent_Open_Available as '공개' | '비공개',
         event_Month: parseInt(selectedEvent.sampleEvent_Month) || new Date().getMonth() + 1,
-        event_Year: currentYear
+        event_Year: currentYear,
+        event_Link: defaultLink
       }));
     }
   };

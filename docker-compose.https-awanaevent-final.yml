@@ -105,6 +105,50 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # BT Service
+  bt-service:
+    build: ./services/bt-service
+    expose:
+      - "3004"
+    environment:
+      - MONGODB_URI=mongodb://admin:awana123@mongodb:27017/bt-service?authSource=admin
+      - PORT=3004
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - awana-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # BT Frontend App
+  awana-bt-app:
+    build: 
+      context: ./awana-bt-app
+      dockerfile: Dockerfile
+    expose:
+      - "80"
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=https://awanaevent.com
+      - FAST_REFRESH=false
+      - GENERATE_SOURCEMAP=false
+      - PUBLIC_URL=/bt
+    depends_on:
+      - bt-service
+    networks:
+      - awana-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # Frontend Service (React + Nginx with HTTPS and API Proxy)
   frontend:
     build:

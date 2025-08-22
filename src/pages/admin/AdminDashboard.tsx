@@ -15,6 +15,7 @@ import {
   Church as ChurchIcon,
   Receipt as ReceiptIcon,
   Add as AddIcon,
+  MenuBook as BTIcon,
 } from '@mui/icons-material';
 import { eventApi } from '../../services/api/eventApi';
 import { churchApi } from '../../services/api/churchApi';
@@ -161,6 +162,16 @@ const AdminDashboard: React.FC = () => {
                   onClick={() => navigate('/admin/churches/create')}
                 >
                   새 교회 등록
+                </Button>
+              </Grid>
+              <Grid item>
+                <Button
+                  variant="contained"
+                  startIcon={<BTIcon />}
+                  onClick={() => navigate('/admin/bt-manage')}
+                  sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}
+                >
+                  BT 신청 관리
                 </Button>
               </Grid>
             </Grid>

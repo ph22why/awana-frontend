@@ -13,7 +13,7 @@ import {
   Paper,
   Divider,
 } from "@mui/material";
-import { CalendarMonth, School, Receipt } from "@mui/icons-material";
+import { CalendarMonth, School, Receipt, MenuBook } from "@mui/icons-material";
 import { eventApi, IEvent } from "../services/api/eventApi";
 import { useEffect, useState } from "react";
 
@@ -180,6 +180,24 @@ const MainPage: React.FC = () => {
               }}
             >
               영수증 발급
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => window.open("/bt", "_blank")}
+              startIcon={<MenuBook />}
+              sx={{
+                color: "#F59E0B",
+                borderColor: "#F59E0B",
+                borderWidth: 2,
+                px: 3,
+                "&:hover": {
+                  borderColor: "#D97706",
+                  borderWidth: 2,
+                  bgcolor: "transparent",
+                },
+              }}
+            >
+              BT 교육
             </Button>
           </Box>
         </Container>
