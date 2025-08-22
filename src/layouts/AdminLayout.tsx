@@ -28,6 +28,8 @@ import {
   Church as ChurchIcon,
   Receipt as ReceiptIcon,
   ArrowBack as ArrowBackIcon,
+  PersonAdd as PersonAddIcon,
+  Autorenew as AutorenewIcon,
 } from '@mui/icons-material';
 
 const drawerWidth = 240;
@@ -42,6 +44,8 @@ const menuItems: MenuItem[] = [
   { text: '대시보드', path: '/admin', icon: <DashboardIcon /> },
   { text: '이벤트 관리', path: '/admin/events', icon: <EventIcon /> },
   { text: '교회 관리', path: '/admin/churches', icon: <ChurchIcon /> },
+  { text: '신규등록', path: '/admin/new-registration', icon: <PersonAddIcon /> },
+  { text: '재등록', path: '/admin/renew-registration', icon: <AutorenewIcon /> },
   { text: '영수증 관리', path: '/admin/receipts', icon: <ReceiptIcon /> },
   { text: '현장등록', path: '/admin/onsite', icon: <ReceiptIcon /> },
   { text: '접수 현황', path: '/admin/receipt-status', icon: <ReceiptIcon /> },
