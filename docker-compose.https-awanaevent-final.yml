@@ -40,7 +40,7 @@ services:
       - MYSQL_DATABASE=tntcamp
       - MYSQL_USER=tntcamp
       - MYSQL_PASSWORD=tntcamp123!@#
-    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --innodb-force-recovery=1
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     logging:
       driver: "json-file"
       options:
