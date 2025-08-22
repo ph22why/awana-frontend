@@ -98,7 +98,7 @@ class BTApi {
   async createChurchManager(churchData: Partial<ChurchManager>): Promise<ChurchManager> {
     const response = await this.request('/church-managers', {
       method: 'POST',
-      body: churchData,
+      body: JSON.stringify(churchData),
     });
     return response.data;
   }
@@ -136,7 +136,7 @@ class BTApi {
 
     const response = await this.request(`/church-managers/${id}/status`, {
       method: 'PATCH',
-      body,
+      body: JSON.stringify(body),
     });
     return response.data;
   }
@@ -145,7 +145,7 @@ class BTApi {
   async createIndividualTeacher(teacherData: Partial<IndividualTeacher>): Promise<IndividualTeacher> {
     const response = await this.request('/individual-teachers', {
       method: 'POST',
-      body: teacherData,
+      body: JSON.stringify(teacherData),
     });
     return response.data;
   }
@@ -172,7 +172,7 @@ class BTApi {
   async updateIndividualTeacherStatus(id: string, status: string): Promise<IndividualTeacher> {
     const response = await this.request(`/individual-teachers/${id}/status`, {
       method: 'PATCH',
-      body: { status },
+      body: JSON.stringify({ status }),
     });
     return response.data;
   }
