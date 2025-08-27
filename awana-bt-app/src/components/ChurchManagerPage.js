@@ -66,7 +66,7 @@ const ChurchManagerPage = () => {
         } : null,
       };
 
-      const response = await fetch(`${apiUrl}/api/church-managers`, {
+      const response = await fetch(`${apiUrl}/api/bt/church-managers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -196,6 +196,16 @@ const ChurchManagerPage = () => {
     });
   };
 
+  // 한국 휴대폰 번호 입력 하이픈 자동 포맷터 (숫자만 허용, 최대 11자리)
+  const formatKoreanPhone = (raw) => {
+    const digits = (raw || '').replace(/\D/g, '').slice(0, 11);
+
+    // 010, 011, 016, 017, 018, 019 등 3자리 식별자 기준 포맷팅
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  };
+
   const renderInputStep = () => (
     <Card 
       sx={{ 
@@ -255,10 +265,10 @@ const ChurchManagerPage = () => {
                 <TextField
                   {...params}
                   required
-                  label="교회명 또는 등록번호로 검색"
+                  label="교회명으로 검색"
                   placeholder="예: 서울중앙교회 또는 1234"
                   variant="outlined"
-                  helperText="교회명 또는 등록번호(3-4자리)를 입력하여 검색하세요"
+                  helperText="교회명을 입력하여 검색하세요"
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 2,
@@ -316,7 +326,7 @@ const ChurchManagerPage = () => {
               fullWidth
               label="담당자 전화번호"
               value={churchData.managerPhone}
-              onChange={(e) => setChurchData(prev => ({ ...prev, managerPhone: e.target.value }))}
+              onChange={(e) => setChurchData(prev => ({ ...prev, managerPhone: formatKoreanPhone(e.target.value) }))}
               variant="outlined"
               placeholder="010-1234-5678"
               helperText="교회 담당자의 연락처를 입력해주세요"
@@ -325,6 +335,7 @@ const ChurchManagerPage = () => {
                   borderRadius: 2,
                 }
               }}
+              inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
             />
           </Grid>
         </Grid>

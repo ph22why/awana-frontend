@@ -72,7 +72,7 @@ const IndividualTeacherPage = () => {
         keyCode: keyCode,
       };
 
-      const response = await fetch(`${apiUrl}/api/individual-teachers`, {
+      const response = await fetch(`${apiUrl}/api/bt/individual-teachers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -167,7 +167,8 @@ const MainPage = () => {
                   상반기 BT
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                  봄학기 성경교육 및 교사 훈련 프로그램으로, 체계적인 커리큘럼을 통해 진행됩니다.
+                Awana 교사가 되기 위한 교사 기본교육으로 Awana 교사로 시작하는 분은 이 과정이 필수 입니다.  
+                상반기 연합 BT는 1월~3월 중 지역별로 강의가 있습니다. 
                 </Typography>
               </CardContent>
             </Card>
@@ -190,7 +191,8 @@ const MainPage = () => {
                   하반기 BT
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                  가을학기 심화 성경교육으로, 실전 경험과 이론을 병행하여 진행됩니다.
+                Awana 교사가 되기 위한 교사 기본교육으로 Awana 교사로 시작하는 분은 이 과정이 필수 입니다.  
+                하반기 연합 BT는 8월~9월 중 지역별로 강의가 있습니다.
                 </Typography>
               </CardContent>
             </Card>
@@ -213,7 +215,8 @@ const MainPage = () => {
                   수시 BT
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                  특별 상황이나 긴급한 교육 필요에 따라 수시로 개설되는 집중 훈련입니다.
+                Awana 교사가 되기 위한 교사 기본교육으로 Awana 교사로 시작하는 분은 이 과정이 필수 입니다.  
+                수시 교육은 오픈을 준비하는 교회 또는 교육이 필요할때 비정기적으로 진행되는 강의 입니다.
                 </Typography>
               </CardContent>
             </Card>
