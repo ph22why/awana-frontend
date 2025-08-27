@@ -24,6 +24,17 @@ export interface IChurchManager extends Document {
     mainId?: string;
     subId?: string;
   };
+  teachers?: Array<{
+    id: number;
+    key: string;
+    name: string;
+    phone: string;
+    status: 'active' | 'pending_add' | 'pending_delete' | 'deleted';
+    isNew?: boolean;
+    isDeleted?: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
   // 인스턴스 메서드
@@ -136,6 +147,27 @@ const ChurchManagerSchema: Schema = new Schema({
     mainId: String,
     subId: String,
   },
+  teachers: [{
+    id: Number,
+    key: String,
+    name: String,
+    phone: String,
+    status: {
+      type: String,
+      enum: ['active', 'pending_add', 'pending_delete', 'deleted'],
+      default: 'active'
+    },
+    isNew: Boolean,
+    isDeleted: Boolean,
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
 }, {
   timestamps: true,
 });

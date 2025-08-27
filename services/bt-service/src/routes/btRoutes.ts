@@ -3,7 +3,13 @@ import {
   createChurchManager,
   getChurchManagers,
   getChurchManagerById,
+  getChurchManagerByCredentials,
   updateChurchManagerStatus,
+  saveChurchManagerTeachers,
+  getChurchManagerTeachers,
+  createTeacherChangeRequest,
+  getTeacherChangeRequests,
+  updateTeacherChangeRequestStatus,
   createIndividualTeacher,
   getIndividualTeachers,
   getIndividualTeacherById,
@@ -46,7 +52,13 @@ const router = express.Router();
 router.post('/church-managers', validateRequest(churchManagerSchema), createChurchManager);
 router.get('/church-managers', getChurchManagers);
 router.get('/church-managers/:id', getChurchManagerById);
+router.post('/church-managers/login', getChurchManagerByCredentials);
 router.patch('/church-managers/:id/status', validateRequest(statusUpdateSchema), updateChurchManagerStatus);
+router.post('/church-managers/:id/teachers', saveChurchManagerTeachers);
+router.get('/church-managers/:id/teachers', getChurchManagerTeachers);
+router.post('/church-managers/:id/teacher-change-request', createTeacherChangeRequest);
+router.get('/teacher-change-requests', getTeacherChangeRequests);
+router.patch('/teacher-change-requests/:id/status', updateTeacherChangeRequestStatus);
 
 // Individual Teacher routes
 router.post('/individual-teachers', validateRequest(individualTeacherSchema), createIndividualTeacher);

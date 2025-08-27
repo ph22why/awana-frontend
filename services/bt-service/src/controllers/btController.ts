@@ -6,6 +6,7 @@ import BTTeacher, { IBTTeacher } from '../models/BTTeacher';
 import BTKey from '../models/BTKey';
 import BTAttendance from '../models/BTAttendance';
 import BTSession from '../models/BTSession';
+import TeacherChangeRequest, { ITeacherChangeRequest } from '../models/TeacherChangeRequest';
 
 // Church Manager Controllers
 export const createChurchManager = async (req: Request, res: Response, next: NextFunction) => {
@@ -94,13 +95,273 @@ export const getChurchManagerById = async (req: Request, res: Response, next: Ne
   }
 };
 
+export const getChurchManagerByCredentials = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { churchName, managerPhone } = req.body;
+
+    if (!churchName || !managerPhone) {
+      return res.status(400).json({
+        success: false,
+        message: '교회명과 담당자 연락처를 입력해주세요.',
+      });
+    }
+
+    const churchManager = await ChurchManager.findOne({
+      churchName: churchName.trim(),
+      managerPhone: managerPhone.trim(),
+    }).sort({ createdAt: -1 }); // 최신 신청을 가져옴
+
+    if (!churchManager) {
+      return res.status(404).json({
+        success: false,
+        message: '해당 정보로 신청된 내역을 찾을 수 없습니다.',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: churchManager,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const saveChurchManagerTeachers = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { teachers } = req.body;
+
+    if (!teachers || !Array.isArray(teachers)) {
+      return res.status(400).json({
+        success: false,
+        message: '교사 정보를 제대로 입력해주세요.',
+      });
+    }
+
+    const churchManager = await ChurchManager.findById(id);
+    if (!churchManager) {
+      return res.status(404).json({
+        success: false,
+        message: '교회담당자 정보를 찾을 수 없습니다.',
+      });
+    }
+
+    // 교사 정보 업데이트
+    churchManager.teachers = teachers.map(teacher => ({
+      ...teacher,
+      updatedAt: new Date()
+    }));
+
+    await churchManager.save();
+
+    res.json({
+      success: true,
+      message: '교사 정보가 저장되었습니다.',
+      data: churchManager,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getChurchManagerTeachers = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    const churchManager = await ChurchManager.findById(id);
+    if (!churchManager) {
+      return res.status(404).json({
+        success: false,
+        message: '교회담당자 정보를 찾을 수 없습니다.',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        teachers: churchManager.teachers || [],
+        churchInfo: {
+          churchName: churchManager.churchName,
+          metadata: churchManager.metadata
+        }
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createTeacherChangeRequest = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { changes } = req.body;
+
+    if (!changes || !Array.isArray(changes)) {
+      return res.status(400).json({
+        success: false,
+        message: '변경 요청 데이터를 제대로 입력해주세요.',
+      });
+    }
+
+    const churchManager = await ChurchManager.findById(id);
+    if (!churchManager) {
+      return res.status(404).json({
+        success: false,
+        message: '교회담당자 정보를 찾을 수 없습니다.',
+      });
+    }
+
+    // 변경 요청들을 데이터베이스에 저장
+    const changeRequests = await Promise.all(
+      changes.map(async (change: any) => {
+        const request = new TeacherChangeRequest({
+          churchManagerId: id,
+          requestType: change.type,
+          teacherData: change.teacherData,
+          status: 'pending',
+        });
+        return await request.save();
+      })
+    );
+
+    res.json({
+      success: true,
+      message: '교사 변경 요청이 제출되었습니다.',
+      data: changeRequests,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTeacherChangeRequests = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { page = 1, limit = 10, status, churchManagerId } = req.query;
+    const query: any = {};
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    if (churchManagerId) {
+      query.churchManagerId = churchManagerId;
+    }
+
+    const requests = await TeacherChangeRequest.find(query)
+      .populate('churchManagerId', 'churchName managerPhone')
+      .sort({ requestDate: -1 })
+      .limit(Number(limit) * Number(page))
+      .skip((Number(page) - 1) * Number(limit));
+
+    const total = await TeacherChangeRequest.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: requests,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit)),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateTeacherChangeRequestStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { status, rejectionReason } = req.body;
+
+    const updateData: any = { 
+      status,
+      processedDate: new Date(),
+    };
+
+    if (status === 'rejected' && rejectionReason) {
+      updateData.rejectionReason = rejectionReason;
+    }
+
+    const request = await TeacherChangeRequest.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true }
+    ).populate('churchManagerId');
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: '변경 요청을 찾을 수 없습니다.',
+      });
+    }
+
+    // 승인된 경우 실제 교사 정보 업데이트
+    if (status === 'approved') {
+      const churchManager = await ChurchManager.findById(request.churchManagerId);
+      if (churchManager) {
+        let teachers = [...(churchManager.teachers || [])];
+        
+        if (request.requestType === 'add') {
+          teachers.push({
+            ...request.teacherData,
+            status: 'active',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        } else if (request.requestType === 'delete') {
+          teachers = teachers.filter(t => t.id !== request.teacherData.id);
+        } else if (request.requestType === 'modify') {
+          const index = teachers.findIndex(t => t.id === request.teacherData.id);
+          if (index !== -1) {
+            teachers[index] = {
+              ...teachers[index],
+              ...request.teacherData,
+              updatedAt: new Date(),
+            };
+          }
+        }
+
+        churchManager.teachers = teachers;
+        await churchManager.save();
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `변경 요청이 ${status === 'approved' ? '승인' : '거절'}되었습니다.`,
+      data: request,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateChurchManagerStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { status, eventId, costs, partTeacher } = req.body;
     
+    const updateData: any = { status };
+
+    // 승인시 참가 교사수 업데이트
+    if (status === 'approved') {
+      updateData.approvedAt = new Date();
+      if (partTeacher) {
+        updateData.participants = parseInt(partTeacher);
+      }
+      if (eventId) {
+        updateData.eventId = eventId;
+      }
+      if (costs) {
+        updateData.totalCost = parseInt(costs);
+      }
+    }
+    
     const churchManager = await ChurchManager.findByIdAndUpdate(
       req.params.id,
-      { status },
+      updateData,
       { new: true }
     );
 

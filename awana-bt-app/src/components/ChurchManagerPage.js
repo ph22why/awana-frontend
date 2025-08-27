@@ -28,7 +28,10 @@ import {
   ContentCopy,
   Person,
   Key,
-  AccountBalance
+  AccountBalance,
+  Delete,
+  PersonAdd,
+  Save
 } from '@mui/icons-material';
 
 const ChurchManagerPage = () => {
@@ -44,17 +47,269 @@ const ChurchManagerPage = () => {
   const [churchLoading, setChurchLoading] = useState(false);
   const [submissionData, setSubmissionData] = useState(null);
 
-  // Mock data for demonstration - keys would come from backend after approval
-  const [teacherKeys] = useState([
-    { id: 1, key: 'BT2025-CH001-001', name: '', phone: '', assigned: false },
-    { id: 2, key: 'BT2025-CH001-002', name: '', phone: '', assigned: false },
-    { id: 3, key: 'BT2025-CH001-003', name: '', phone: '', assigned: false },
-    { id: 4, key: 'BT2025-CH001-004', name: '', phone: '', assigned: false },
-    { id: 5, key: 'BT2025-CH001-005', name: '', phone: '', assigned: false },
-  ]);
+  const [teacherKeys, setTeacherKeys] = useState([]);
+  const [isModified, setIsModified] = useState(false);
+  const [changeRequests, setChangeRequests] = useState([]);
+
+  // 교회 등록번호로 키 생성 함수
+  const generateTeacherKey = (churchId, index) => {
+    const mainId = churchId?.mainId || '0000';
+    return `BT2025-${mainId.padStart(4, '0')}-${String(index).padStart(3, '0')}`;
+  };
+
+  // 교사 정보 업데이트 함수
+  const updateTeacherInfo = (index, field, value) => {
+    if (field === 'phone') {
+      value = formatKoreanPhone(value);
+    } else if (field === 'name') {
+      // 이름은 한글, 영문만 허용 (숫자, 특수문자, 공백 제거)
+      value = value.replace(/[^가-힣a-zA-Z]/g, '');
+    }
+
+    setTeacherKeys(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+    setIsModified(true);
+  };
+
+  // 교사 추가 함수
+  const addTeacher = () => {
+    const newId = teacherKeys.length + 1;
+    const newKey = generateTeacherKey(submissionData?.metadata, newId);
+    setTeacherKeys(prev => [
+      ...prev,
+      { 
+        id: newId, 
+        key: newKey, 
+        name: '', 
+        phone: '', 
+        assigned: false,
+        isNew: true // 새로 추가된 교사 표시
+      }
+    ]);
+    setIsModified(true);
+  };
+
+  // 교사 삭제 함수
+  const removeTeacher = (index) => {
+    setTeacherKeys(prev => {
+      const updated = [...prev];
+      if (updated[index].isNew) {
+        // 새로 추가된 것은 바로 삭제
+        updated.splice(index, 1);
+      } else {
+        // 기존 교사는 삭제 표시만
+        updated[index] = { ...updated[index], isDeleted: true };
+      }
+      return updated;
+    });
+    setIsModified(true);
+  };
+
+  // 교사 정보 저장 함수 (변경 요청으로 처리)
+  const saveTeacherInfo = async () => {
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3004';
+      
+      // 변경사항 분석
+      const originalTeachers = submissionData.teachers || [];
+      const changes = [];
+
+      // 새로 추가된 교사들
+      teacherKeys.filter(t => t.isNew && !t.isDeleted).forEach(teacher => {
+        changes.push({
+          type: 'add',
+          teacherData: {
+            id: teacher.id,
+            key: teacher.key,
+            name: teacher.name,
+            phone: teacher.phone,
+          }
+        });
+      });
+
+      // 삭제 요청된 교사들
+      teacherKeys.filter(t => t.isDeleted && !t.isNew).forEach(teacher => {
+        changes.push({
+          type: 'delete',
+          teacherData: {
+            id: teacher.id,
+            key: teacher.key,
+            name: teacher.name,
+            phone: teacher.phone,
+          }
+        });
+      });
+
+      if (changes.length === 0) {
+        // 일반 저장 (변경사항 없음)
+        const response = await fetch(`${apiUrl}/api/bt/church-managers/${submissionData._id}/teachers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ teachers: teacherKeys.filter(t => !t.isDeleted) }),
+        });
+
+        if (response.ok) {
+          alert('교사 정보가 저장되었습니다.');
+          setIsModified(false);
+        } else {
+          alert('저장 중 오류가 발생했습니다.');
+        }
+      } else {
+        // 변경 요청 제출
+        const response = await fetch(`${apiUrl}/api/bt/church-managers/${submissionData._id}/teacher-change-request`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ changes }),
+        });
+
+        if (response.ok) {
+          alert('교사 변경 요청이 제출되었습니다. 본부 승인 후 반영됩니다.');
+          
+          // UI에서 변경 요청 상태 표시
+          setTeacherKeys(prev => prev.map(teacher => {
+            if (teacher.isNew && !teacher.isDeleted) {
+              return { ...teacher, status: 'pending_add', isRequestPending: true };
+            } else if (teacher.isDeleted && !teacher.isNew) {
+              return { ...teacher, status: 'pending_delete', isRequestPending: true };
+            }
+            return teacher;
+          }));
+
+          setIsModified(false);
+        } else {
+          alert('변경 요청 제출 중 오류가 발생했습니다.');
+        }
+      }
+    } catch (error) {
+      console.error('교사 정보 저장 오류:', error);
+      alert('저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 변경 요청 상태 조회 함수
+  const loadChangeRequests = async () => {
+    if (!submissionData?._id) return;
+
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3004';
+      const response = await fetch(`${apiUrl}/api/bt/teacher-change-requests?churchManagerId=${submissionData._id}`);
+      
+      if (response.ok) {
+        const result = await response.json();
+        setChangeRequests(result.data || []);
+      }
+    } catch (error) {
+      console.error('변경 요청 조회 오류:', error);
+    }
+  };
+
+  // 교사 정보 불러오기 함수
+  const loadTeacherInfo = async () => {
+    if (!submissionData?._id) return;
+
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3004';
+      const response = await fetch(`${apiUrl}/api/bt/church-managers/${submissionData._id}/teachers`);
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.data.teachers && result.data.teachers.length > 0) {
+          setTeacherKeys(result.data.teachers);
+          setIsModified(false);
+          
+          // 변경 요청 상태도 함께 조회
+          loadChangeRequests();
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('교사 정보 불러오기 오류:', error);
+    }
+
+    // 저장된 정보가 없으면 기본 키 생성
+    const initialKeys = [];
+    const participantCount = submissionData.participants || 5; // 기본 5명
+    
+    for (let i = 1; i <= participantCount; i++) {
+      initialKeys.push({
+        id: i,
+        key: generateTeacherKey(submissionData.metadata, i),
+        name: '',
+        phone: '',
+        assigned: false,
+        status: 'active'
+      });
+    }
+    setTeacherKeys(initialKeys);
+    
+    // 변경 요청 상태도 조회
+    loadChangeRequests();
+  };
+
+  // 승인 후 키 생성 시 초기화
+  React.useEffect(() => {
+    if (submissionData && submissionData.status === 'approved' && teacherKeys.length === 0) {
+      loadTeacherInfo();
+    }
+  }, [submissionData]);
+
+  const checkExistingApplication = async () => {
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3004';
+      const loginData = {
+        churchName: churchData.churchName,
+        managerPhone: churchData.managerPhone,
+      };
+
+      const response = await fetch(`${apiUrl}/api/bt/church-managers/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginData),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const existingData = result.data;
+        
+        // 기존 신청이 있으면 상태에 따라 적절한 화면으로 이동
+        setSubmissionData(existingData);
+        
+        if (existingData.status === 'pending') {
+          setStep('pending');
+        } else if (existingData.status === 'approved') {
+          setStep('approved');
+        } else if (existingData.status === 'rejected') {
+          alert('이전 신청이 거절되었습니다. 새로운 신청을 진행합니다.');
+          return false; // 새 신청 진행
+        }
+        return true; // 기존 신청 상태 표시
+      }
+      
+      return false; // 기존 신청 없음, 새 신청 진행
+    } catch (error) {
+      console.error('기존 신청 확인 오류:', error);
+      return false; // 오류 시 새 신청 진행
+    }
+  };
 
   const handleSubmit = async () => {
     try {
+      // 먼저 기존 신청이 있는지 확인
+      const hasExisting = await checkExistingApplication();
+      if (hasExisting) {
+        return; // 기존 신청 상태 화면 표시
+      }
+
+      // 새 신청 진행
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3004';
       const submitData = {
         churchName: churchData.churchName,
@@ -77,13 +332,7 @@ const ChurchManagerPage = () => {
       if (response.ok) {
         const result = await response.json();
         setSubmissionData(result);
-        // For demo, simulate different states
-        setStep('pending'); // Initially pending
-        
-        // Simulate approval after 3 seconds (in real app, this would be handled by admin)
-        setTimeout(() => {
-          setStep('approved');
-        }, 3000);
+        setStep('pending'); // Wait for admin approval
       } else {
         const errorData = await response.json();
         alert(`신청 중 오류가 발생했습니다: ${errorData.error || '알 수 없는 오류'}`);
@@ -503,14 +752,22 @@ const ChurchManagerPage = () => {
         </Typography>
 
         <Grid container spacing={3}>
-          {teacherKeys.map((keyData, index) => (
+          {teacherKeys.filter(key => !key.isDeleted).map((keyData, index) => (
             <Grid item xs={12} key={keyData.id}>
               <Paper 
                 elevation={2} 
                 sx={{ 
                   p: 3, 
                   borderRadius: 3,
-                  border: '2px solid #e2e8f0',
+                  border: keyData.isRequestPending ? '2px solid #ff9500' : 
+                          keyData.isNew ? '2px solid #ffd700' : 
+                          keyData.isDeleted ? '2px solid #ff6b6b' : 
+                          '2px solid #e2e8f0',
+                  opacity: keyData.isDeleted || keyData.isRequestPending ? 0.7 : 1,
+                  bgcolor: keyData.isRequestPending ? '#fff8f0' :
+                           keyData.isNew ? '#fffbf0' : 
+                           keyData.isDeleted ? '#fff5f5' : 
+                           'white',
                   '&:hover': {
                     boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                   }
@@ -519,7 +776,7 @@ const ChurchManagerPage = () => {
                 <Stack direction="row" spacing={2} alignItems="center">
                   <Avatar
                     sx={{
-                      bgcolor: '#667eea',
+                      bgcolor: keyData.isNew ? '#ffd700' : keyData.isDeleted ? '#ff6b6b' : '#667eea',
                       width: 48,
                       height: 48,
                     }}
@@ -530,11 +787,20 @@ const ChurchManagerPage = () => {
                   <Box sx={{ flex: 1 }}>
                     <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
                       <Chip 
-                        label={`교사 ${index + 1}`}
+                        label={keyData.isRequestPending ? `승인 대기 ${index + 1}` :
+                               keyData.isNew ? `신규 교사 ${index + 1}` : 
+                               keyData.isDeleted ? `삭제 예정 ${index + 1}` : 
+                               `교사 ${index + 1}`}
                         size="small"
                         sx={{ 
-                          bgcolor: '#e6fffa', 
-                          color: '#319795',
+                          bgcolor: keyData.isRequestPending ? '#ffe4b5' :
+                                   keyData.isNew ? '#fff3cd' : 
+                                   keyData.isDeleted ? '#f8d7da' : 
+                                   '#e6fffa', 
+                          color: keyData.isRequestPending ? '#cc7a00' :
+                                 keyData.isNew ? '#856404' : 
+                                 keyData.isDeleted ? '#721c24' : 
+                                 '#319795',
                           fontWeight: 600 
                         }}
                       />
@@ -559,6 +825,14 @@ const ChurchManagerPage = () => {
                       >
                         <ContentCopy fontSize="small" />
                       </IconButton>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => removeTeacher(index)}
+                        sx={{ color: '#ff6b6b' }}
+                        disabled={keyData.isDeleted}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
                     </Stack>
                     
                     <Stack direction="row" spacing={2}>
@@ -566,13 +840,22 @@ const ChurchManagerPage = () => {
                         size="small"
                         placeholder="교사 이름"
                         variant="outlined"
+                        value={keyData.name || ''}
+                        onChange={(e) => updateTeacherInfo(index, 'name', e.target.value)}
+                        disabled={keyData.isDeleted}
                         sx={{ flex: 1 }}
+                        helperText="한글, 영문만 입력 가능"
                       />
                       <TextField
                         size="small"
-                        placeholder="연락처"
+                        placeholder="010-1234-5678"
                         variant="outlined"
+                        value={keyData.phone || ''}
+                        onChange={(e) => updateTeacherInfo(index, 'phone', e.target.value)}
+                        disabled={keyData.isDeleted}
                         sx={{ flex: 1 }}
+                        inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                        helperText="연락처 자동 포맷팅"
                       />
                     </Stack>
                   </Box>
@@ -581,6 +864,80 @@ const ChurchManagerPage = () => {
             </Grid>
           ))}
         </Grid>
+
+        {/* 교사 추가/저장 버튼 */}
+        <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'center' }}>
+          <Button
+            variant="outlined"
+            onClick={addTeacher}
+            startIcon={<PersonAdd />}
+            sx={{
+              borderColor: '#4A90E2',
+              color: '#4A90E2',
+              '&:hover': {
+                borderColor: '#2C5282',
+                color: '#2C5282',
+              }
+            }}
+          >
+            교사 추가
+          </Button>
+          <Button
+            variant="contained"
+            onClick={saveTeacherInfo}
+            disabled={!isModified}
+            startIcon={<Save />}
+            sx={{
+              background: isModified ? 'linear-gradient(135deg, #4A90E2, #2C5282)' : '#e2e8f0',
+              color: isModified ? 'white' : '#a0aec0',
+              '&:hover': {
+                background: isModified ? 'linear-gradient(135deg, #2C5282, #1A365D)' : '#e2e8f0',
+              }
+            }}
+          >
+            저장하기
+          </Button>
+        </Box>
+
+        {/* 거절된 변경 요청 알림 */}
+        {changeRequests.filter(req => req.status === 'rejected').length > 0 && (
+          <Paper 
+            elevation={1} 
+            sx={{ 
+              p: 4, 
+              mt: 4, 
+              borderRadius: 3, 
+              bgcolor: '#fff5f5',
+              border: '1px solid #feb2b2'
+            }}
+          >
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#c53030' }}>
+              ❌ 거절된 변경 요청
+            </Typography>
+            {changeRequests.filter(req => req.status === 'rejected').map((request, index) => (
+              <Alert 
+                key={index}
+                severity="error" 
+                sx={{ mb: 2 }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {request.requestType === 'add' ? '교사 추가' : '교사 삭제'} 요청이 거절되었습니다.
+                </Typography>
+                <Typography variant="body2">
+                  교사: {request.teacherData.name} ({request.teacherData.phone})
+                </Typography>
+                {request.rejectionReason && (
+                  <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
+                    거절 사유: {request.rejectionReason}
+                  </Typography>
+                )}
+                <Typography variant="caption" color="text.secondary">
+                  처리일: {new Date(request.processedDate).toLocaleDateString('ko-KR')}
+                </Typography>
+              </Alert>
+            ))}
+          </Paper>
+        )}
 
         <Paper 
           elevation={1} 
