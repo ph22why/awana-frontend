@@ -1,6 +1,7 @@
 import Joi from 'joi';
 
 export const churchManagerSchema = Joi.object({
+  // UI에서 입력받는 필수 필드만
   churchName: Joi.string().required().trim().messages({
     'string.empty': '교회명을 입력해주세요.',
     'any.required': '교회명은 필수 항목입니다.',
@@ -9,26 +10,28 @@ export const churchManagerSchema = Joi.object({
     'string.empty': '교회 주소를 입력해주세요.',
     'any.required': '교회 주소는 필수 항목입니다.',
   }),
-  churchPhone: Joi.string().required().trim().messages({
-    'string.empty': '교회 전화번호를 입력해주세요.',
-    'any.required': '교회 전화번호는 필수 항목입니다.',
-  }),
-  managerName: Joi.string().required().trim().messages({
-    'string.empty': '담당자 이름을 입력해주세요.',
-    'any.required': '담당자 이름은 필수 항목입니다.',
-  }),
   managerPhone: Joi.string().required().trim().messages({
     'string.empty': '담당자 전화번호를 입력해주세요.',
     'any.required': '담당자 전화번호는 필수 항목입니다.',
   }),
-  managerEmail: Joi.string().email().required().trim().messages({
+  
+  // 선택 필드들 (UI에서 입력받지 않음)
+  churchPhone: Joi.string().optional().trim(),
+  managerName: Joi.string().optional().trim(),
+  managerEmail: Joi.string().email().optional().trim().messages({
     'string.email': '올바른 이메일 형식을 입력해주세요.',
-    'string.empty': '담당자 이메일을 입력해주세요.',
-    'any.required': '담당자 이메일은 필수 항목입니다.',
   }),
   participants: Joi.number().min(0).optional().messages({
     'number.min': '참가자 수는 0 이상이어야 합니다.',
   }),
+  eventId: Joi.string().optional().trim(),
+  totalCost: Joi.number().min(0).optional(),
+  
+  // 교회 ID 정보 (선택)
+  churchId: Joi.object({
+    mainId: Joi.string().optional(),
+    subId: Joi.string().optional(),
+  }).optional(),
 });
 
 export const individualTeacherSchema = Joi.object({

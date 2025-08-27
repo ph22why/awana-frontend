@@ -47,12 +47,12 @@ const ChurchManagerSchema: Schema = new Schema({
   },
   churchPhone: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
   },
   managerName: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
   },
   managerPhone: {
@@ -68,21 +68,23 @@ const ChurchManagerSchema: Schema = new Schema({
   },
   managerEmail: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
     lowercase: true,
     match: [/.+@.+\..+/, '유효한 이메일 주소를 입력해주세요'],
   },
   participants: {
     type: Number,
-    required: true,
-    min: 1,
+    required: false,
+    default: 0,
+    min: 0,
     max: 100,
   },
   eventId: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
+    default: 'bt-event-2025',
   },
   registrationDate: {
     type: Date,
@@ -117,8 +119,9 @@ const ChurchManagerSchema: Schema = new Schema({
   },
   totalCost: {
     type: Number,
-    required: true,
+    required: false,
     min: 0,
+    default: 0,
   },
   paymentStatus: {
     type: String,

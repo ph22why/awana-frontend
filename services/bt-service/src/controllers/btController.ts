@@ -10,7 +10,27 @@ import BTSession from '../models/BTSession';
 // Church Manager Controllers
 export const createChurchManager = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const churchManager: IChurchManager = new ChurchManager(req.body);
+    // UI에서 오는 데이터에 기본값 설정
+    const churchManagerData = {
+      ...req.body,
+      // 기본값들
+      churchPhone: req.body.churchPhone || '',
+      managerName: req.body.managerName || '',
+      managerEmail: req.body.managerEmail || '',
+      participants: req.body.participants || 0,
+      eventId: req.body.eventId || 'bt-event-2025',
+      totalCost: req.body.totalCost || 0,
+      // 교회 ID가 있으면 metadata에 저장
+      ...(req.body.churchId && {
+        metadata: {
+          churchId: `${req.body.churchId.mainId}-${req.body.churchId.subId}`,
+          mainId: req.body.churchId.mainId,
+          subId: req.body.churchId.subId,
+        }
+      })
+    };
+
+    const churchManager: IChurchManager = new ChurchManager(churchManagerData);
     const savedChurchManager = await churchManager.save();
     
     res.status(201).json({
