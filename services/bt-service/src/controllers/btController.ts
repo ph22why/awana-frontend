@@ -433,7 +433,7 @@ const createReceiptInReceiptService = async (
       eventId: eventId,
       churchId: churchId,
       churchName: churchManager.churchName,
-      managerName: churchManager.managerName,
+      managerName: churchManager.managerName || '담당자', // 기본값 설정
       managerPhone: churchManager.managerPhone,
       partTotal: partTeacher,
       partStudent: 0, // BT는 학생 참가 없음
@@ -446,6 +446,8 @@ const createReceiptInReceiptService = async (
       description: 'BT 프로그램 참가비',
     };
 
+    console.log('Receipt service에 전송할 데이터:', JSON.stringify(receiptData, null, 2));
+
     const response = await fetch('http://receipt-service:3003/api/receipts', {
       method: 'POST',
       headers: {
@@ -457,13 +459,21 @@ const createReceiptInReceiptService = async (
     const result = await response.json();
     
     if (!response.ok) {
-      throw new Error(result.message || 'Receipt service에서 영수증 생성 실패');
+      console.error('Receipt service 오류 응답:', {
+        status: response.status,
+        statusText: response.statusText,
+        result: result
+      });
+      throw new Error(result.message || result.error || `Receipt service HTTP ${response.status}: ${response.statusText}`);
     }
 
     console.log('Receipt service에 영수증 생성 완료:', result.data);
     return result.data;
   } catch (error) {
     console.error('Receipt service 영수증 생성 오류:', error);
+    if (error instanceof Error && error.message.includes('fetch')) {
+      throw new Error('Receipt service에 연결할 수 없습니다. 서비스가 실행 중인지 확인해주세요.');
+    }
     throw error;
   }
 };
