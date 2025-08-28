@@ -69,4 +69,22 @@ export const statusUpdateSchema = Joi.object({
     'any.only': '올바른 상태값을 선택해주세요. (pending, approved, rejected)',
     'any.required': '상태값은 필수 항목입니다.',
   }),
+  // 승인 시 추가 정보 (선택적)
+  eventId: Joi.string().optional().trim().messages({
+    'string.empty': '이벤트 ID를 입력해주세요.',
+  }),
+  costs: Joi.alternatives().try(
+    Joi.number().min(0),
+    Joi.string().pattern(/^\d+$/).allow('')
+  ).optional().messages({
+    'number.min': '비용은 0 이상이어야 합니다.',
+    'string.pattern.base': '비용은 숫자만 입력해주세요.',
+  }),
+  partTeacher: Joi.alternatives().try(
+    Joi.number().min(1),
+    Joi.string().pattern(/^\d+$/).allow('')
+  ).optional().messages({
+    'number.min': '참가 교사 수는 1 이상이어야 합니다.',
+    'string.pattern.base': '참가 교사 수는 숫자만 입력해주세요.',
+  }),
 });
