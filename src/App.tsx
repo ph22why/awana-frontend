@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { Layout } from "@/components/Layout";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -36,62 +37,64 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/churches" element={<ChurchList />} />
-            <Route path="/receipts" element={<Receipts />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/events/manage"
-              element={
-                <ProtectedRoute>
-                  <EventManage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/churches/manage"
-              element={
-                <ProtectedRoute>
-                  <ChurchManage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/receipts/manage"
-              element={
-                <ProtectedRoute>
-                  <ReceiptManage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/bt/manage"
-              element={
-                <ProtectedRoute>
-                  <BTManage />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/churches" element={<ChurchList />} />
+              <Route path="/receipts" element={<Receipts />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/events/manage"
+                element={
+                  <ProtectedRoute>
+                    <EventManage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/churches/manage"
+                element={
+                  <ProtectedRoute>
+                    <ChurchManage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/receipts/manage"
+                element={
+                  <ProtectedRoute>
+                    <ReceiptManage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/bt/manage"
+                element={
+                  <ProtectedRoute>
+                    <BTManage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Layout>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
