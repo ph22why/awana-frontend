@@ -11,6 +11,9 @@ import Dashboard from "./pages/Dashboard";
 import ChurchList from "./pages/ChurchList";
 import Receipts from "./pages/Receipts";
 import NotFound from "./pages/NotFound";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import EventManage from "./pages/admin/EventManage";
+import ChurchManage from "./pages/admin/ChurchManage";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +45,30 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/events/manage"
+              element={
+                <ProtectedRoute>
+                  <EventManage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/churches/manage"
+              element={
+                <ProtectedRoute>
+                  <ChurchManage />
                 </ProtectedRoute>
               }
             />
