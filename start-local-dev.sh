@@ -3,6 +3,19 @@
 echo "🚀 Starting AWANA Local Development Environment"
 echo "================================================"
 
+# 환경 변수 로드
+ENV_FILE=".env"
+if [ -f "$ENV_FILE" ]; then
+    echo "🔐 Loading environment variables from $ENV_FILE"
+    set -a
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+    set +a
+else
+    echo "❌ $ENV_FILE not found. Copy .env.example to $ENV_FILE and provide your secrets before starting."
+    exit 1
+fi
+
 # 필요한 디렉토리 생성
 echo "📁 Creating necessary directories..."
 mkdir -p data/mongodb
@@ -46,8 +59,8 @@ echo "   - Church Service: http://localhost:3002"
 echo "   - Receipt Service: http://localhost:3003"
 echo ""
 echo "🗄️  Database Info:"
-echo "   - MongoDB: localhost:27017 (admin/awana123)"
-echo "   - MySQL: localhost:3306 (tntcamp/tntcamp123)"
+echo "   - MongoDB: localhost:27017 (user: ${MONGO_INITDB_ROOT_USERNAME:-not-set})"
+echo "   - MySQL: localhost:3306 (user: ${MYSQL_USER:-not-set})"
 echo ""
 echo "📝 To stop all services:"
 echo "   docker-compose -f docker-compose.local.yml down"

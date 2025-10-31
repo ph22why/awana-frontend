@@ -53,6 +53,9 @@ const menuItems: MenuItem[] = [
   { text: '접수 현황', path: '/admin/receipt-status', icon: <ReceiptIcon /> },
 ];
 
+const ADMIN_PIN = process.env.REACT_APP_ADMIN_PIN_ADMIN ?? '';
+const MINI_PIN = process.env.REACT_APP_ADMIN_PIN_MINI ?? '';
+
 const AdminLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
@@ -66,10 +69,10 @@ const AdminLayout: React.FC = () => {
   }, [role]);
 
   const handleAuth = () => {
-    if (password === '1983') {
+    if (ADMIN_PIN && password === ADMIN_PIN) {
       setRole('admin');
       setError('');
-    } else if (password === '0000') {
+    } else if (MINI_PIN && password === MINI_PIN) {
       setRole('mini');
       setError('');
     } else {

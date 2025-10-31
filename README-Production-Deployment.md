@@ -42,6 +42,11 @@ New-Item -ItemType Directory -Force -Path "D:\tntcampdb\logs"
 ### 3. **데이터베이스 초기화 스크립트 복사**
 `init/init-production.sql` 파일을 서버의 `D:\tntcampdb\init\` 폴더에 복사하세요.
 
+### 4. **환경 변수 및 비밀 설정**
+- 루트의 `.env.example`을 `.env`로 복사하고 MongoDB/MySQL 자격 증명, 관리자 PIN 등 민감한 값을 입력합니다.
+- `secrets\credentials.example.bat`을 `secrets\credentials.bat`으로 복사하여 동일한 값으로 채웁니다.
+- 두 파일은 `.gitignore`에 포함되어 있어 공개 저장소에 올라가지 않습니다.
+
 ## 🔧 **배포 단계**
 
 ### 1. **기존 서비스 종료**
@@ -57,8 +62,8 @@ git pull origin master
 
 # 또는 파일 직접 복사 (Git 사용하지 않는 경우)
 # 다음 파일/폴더들을 서버에 복사:
-# - awana-english-camp-admin/
-# - awana-english-camp-app/  
+# - frontend/english-camp-admin/
+# - frontend/english-camp-app/  
 # - backend-server/
 # - docker-compose.https-awanaevent-final.yml
 # - nginx-https-awanaevent-with-api-proxy.conf
@@ -79,8 +84,10 @@ docker-compose -f docker-compose.https-awanaevent-final.yml up -d
 # MySQL 컨테이너 로그 확인
 docker-compose -f docker-compose.https-awanaevent-final.yml logs mysql
 
-# MySQL 데이터베이스 연결 테스트
-docker-compose -f docker-compose.https-awanaevent-final.yml exec mysql mysql -u tntcamp -ptntcamp123!@# tntcamp -e "SHOW TABLES;"
+# MySQL 데이터베이스 연결 테스트 (PowerShell 환경 변수 사용)
+# 1) 환경 변수 로드: Get-Content .env | ForEach-Object { if ($_ -match '^(.*?)=(.*)$') { [Environment]::SetEnvironmentVariable($matches[1], $matches[2]) } }
+# 2) 연결 테스트
+docker-compose -f docker-compose.https-awanaevent-final.yml exec mysql mysql -u $Env:MYSQL_USER -p$Env:MYSQL_PASSWORD $Env:MYSQL_DATABASE -e "SHOW TABLES;"
 ```
 
 ### 5. **서비스 상태 확인**
@@ -144,14 +151,14 @@ docker-compose -f docker-compose.https-awanaevent-final.yml restart tntcamp-admi
 
 ### 백업
 ```powershell
-# MySQL 백업
-docker-compose -f docker-compose.https-awanaevent-final.yml exec mysql mysqldump -u root -proot123 tntcamp > D:\tntcampdb\backup\tntcamp_backup_$(Get-Date -Format "yyyyMMdd_HHmmss").sql
+# MySQL 백업 (환경 변수 사용)
+docker-compose -f docker-compose.https-awanaevent-final.yml exec mysql mysqldump -u root -p$Env:MYSQL_ROOT_PASSWORD $Env:MYSQL_DATABASE > D:\tntcampdb\backup\tntcamp_backup_$(Get-Date -Format "yyyyMMdd_HHmmss").sql
 ```
 
 ### 복원
 ```powershell
 # MySQL 복원
-docker-compose -f docker-compose.https-awanaevent-final.yml exec -T mysql mysql -u root -proot123 tntcamp < D:\tntcampdb\backup\backup_file.sql
+docker-compose -f docker-compose.https-awanaevent-final.yml exec -T mysql mysql -u root -p$Env:MYSQL_ROOT_PASSWORD $Env:MYSQL_DATABASE < D:\tntcampdb\backup\backup_file.sql
 ```
 
 ## ⚠️ **주의사항**

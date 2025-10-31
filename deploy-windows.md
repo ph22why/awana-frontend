@@ -15,6 +15,11 @@ wsl --install
 # Docker Desktop에서 WSL 2 사용 설정
 ```
 
+### 3. 비밀 값 구성
+- 루트 `.env.example`을 복사해 `.env` 파일을 만들고 자격 증명을 입력하세요.
+- `secrets\credentials.example.bat`을 `secrets\credentials.bat`으로 복사 후 동일한 값으로 설정하세요.
+- 두 파일 모두 Git에 커밋하지 말고 안전하게 보관하세요.
+
 ## 배포 단계
 
 ### 1. 프로젝트 다운로드
@@ -119,9 +124,8 @@ set SERVER_IP=112.145.65.29
 - **백업**: `D:\awanadb\backup\`
 
 ### 데이터베이스 접속 정보
-- **사용자명**: admin
-- **비밀번호**: awana123
-- **인증 데이터베이스**: admin
+- 자격 증명은 `secrets\credentials.bat` 파일에서 설정합니다 (템플릿: `secrets\credentials.example.bat`).
+- 필수 키: `MONGO_INITDB_ROOT_USERNAME`, `MONGO_INITDB_ROOT_PASSWORD`, `MONGO_AUTH_DB`.
 
 ### 데이터 백업
 ```cmd
@@ -129,7 +133,8 @@ set SERVER_IP=112.145.65.29
 backup-mongodb-windows.bat
 
 # 수동 백업
-docker exec awana-mongodb-1 mongodump --username admin --password awana123 --authenticationDatabase admin --db event-service --out /data/backup/event-service_$(date +%Y-%m-%d_%H-%M-%S)
+call secrets\credentials.bat
+docker exec awana-mongodb-1 mongodump --username %MONGO_INITDB_ROOT_USERNAME% --password %MONGO_INITDB_ROOT_PASSWORD% --authenticationDatabase %MONGO_AUTH_DB% --db %MONGO_EVENT_DB% --out /data/backup/manual-event-service-backup
 ```
 
 ### 데이터 복구
@@ -138,7 +143,8 @@ docker exec awana-mongodb-1 mongodump --username admin --password awana123 --aut
 restore-mongodb-windows.bat
 
 # 수동 복구
-docker exec awana-mongodb-1 mongorestore --username admin --password awana123 --authenticationDatabase admin --db event-service --drop /data/backup/event-service_2024-01-01_12-00-00/event-service/
+call secrets\credentials.bat
+docker exec awana-mongodb-1 mongorestore --username %MONGO_INITDB_ROOT_USERNAME% --password %MONGO_INITDB_ROOT_PASSWORD% --authenticationDatabase %MONGO_AUTH_DB% --db %MONGO_EVENT_DB% --drop /data/backup/event-service_manual/event-service/
 ```
 
 ## 문제 해결
@@ -230,8 +236,8 @@ schtasks /create /tn "AWANA-MongoDB-Backup" /tr "C:\path\to\AWANA\backup-mongodb
 ## 보안 설정
 
 ### MongoDB 보안
-- 기본 사용자명/비밀번호: admin/awana123
-- 프로덕션 환경에서는 강력한 비밀번호로 변경하세요
+- `secrets\credentials.bat`에 설정한 사용자/비밀번호를 사용합니다 (공개 저장소에 커밋하지 마세요).
+- 프로덕션 환경에서는 반드시 강력한 비밀번호를 사용하세요.
 - 방화벽에서 MongoDB 포트(27017) 접근을 제한하세요
 
 ### 데이터 보호

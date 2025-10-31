@@ -7,10 +7,10 @@ services:
     ports:
       - "3307:3306"  # 다른 포트 사용
     environment:
-      - MYSQL_ROOT_PASSWORD=root123
-      - MYSQL_DATABASE=tntcamp
-      - MYSQL_USER=tntcamp
-      - MYSQL_PASSWORD=tntcamp123
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - ./data/mysql-dev:/var/lib/mysql
       - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -27,9 +27,9 @@ services:
     environment:
       - NODE_ENV=development
       - DB_HOST=mysql-dev
-      - DB_USER=tntcamp
-      - DB_PASSWORD=tntcamp123
-      - DB_NAME=tntcamp
+      - DB_USER=${MYSQL_USER}
+      - DB_PASSWORD=${TNTCAMP_DB_PASSWORD}
+      - DB_NAME=${MYSQL_DATABASE}
       - PORT=8080
     volumes:
       - ./backend-server:/app
@@ -44,7 +44,7 @@ services:
   # TNT Camp Main App (개발 모드)
   tntcamp-app-dev:
     build: 
-      context: ./awana-english-camp-app
+      context: ./frontend/english-camp-app
       dockerfile: Dockerfile.dev
     ports:
       - "3100:3000"
@@ -55,7 +55,7 @@ services:
       - WDS_SOCKET_HOST=localhost
       - WDS_SOCKET_PORT=3100
     volumes:
-      - ./awana-english-camp-app:/app
+      - ./frontend/english-camp-app:/app
       - /app/node_modules
     depends_on:
       - tntcamp-backend-dev
@@ -66,7 +66,7 @@ services:
   # TNT Camp Admin App (개발 모드)
   tntcamp-admin-dev:
     build: 
-      context: ./awana-english-camp-admin
+      context: ./frontend/english-camp-admin
       dockerfile: Dockerfile.dev
     ports:
       - "3101:3000"
@@ -77,7 +77,7 @@ services:
       - WDS_SOCKET_HOST=localhost
       - WDS_SOCKET_PORT=3101
     volumes:
-      - ./awana-english-camp-admin:/app
+      - ./frontend/english-camp-admin:/app
       - /app/node_modules
     depends_on:
       - tntcamp-backend-dev
