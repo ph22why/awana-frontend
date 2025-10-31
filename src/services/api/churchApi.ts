@@ -6,6 +6,8 @@ export const churchApi = {
     const queryParams = new URLSearchParams();
     
     if (params.churchName) queryParams.append('churchName', params.churchName);
+    if (params.name) queryParams.append('name', params.name);
+    if (params.mainId) queryParams.append('mainId', params.mainId);
     if (params.region) queryParams.append('region', params.region);
     if (params.status) queryParams.append('status', params.status);
     if (params.page) queryParams.append('page', params.page.toString());

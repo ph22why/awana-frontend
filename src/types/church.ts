@@ -27,6 +27,8 @@ export interface ChurchResponse {
 
 export interface ChurchSearchParams {
   churchName?: string;
+  name?: string;
+  mainId?: string;
   region?: string;
   status?: 'active' | 'inactive';
   page?: number;

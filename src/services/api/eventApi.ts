@@ -41,6 +41,14 @@ export const eventApi = {
     return response.data || response;
   },
 
+  getEventsByYear: async (year: number): Promise<EventApiResponse> => {
+    const response = await api.get(`/api/events?year=${year}`);
+    return {
+      success: true,
+      data: Array.isArray(response) ? response : response.data || [],
+    };
+  },
+
   createEvent: async (eventData: IEventCreate): Promise<IEvent> => {
     const response = await api.post('/api/events', eventData);
     return response.data || response;
