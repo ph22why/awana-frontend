@@ -119,8 +119,8 @@ const Receipts = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           {isLoading && !receipts.length ? (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="flex justify-center items-center py-12 animate-fade-in">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
             <>
@@ -183,7 +183,7 @@ const Receipts = () => {
 
               <Button 
                 onClick={handleSearch} 
-                className="w-full"
+                className="w-full hover-scale"
                 disabled={isSearching}
               >
                 {isSearching ? (
@@ -197,10 +197,10 @@ const Receipts = () => {
               </Button>
 
               {receipts.length > 0 && (
-                <div className="space-y-4 mt-6">
+                <div className="space-y-4 mt-6 animate-fade-in">
                   <h3 className="text-xl font-semibold">조회 결과</h3>
                   {receipts.map((receipt) => (
-                    <Card key={receipt._id}>
+                    <Card key={receipt._id} className="hover:shadow-lg transition-shadow duration-300">
                       <CardContent className="pt-6">
                         <div className="grid grid-cols-2 gap-4">
                           <div>

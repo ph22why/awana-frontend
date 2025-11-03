@@ -213,7 +213,7 @@ const ReceiptManage = () => {
               </TableHeader>
               <TableBody>
                 {filteredReceipts.map((receipt) => (
-                  <TableRow key={receipt.id}>
+                  <TableRow key={receipt.id} className="hover:bg-muted/50 transition-colors">
                     <TableCell className="font-medium">{receipt.churchName}</TableCell>
                     <TableCell>{receipt.churchId.mainId}-{receipt.churchId.subId}</TableCell>
                     <TableCell>{receipt.managerName}</TableCell>

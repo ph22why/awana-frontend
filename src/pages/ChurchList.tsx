@@ -68,12 +68,12 @@ const ChurchList = () => {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <Button
-              key={p}
-              variant={page === p ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setPage(p)}
-            >
+          <Button
+            variant={page === p ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setPage(p)}
+            className="hover-scale"
+          >
               {p}
             </Button>
           ))}
@@ -97,15 +97,15 @@ const ChurchList = () => {
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="flex justify-center items-center py-12 animate-fade-in">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : error ? (
         <div className="text-center py-12">
           <p className="text-destructive">{error}</p>
         </div>
       ) : (
-        <div className="border rounded-lg">
+        <div className="border rounded-lg animate-fade-in">
           <Table>
             <TableHeader>
               <TableRow>
@@ -124,7 +124,7 @@ const ChurchList = () => {
                 </TableRow>
               ) : (
                 churches.map((church) => (
-                  <TableRow key={church._id}>
+                  <TableRow key={church._id} className="hover:bg-muted/50 transition-colors">
                     <TableCell className="font-medium">{church.name}</TableCell>
                     <TableCell>{church.mainId}-{church.subId}</TableCell>
                     <TableCell>{church.location}</TableCell>

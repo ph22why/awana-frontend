@@ -137,11 +137,11 @@ const ChurchManage = () => {
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="flex justify-center items-center py-12 animate-fade-in">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="border rounded-lg">
+        <div className="border rounded-lg animate-fade-in">
           <Table>
             <TableHeader>
               <TableRow>
@@ -161,7 +161,7 @@ const ChurchManage = () => {
                 </TableRow>
               ) : (
                 filteredChurches.map((church) => (
-                  <TableRow key={church._id || church.id}>
+                  <TableRow key={church._id || church.id} className="hover:bg-muted/50 transition-colors">
                     <TableCell className="font-medium">{church.name}</TableCell>
                     <TableCell>{church.mainId}-{church.subId}</TableCell>
                     <TableCell>{church.location}</TableCell>

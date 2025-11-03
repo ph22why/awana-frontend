@@ -142,7 +142,7 @@ const BTManage = () => {
             </TableHeader>
             <TableBody>
               {churchManagers.map((manager) => (
-                <TableRow key={manager._id}>
+                <TableRow key={manager._id} className="hover:bg-muted/50 transition-colors">
                   <TableCell>
                     <div className="font-medium">{manager.churchName}</div>
                     <div className="text-sm text-muted-foreground">{manager.churchAddress}</div>

@@ -78,7 +78,7 @@ const AdminDashboard = () => {
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {stats.map((stat) => (
-          <Card key={stat.title}>
+          <Card key={stat.title} className="hover:shadow-lg transition-shadow duration-300 animate-fade-in">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -100,15 +100,15 @@ const AdminDashboard = () => {
       <div className="mb-8">
         <h2 className="text-2xl font-semibold mb-4">빠른 작업</h2>
         <div className="flex flex-wrap gap-3">
-          <Button onClick={() => navigate('/admin/events/manage')}>
+          <Button onClick={() => navigate('/admin/events/manage')} className="hover-scale">
             <Plus className="mr-2 h-4 w-4" />
             이벤트 관리
           </Button>
-          <Button onClick={() => navigate('/admin/churches/manage')}>
+          <Button onClick={() => navigate('/admin/churches/manage')} className="hover-scale">
             <Plus className="mr-2 h-4 w-4" />
             교회 관리
           </Button>
-          <Button onClick={() => navigate('/admin/receipts/manage')} variant="secondary">
+          <Button onClick={() => navigate('/admin/receipts/manage')} variant="secondary" className="hover-scale">
             <Receipt className="mr-2 h-4 w-4" />
             영수증 관리
           </Button>

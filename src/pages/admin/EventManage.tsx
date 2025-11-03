@@ -95,11 +95,11 @@ const EventManage = () => {
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="flex justify-center items-center py-12 animate-fade-in">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="border rounded-lg">
+        <div className="border rounded-lg animate-fade-in">
           <Table>
             <TableHeader>
               <TableRow>
@@ -121,7 +121,7 @@ const EventManage = () => {
                 </TableRow>
               ) : (
                 filteredEvents.map((event) => (
-                  <TableRow key={event._id}>
+                  <TableRow key={event._id} className="hover:bg-muted/50 transition-colors">
                     <TableCell className="font-medium">{event.event_Name}</TableCell>
                     <TableCell>{event.event_Location}</TableCell>
                     <TableCell>{event.event_Year}</TableCell>

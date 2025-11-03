@@ -55,7 +55,7 @@ const Index = () => {
             <Button
               variant="outline"
               onClick={() => navigate('/churches')}
-              className="border-2"
+              className="border-2 hover-scale"
             >
               <School className="mr-2 h-4 w-4" />
               교회 찾기
@@ -63,7 +63,7 @@ const Index = () => {
             <Button
               variant="outline"
               onClick={() => navigate('/receipts')}
-              className="border-2"
+              className="border-2 hover-scale"
             >
               <Receipt className="mr-2 h-4 w-4" />
               영수증 발급
@@ -71,7 +71,7 @@ const Index = () => {
             <Button
               variant="outline"
               onClick={() => window.open('/bt', '_blank')}
-              className="border-2"
+              className="border-2 hover-scale"
             >
               <BookOpen className="mr-2 h-4 w-4" />
               BT 교육
@@ -93,8 +93,10 @@ const Index = () => {
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <CardSkeleton key={i} />
-              ))}
+                  <div key={i} className="animate-fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
+                    <CardSkeleton />
+                  </div>
+                ))}
             </div>
           ) : error ? (
             <EmptyState
@@ -136,7 +138,10 @@ const Index = () => {
                   })();
 
                   return (
-                    <Card key={event._id} className="flex flex-col hover:-translate-y-2 transition-transform">
+                    <Card 
+                      key={event._id} 
+                      className="flex flex-col hover:-translate-y-2 transition-all duration-300 hover:shadow-xl animate-fade-in"
+                    >
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           {event.event_Name}
