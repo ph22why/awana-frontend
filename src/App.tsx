@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Layout } from "@/components/Layout";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -20,25 +21,34 @@ import BTManage from "./pages/admin/BTManage";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return <div className="flex min-h-screen items-center justify-center">로딩 중...</div>;
   }
 
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (requireAdmin && user.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Layout>
-            <Routes>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Layout>
+              <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
@@ -55,7 +65,7 @@ const App = () => (
               <Route
                 path="/admin"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute requireAdmin>
                     <AdminDashboard />
                   </ProtectedRoute>
                 }
@@ -63,7 +73,7 @@ const App = () => (
               <Route
                 path="/admin/events/manage"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute requireAdmin>
                     <EventManage />
                   </ProtectedRoute>
                 }
@@ -71,7 +81,7 @@ const App = () => (
               <Route
                 path="/admin/churches/manage"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute requireAdmin>
                     <ChurchManage />
                   </ProtectedRoute>
                 }
@@ -79,7 +89,7 @@ const App = () => (
               <Route
                 path="/admin/receipts/manage"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute requireAdmin>
                     <ReceiptManage />
                   </ProtectedRoute>
                 }
@@ -87,18 +97,19 @@ const App = () => (
               <Route
                 path="/admin/bt/manage"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute requireAdmin>
                     <BTManage />
                   </ProtectedRoute>
                 }
               />
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Layout>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+              </Routes>
+            </Layout>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api } from '@/lib/api';
+import { handleApiError } from '@/lib/apiError';
 import { useToast } from '@/hooks/use-toast';
 
 interface User {
@@ -14,6 +15,7 @@ interface AuthContextType {
   token: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshToken: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -36,6 +38,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, []);
 
+  // 토큰 만료 체크 및 자동 로그아웃
+  useEffect(() => {
+    if (!token) return;
+
+    const checkTokenExpiry = async () => {
+      try {
+        await api.get('/auth/verify', token);
+      } catch (error: any) {
+        if (error.statusCode === 401) {
+          logout();
+          toast({
+            variant: "destructive",
+            title: "세션 만료",
+            description: "다시 로그인해주세요.",
+          });
+        }
+      }
+    };
+
+    // 5분마다 토큰 검증
+    const interval = setInterval(checkTokenExpiry, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [token]);
+
   const login = async (username: string, password: string) => {
     try {
       const response = await api.post('/auth/login', { username, password });
@@ -51,10 +77,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: `환영합니다, ${response.user.username}님!`,
       });
     } catch (error) {
+      const errorMessage = handleApiError(error);
       toast({
         variant: "destructive",
         title: "로그인 실패",
-        description: "아이디 또는 비밀번호를 확인해주세요.",
+        description: errorMessage,
       });
       throw error;
     }
@@ -72,8 +99,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const refreshToken = async () => {
+    try {
+      const response = await api.post('/auth/refresh', {}, token || undefined);
+      setToken(response.token);
+      localStorage.setItem('token', response.token);
+    } catch (error) {
+      logout();
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, refreshToken, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
