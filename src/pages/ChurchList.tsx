@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { churchApi } from '@/services/api/churchApi';
 import type { Church } from '@/types/church';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useChurch } from '@/hooks/useChurch';
 import {
   Table,
   TableBody,
@@ -21,38 +21,16 @@ import {
 import { Search, Loader2 } from 'lucide-react';
 
 const ChurchList = () => {
+  const { useAllChurches } = useChurch();
+  const { data: allChurches = [], isLoading: loading, error: queryError } = useAllChurches();
+  
   const [searchTerm, setSearchTerm] = useState('');
-  const [allChurches, setAllChurches] = useState<Church[]>([]);
   const [churches, setChurches] = useState<Church[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchAllChurches = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await churchApi.searchChurches({ getAllResults: true });
-      if (response.success) {
-        setAllChurches(response.data || []);
-      } else {
-        setAllChurches([]);
-        throw new Error('데이터를 불러오는데 실패했습니다.');
-      }
-    } catch (err) {
-      console.error('Error fetching churches:', err);
-      setError('교회 목록을 불러오는데 실패했습니다.');
-      setAllChurches([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAllChurches();
-  }, []);
+  const error = queryError ? '교회 목록을 불러오는데 실패했습니다.' : null;
 
   useEffect(() => {
     let filtered = allChurches || [];

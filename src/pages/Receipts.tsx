@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { receiptApi } from '@/services/api/receiptApi';
-import { eventApi } from '@/services/api/eventApi';
-import { churchApi } from '@/services/api/churchApi';
 import type { Receipt } from '@/types/receipt';
 import type { IEvent, IEventGroup } from '@/types/event';
-import type { Church } from '@/types/church';
+import { useEvent } from '@/hooks/useEvent';
+import { useReceipt } from '@/hooks/useReceipt';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,44 +19,38 @@ import { Loader2 } from 'lucide-react';
 
 const Receipts = () => {
   const { toast } = useToast();
+  const { useEvents, useEventGroups } = useEvent();
+  const { data: events = [], isLoading: eventsLoading } = useEvents();
+  const { data: groups = [], isLoading: groupsLoading } = useEventGroups();
+  
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [selectedSelection, setSelectedSelection] = useState<string>('');
   const [registrationNumber, setRegistrationNumber] = useState<string>('');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
-  const [churches, setChurches] = useState<Church[]>([]);
-  const [selectedChurch, setSelectedChurch] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [events, setEvents] = useState<IEvent[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [groups, setGroups] = useState<IEventGroup[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [receiptYears, setReceiptYears] = useState<string[]>([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const [eventsData, groupsData] = await Promise.all([
-          eventApi.getEvents(),
-          eventApi.getEventGroups(),
-        ]);
-        setEvents(eventsData);
-        setGroups(groupsData);
+  const isLoading = eventsLoading || groupsLoading;
 
-        const years = new Set<string>();
-        eventsData.forEach(e => {
-          if (e.event_Year) years.add(e.event_Year.toString());
-        });
-        setReceiptYears(Array.from(years).sort((a, b) => Number(b) - Number(a)));
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('데이터를 불러오는데 실패했습니다.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  useEffect(() => {
+    if (events.length > 0) {
+      const years = new Set<string>();
+      events.forEach(e => {
+        if (e.event_Year) years.add(e.event_Year.toString());
+      });
+      setReceiptYears(Array.from(years).sort((a, b) => Number(b) - Number(a)));
+    }
+  }, [events]);
+
+  const { useSearchReceipts } = useReceipt();
+  const [searchQuery, setSearchQuery] = useState<{
+    eventId?: string;
+    registrationNumber?: string;
+    managerPhone?: string;
+  }>({});
+
+  const { data: searchResult, refetch, isLoading: isSearchLoading } = useSearchReceipts(searchQuery);
 
   const handleSearch = async () => {
     if (!selectedSelection) {
@@ -77,20 +69,22 @@ const Receipts = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsSearching(true);
     try {
       const eventId = selectedSelection.split(':')[1];
-      const response = await receiptApi.searchReceipts({
+      setSearchQuery({
         eventId,
         registrationNumber,
         managerPhone: phoneNumber,
       });
 
-      if (response.success && response.data.length > 0) {
-        setReceipts(response.data);
+      const result = await refetch();
+
+      if (result.data?.success && result.data.data.length > 0) {
+        setReceipts(result.data.data);
         toast({
           title: '영수증을 찾았습니다',
-          description: `${response.data.length}개의 영수증이 있습니다.`,
+          description: `${result.data.data.length}개의 영수증이 있습니다.`,
         });
       } else {
         setReceipts([]);
@@ -106,7 +100,7 @@ const Receipts = () => {
         title: '영수증 검색 실패',
       });
     } finally {
-      setIsLoading(false);
+      setIsSearching(false);
     }
   };
 
@@ -192,9 +186,9 @@ const Receipts = () => {
               <Button 
                 onClick={handleSearch} 
                 className="w-full"
-                disabled={isLoading}
+                disabled={isSearching}
               >
-                {isLoading ? (
+                {isSearching ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     검색 중...

@@ -2,34 +2,18 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { CalendarDays, School, Receipt, BookOpen, Calendar } from 'lucide-react';
-import { eventApi } from '@/services/api/eventApi';
 import type { IEvent } from '@/types/event';
-import { useEffect, useState } from 'react';
 import { CardSkeleton } from '@/components/ui/loading-skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useEvent } from '@/hooks/useEvent';
 
 const Index = () => {
   const navigate = useNavigate();
-  const [events, setEvents] = useState<IEvent[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { usePublicEvents } = useEvent();
+  const { data: allEvents = [], isLoading: loading, error: queryError } = usePublicEvents();
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const allEvents: IEvent[] = await eventApi.getPublicEvents();
-        const publicEvents = allEvents.filter(e => e.event_Open_Available === "공개");
-        setEvents(publicEvents);
-      } catch (err: any) {
-        setError(err.message || "이벤트 목록을 불러오는데 실패했습니다.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEvents();
-  }, []);
+  const events = allEvents.filter(e => e.event_Open_Available === "공개");
+  const error = queryError ? "이벤트 목록을 불러오는데 실패했습니다." : null;
 
   const formatKoreanDate = (date: Date) =>
     date.toLocaleDateString("ko-KR", {
