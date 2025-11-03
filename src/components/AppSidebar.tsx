@@ -64,7 +64,7 @@ export function AppSidebar() {
                       className={({ isActive }) => 
                         isActive 
                           ? "bg-accent text-accent-foreground font-medium" 
-                          : "text-foreground hover:bg-accent/50 hover:text-accent-foreground"
+                          : "hover:bg-accent/50"
                       }
                     >
                       <item.icon className="h-4 w-4" />
@@ -95,7 +95,7 @@ export function AppSidebar() {
                           className={({ isActive }) => 
                             isActive 
                               ? "bg-accent text-accent-foreground font-medium" 
-                              : "text-foreground hover:bg-accent/50 hover:text-accent-foreground"
+                              : "hover:bg-accent/50"
                           }
                         >
                           <item.icon className="h-4 w-4" />
@@ -128,7 +128,7 @@ export function AppSidebar() {
                           className={({ isActive }) => 
                             isActive 
                               ? "bg-accent text-accent-foreground font-medium" 
-                              : "text-foreground hover:bg-accent/50 hover:text-accent-foreground"
+                              : "hover:bg-accent/50"
                           }
                         >
                           <item.icon className="h-4 w-4" />
