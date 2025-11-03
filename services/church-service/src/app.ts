@@ -21,14 +21,26 @@ app.use(cors({
     // origin이 없으면 (예: 모바일 앱, Postman) 허용
     if (!origin) return callback(null, true);
     
+    // 디버깅 로그
+    console.log('CORS check for origin:', origin);
+    
+    // lovable.dev 허용
+    if (origin === 'https://lovable.dev') {
+      console.log('Allowed: lovable.dev');
+      return callback(null, true);
+    }
+    
     // lovable.app 서브도메인 허용
-    if (origin.endsWith('.lovable.app') || origin === 'https://lovable.dev') {
+    if (origin.includes('.lovable.app')) {
+      console.log('Allowed: lovable.app subdomain');
       return callback(null, true);
     }
     
     if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log('Allowed: in allowedOrigins list');
       callback(null, true);
     } else {
+      console.log('Blocked: not in allowedOrigins list');
       callback(new Error('Not allowed by CORS'));
     }
   },
