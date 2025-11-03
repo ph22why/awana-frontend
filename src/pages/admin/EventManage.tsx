@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { eventApi } from '@/services/api/eventApi';
+import { useEvents, useDeleteEvent } from '@/hooks/useEvent';
 import type { IEvent } from '@/types/event';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,34 +31,17 @@ const EventManage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [events, setEvents] = useState<IEvent[]>([]);
+  const { data: events = [], isLoading: loading } = useEvents();
+  const deleteEventMutation = useDeleteEvent();
+  
   const [filteredEvents, setFilteredEvents] = useState<IEvent[]>([]);
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
-  const fetchEvents = async () => {
-    setLoading(true);
-    try {
-      const data = await eventApi.getEvents();
-      setEvents(data);
-      setFilteredEvents(data);
-    } catch (error) {
-      console.error('Failed to fetch events:', error);
-      toast({
-        variant: 'destructive',
-        title: '이벤트 목록 불러오기 실패',
-        description: '이벤트 목록을 불러오는데 실패했습니다.',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    setFilteredEvents(events);
+  }, [events]);
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -75,24 +58,12 @@ const EventManage = () => {
   const handleDelete = async () => {
     if (!selectedEventId) return;
 
-    try {
-      await eventApi.deleteEvent(selectedEventId);
-      toast({
-        title: '이벤트 삭제 완료',
-        description: '이벤트가 성공적으로 삭제되었습니다.',
-      });
-      fetchEvents();
-    } catch (error) {
-      console.error('Failed to delete event:', error);
-      toast({
-        variant: 'destructive',
-        title: '이벤트 삭제 실패',
-        description: '이벤트 삭제에 실패했습니다.',
-      });
-    } finally {
-      setDeleteDialogOpen(false);
-      setSelectedEventId(null);
-    }
+    deleteEventMutation.mutate(selectedEventId, {
+      onSuccess: () => {
+        setDeleteDialogOpen(false);
+        setSelectedEventId(null);
+      }
+    });
   };
 
   const openDeleteDialog = (eventId: string) => {

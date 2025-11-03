@@ -4,106 +4,101 @@ import { Receipt } from '@/types/receipt';
 import { useToast } from '@/hooks/use-toast';
 import { handleApiError } from '@/lib/apiError';
 
-export const useReceipt = () => {
+export const useReceipts = () => {
+  return useQuery({
+    queryKey: ['receipts'],
+    queryFn: receiptApi.getAllReceipts,
+  });
+};
+
+export const useReceipt = (id: string) => {
+  return useQuery({
+    queryKey: ['receipt', id],
+    queryFn: () => receiptApi.getReceiptById(id),
+    enabled: !!id,
+  });
+};
+
+export const useSearchReceipts = (query: {
+  eventId?: string;
+  churchName?: string;
+  managerPhone?: string;
+  registrationNumber?: string;
+}) => {
+  return useQuery({
+    queryKey: ['receipts', 'search', query],
+    queryFn: () => receiptApi.searchReceipts(query),
+    enabled: Object.values(query).some((v) => !!v),
+  });
+};
+
+export const useCreateReceipt = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const useReceipts = () => {
-    return useQuery({
-      queryKey: ['receipts'],
-      queryFn: receiptApi.getAllReceipts,
-    });
-  };
+  return useMutation({
+    mutationFn: (data: Omit<Receipt, 'id' | 'createdAt' | 'updatedAt'>) =>
+      receiptApi.createReceipt(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      toast({
+        title: '성공',
+        description: '영수증이 생성되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: '오류',
+        description: handleApiError(error),
+        variant: 'destructive',
+      });
+    },
+  });
+};
 
-  const useReceipt = (id: string) => {
-    return useQuery({
-      queryKey: ['receipt', id],
-      queryFn: () => receiptApi.getReceiptById(id),
-      enabled: !!id,
-    });
-  };
+export const useUpdateReceipt = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const useSearchReceipts = (query: {
-    eventId?: string;
-    churchName?: string;
-    managerPhone?: string;
-    registrationNumber?: string;
-  }) => {
-    return useQuery({
-      queryKey: ['receipts', 'search', query],
-      queryFn: () => receiptApi.searchReceipts(query),
-      enabled: Object.values(query).some((v) => !!v),
-    });
-  };
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Receipt> }) =>
+      receiptApi.updateReceipt(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      toast({
+        title: '성공',
+        description: '영수증이 수정되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: '오류',
+        description: handleApiError(error),
+        variant: 'destructive',
+      });
+    },
+  });
+};
 
-  const useCreateReceipt = () => {
-    return useMutation({
-      mutationFn: (data: Omit<Receipt, 'id' | 'createdAt' | 'updatedAt'>) =>
-        receiptApi.createReceipt(data),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['receipts'] });
-        toast({
-          title: '성공',
-          description: '영수증이 생성되었습니다.',
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: '오류',
-          description: handleApiError(error),
-          variant: 'destructive',
-        });
-      },
-    });
-  };
+export const useDeleteReceipt = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const useUpdateReceipt = () => {
-    return useMutation({
-      mutationFn: ({ id, data }: { id: string; data: Partial<Receipt> }) =>
-        receiptApi.updateReceipt(id, data),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['receipts'] });
-        toast({
-          title: '성공',
-          description: '영수증이 수정되었습니다.',
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: '오류',
-          description: handleApiError(error),
-          variant: 'destructive',
-        });
-      },
-    });
-  };
-
-  const useDeleteReceipt = () => {
-    return useMutation({
-      mutationFn: (id: string) => receiptApi.deleteReceipt(id),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['receipts'] });
-        toast({
-          title: '성공',
-          description: '영수증이 삭제되었습니다.',
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: '오류',
-          description: handleApiError(error),
-          variant: 'destructive',
-        });
-      },
-    });
-  };
-
-  return {
-    useReceipts,
-    useReceipt,
-    useSearchReceipts,
-    useCreateReceipt,
-    useUpdateReceipt,
-    useDeleteReceipt,
-  };
+  return useMutation({
+    mutationFn: (id: string) => receiptApi.deleteReceipt(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['receipts'] });
+      toast({
+        title: '성공',
+        description: '영수증이 삭제되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: '오류',
+        description: handleApiError(error),
+        variant: 'destructive',
+      });
+    },
+  });
 };

@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { receiptApi, Receipt } from '@/services/api/receiptApi';
-import { eventApi, IEvent, IEventGroup } from '@/services/api/eventApi';
-import { churchApi, Church } from '@/services/api/churchApi';
+import { useSearchReceipts, useCreateReceipt, useDeleteReceipt } from '@/hooks/useReceipt';
+import { useEventsByYear } from '@/hooks/useEvent';
+import { useChurches } from '@/hooks/useChurch';
+import type { Receipt } from '@/services/api/receiptApi';
+import type { IEvent } from '@/services/api/eventApi';
+import type { Church } from '@/services/api/churchApi';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,15 +24,28 @@ const ReceiptManage = () => {
   
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedEvent, setSelectedEvent] = useState<string>('');
-  const [events, setEvents] = useState<IEvent[]>([]);
-  const [groups, setGroups] = useState<IEventGroup[]>([]);
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [filteredReceipts, setFilteredReceipts] = useState<Receipt[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
-  const [churches, setChurches] = useState<Church[]>([]);
   const [churchSearch, setChurchSearch] = useState('');
+
+  const { data: eventsData = { data: [] } } = useEventsByYear(selectedYear ? parseInt(selectedYear) : new Date().getFullYear());
+  const events = Array.isArray(eventsData) ? eventsData : eventsData.data || [];
+  const { data: receiptsDataResponse = { data: [] }, isLoading: receiptsLoading } = useSearchReceipts(
+    selectedEvent ? { eventId: selectedEvent } : {}
+  );
+  const receiptsData = Array.isArray(receiptsDataResponse) ? receiptsDataResponse : receiptsDataResponse.data || [];
+  const { data: churchesDataResponse = { data: [] } } = useChurches(
+    churchSearch.length >= 2 
+      ? /^\d{4}$/.test(churchSearch) 
+        ? { mainId: churchSearch } 
+        : { name: churchSearch }
+      : {}
+  );
+  const churches = Array.isArray(churchesDataResponse) ? churchesDataResponse : churchesDataResponse.data || [];
+  
+  const createReceiptMutation = useCreateReceipt();
+  const deleteReceiptMutation = useDeleteReceipt();
   
   const [formData, setFormData] = useState({
     churchId: { mainId: '', subId: '' },
@@ -46,79 +62,16 @@ const ReceiptManage = () => {
   useEffect(() => {
     const currentYear = new Date().getFullYear();
     setSelectedYear(currentYear.toString());
-    fetchEvents(currentYear.toString());
   }, []);
 
   useEffect(() => {
-    if (selectedEvent) {
-      fetchReceipts(selectedEvent);
-    }
-  }, [selectedEvent]);
-
-  useEffect(() => {
-    const filtered = receipts.filter(receipt =>
+    const filtered = receiptsData.filter(receipt =>
       receipt.churchName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       receipt.managerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       receipt.managerPhone.includes(searchTerm)
     );
     setFilteredReceipts(filtered);
-  }, [searchTerm, receipts]);
-
-  const fetchEvents = async (year: string) => {
-    try {
-      setLoading(true);
-      const response = await eventApi.getEventsByYear(parseInt(year));
-      if (response.success) {
-        setEvents(response.data);
-      }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: '이벤트 로딩 실패',
-        description: '이벤트 목록을 불러오는데 실패했습니다.',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchReceipts = async (eventId: string) => {
-    try {
-      setLoading(true);
-      const response = await receiptApi.searchReceipts({ eventId });
-      if (response.success) {
-        setReceipts(response.data);
-      }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: '영수증 로딩 실패',
-        description: '영수증 목록을 불러오는데 실패했습니다.',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChurchSearch = async (value: string) => {
-    if (!value || value.length < 2) {
-      setChurches([]);
-      return;
-    }
-
-    try {
-      const isMainId = /^\d{4}$/.test(value);
-      const response = await churchApi.searchChurches(
-        isMainId ? { mainId: value } : { name: value }
-      );
-      
-      if (response.success) {
-        setChurches(response.data);
-      }
-    } catch (error) {
-      console.error('Church search error:', error);
-    }
-  };
+  }, [searchTerm, receiptsData]);
 
   const handleChurchSelect = (church: Church) => {
     setFormData(prev => ({
@@ -126,7 +79,7 @@ const ReceiptManage = () => {
       churchId: { mainId: church.mainId, subId: church.subId },
       churchName: church.name,
     }));
-    setChurches([]);
+    setChurchSearch('');
   };
 
   const handleCreateReceipt = async () => {
@@ -138,51 +91,26 @@ const ReceiptManage = () => {
       return;
     }
 
-    try {
-      setLoading(true);
-      await receiptApi.createReceipt({
+    createReceiptMutation.mutate(
+      {
         eventId: selectedEvent,
         ...formData,
         paymentMethod: 'cash',
         paymentStatus: 'pending',
         paymentDate: new Date().toISOString(),
-      });
-
-      toast({
-        title: '영수증 생성 완료',
-        description: '영수증이 성공적으로 생성되었습니다.',
-      });
-
-      setShowDialog(false);
-      fetchReceipts(selectedEvent);
-      resetForm();
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: '영수증 생성 실패',
-        description: '영수증 생성 중 오류가 발생했습니다.',
-      });
-    } finally {
-      setLoading(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          setShowDialog(false);
+          resetForm();
+        }
+      }
+    );
   };
 
   const handleDeleteReceipt = async (id: string) => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
-
-    try {
-      await receiptApi.deleteReceipt(id);
-      toast({
-        title: '삭제 완료',
-        description: '영수증이 삭제되었습니다.',
-      });
-      fetchReceipts(selectedEvent);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: '삭제 실패',
-      });
-    }
+    deleteReceiptMutation.mutate(id);
   };
 
   const resetForm = () => {
@@ -220,10 +148,7 @@ const ReceiptManage = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>연도</Label>
-              <Select value={selectedYear} onValueChange={(value) => {
-                setSelectedYear(value);
-                fetchEvents(value);
-              }}>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
                 <SelectTrigger>
                   <SelectValue placeholder="연도 선택" />
                 </SelectTrigger>
@@ -330,10 +255,7 @@ const ReceiptManage = () => {
               <Input
                 placeholder="교회명 또는 교회코드 입력"
                 value={churchSearch}
-                onChange={(e) => {
-                  setChurchSearch(e.target.value);
-                  handleChurchSearch(e.target.value);
-                }}
+                onChange={(e) => setChurchSearch(e.target.value)}
               />
               {churches.length > 0 && (
                 <div className="mt-2 border rounded-md max-h-40 overflow-y-auto">
@@ -341,10 +263,7 @@ const ReceiptManage = () => {
                     <div
                       key={`${church.mainId}-${church.subId}`}
                       className="p-2 hover:bg-accent cursor-pointer"
-                      onClick={() => {
-                        handleChurchSelect(church);
-                        setChurchSearch('');
-                      }}
+                      onClick={() => handleChurchSelect(church)}
                     >
                       {church.name} ({church.mainId}-{church.subId})
                     </div>
@@ -422,8 +341,8 @@ const ReceiptManage = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDialog(false)}>취소</Button>
-            <Button onClick={handleCreateReceipt} disabled={!formData.churchName || loading}>
-              {loading ? '생성 중...' : '생성'}
+            <Button onClick={handleCreateReceipt} disabled={!formData.churchName || createReceiptMutation.isPending}>
+              {createReceiptMutation.isPending ? '생성 중...' : '생성'}
             </Button>
           </DialogFooter>
         </DialogContent>

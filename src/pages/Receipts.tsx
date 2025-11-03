@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { Receipt } from '@/types/receipt';
 import type { IEvent, IEventGroup } from '@/types/event';
-import { useEvent } from '@/hooks/useEvent';
-import { useReceipt } from '@/hooks/useReceipt';
+import { useEvents, useEventGroups } from '@/hooks/useEvent';
+import { useSearchReceipts } from '@/hooks/useReceipt';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,6 @@ import { Loader2 } from 'lucide-react';
 
 const Receipts = () => {
   const { toast } = useToast();
-  const { useEvents, useEventGroups } = useEvent();
   const { data: events = [], isLoading: eventsLoading } = useEvents();
   const { data: groups = [], isLoading: groupsLoading } = useEventGroups();
   
@@ -43,7 +42,6 @@ const Receipts = () => {
     }
   }, [events]);
 
-  const { useSearchReceipts } = useReceipt();
   const [searchQuery, setSearchQuery] = useState<{
     eventId?: string;
     registrationNumber?: string;

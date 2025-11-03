@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { eventApi } from '@/services/api/eventApi';
-import { churchApi } from '@/services/api/churchApi';
+import { useEvents } from '@/hooks/useEvent';
+import { useAllChurches } from '@/hooks/useChurch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -19,60 +19,38 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [eventCount, setEventCount] = useState<number>(0);
-  const [churchCount, setChurchCount] = useState<number>(0);
-  const [newChurchCount, setNewChurchCount] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(true);
+  const { data: allEvents = [], isLoading: eventsLoading } = useEvents();
+  const { data: allChurches = [], isLoading: churchesLoading } = useAllChurches();
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      setLoading(true);
-      try {
-        const now = new Date();
-        const year = now.getFullYear();
-        const allEvents = await eventApi.getEvents();
-        const events = allEvents.filter(event => event.event_Year === year);
-        setEventCount(events.length);
+  const now = new Date();
+  const year = now.getFullYear();
+  const events = allEvents.filter(event => event.event_Year === year);
+  
+  const startOfMonth = new Date(year, now.getMonth(), 1);
+  const endOfMonth = new Date(year, now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const newChurches = allChurches.filter(c => {
+    const created = new Date(c.createdAt || '');
+    return created >= startOfMonth && created <= endOfMonth;
+  });
 
-        const allChurchRes = await churchApi.searchChurches({ getAllResults: true });
-        const allChurches = allChurchRes.data;
-        setChurchCount(allChurches.length);
-
-        const startOfMonth = new Date(year, now.getMonth(), 1);
-        const endOfMonth = new Date(year, now.getMonth() + 1, 0, 23, 59, 59, 999);
-        const newChurches = allChurches.filter(c => {
-          const created = new Date(c.createdAt || '');
-          return created >= startOfMonth && created <= endOfMonth;
-        });
-        setNewChurchCount(newChurches.length);
-      } catch (e) {
-        console.error('Failed to fetch stats:', e);
-        setEventCount(0);
-        setChurchCount(0);
-        setNewChurchCount(0);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
+  const loading = eventsLoading || churchesLoading;
 
   const stats: StatCardData[] = [
     {
       title: '올해 이벤트',
-      value: loading ? '-' : eventCount,
+      value: loading ? '-' : events.length,
       icon: <Calendar className="h-8 w-8" />,
       color: 'text-blue-600',
     },
     {
       title: '등록된 교회',
-      value: loading ? '-' : churchCount,
+      value: loading ? '-' : allChurches.length,
       icon: <Church className="h-8 w-8" />,
       color: 'text-green-600',
     },
     {
       title: '신규 등록 교회(이번 달)',
-      value: loading ? '-' : newChurchCount,
+      value: loading ? '-' : newChurches.length,
       icon: <Church className="h-8 w-8" />,
       color: 'text-orange-600',
     },

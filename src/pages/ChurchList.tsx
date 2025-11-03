@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Church } from '@/types/church';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useChurch } from '@/hooks/useChurch';
+import { useAllChurches } from '@/hooks/useChurch';
 import {
   Table,
   TableBody,
@@ -21,7 +21,6 @@ import {
 import { Search, Loader2 } from 'lucide-react';
 
 const ChurchList = () => {
-  const { useAllChurches } = useChurch();
   const { data: allChurches = [], isLoading: loading, error: queryError } = useAllChurches();
   
   const [searchTerm, setSearchTerm] = useState('');

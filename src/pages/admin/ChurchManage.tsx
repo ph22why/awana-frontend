@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { churchApi } from '@/services/api/churchApi';
+import { useChurches, useDeleteChurch, useUpdateChurch } from '@/hooks/useChurch';
 import type { Church } from '@/types/church';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,9 +40,12 @@ const ChurchManage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [churches, setChurches] = useState<Church[]>([]);
+  const { data: churchesData = { data: [] }, isLoading: loading } = useChurches({ getAllResults: true });
+  const churches = Array.isArray(churchesData) ? churchesData : churchesData.data || [];
+  const deleteChurchMutation = useDeleteChurch();
+  const updateChurchMutation = useUpdateChurch();
+  
   const [filteredChurches, setFilteredChurches] = useState<Church[]>([]);
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -54,27 +57,9 @@ const ChurchManage = () => {
     subId: '',
   });
 
-  const fetchChurches = async () => {
-    setLoading(true);
-    try {
-      const response = await churchApi.searchChurches({ getAllResults: true });
-      setChurches(response.data);
-      setFilteredChurches(response.data);
-    } catch (error) {
-      console.error('Failed to fetch churches:', error);
-      toast({
-        variant: 'destructive',
-        title: '교회 목록 불러오기 실패',
-        description: '교회 목록을 불러오는데 실패했습니다.',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchChurches();
-  }, []);
+    setFilteredChurches(churches);
+  }, [churches]);
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -91,24 +76,12 @@ const ChurchManage = () => {
   const handleDelete = async () => {
     if (!selectedChurch) return;
 
-    try {
-      await churchApi.deleteChurch(selectedChurch.id);
-      toast({
-        title: '교회 삭제 완료',
-        description: '교회가 성공적으로 삭제되었습니다.',
-      });
-      fetchChurches();
-    } catch (error) {
-      console.error('Failed to delete church:', error);
-      toast({
-        variant: 'destructive',
-        title: '교회 삭제 실패',
-        description: '교회 삭제에 실패했습니다.',
-      });
-    } finally {
-      setDeleteDialogOpen(false);
-      setSelectedChurch(null);
-    }
+    deleteChurchMutation.mutate(selectedChurch.id, {
+      onSuccess: () => {
+        setDeleteDialogOpen(false);
+        setSelectedChurch(null);
+      }
+    });
   };
 
   const openDeleteDialog = (church: Church) => {
@@ -130,22 +103,14 @@ const ChurchManage = () => {
   const handleEdit = async () => {
     if (!selectedChurch) return;
 
-    try {
-      await churchApi.updateChurch(selectedChurch.id, formData);
-      toast({
-        title: '교회 수정 완료',
-        description: '교회 정보가 성공적으로 수정되었습니다.',
-      });
-      fetchChurches();
-      setEditDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to update church:', error);
-      toast({
-        variant: 'destructive',
-        title: '교회 수정 실패',
-        description: '교회 정보 수정에 실패했습니다.',
-      });
-    }
+    updateChurchMutation.mutate(
+      { id: selectedChurch.id, data: formData },
+      {
+        onSuccess: () => {
+          setEditDialogOpen(false);
+        }
+      }
+    );
   };
 
   return (

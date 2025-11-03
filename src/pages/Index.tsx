@@ -5,11 +5,10 @@ import { CalendarDays, School, Receipt, BookOpen, Calendar } from 'lucide-react'
 import type { IEvent } from '@/types/event';
 import { CardSkeleton } from '@/components/ui/loading-skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
-import { useEvent } from '@/hooks/useEvent';
+import { usePublicEvents } from '@/hooks/useEvent';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { usePublicEvents } = useEvent();
   const { data: allEvents = [], isLoading: loading, error: queryError } = usePublicEvents();
 
   const events = allEvents.filter(e => e.event_Open_Available === "공개");

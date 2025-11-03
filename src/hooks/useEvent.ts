@@ -4,203 +4,200 @@ import { IEvent, IEventCreate, IEventGroup } from '@/types/event';
 import { useToast } from '@/hooks/use-toast';
 import { handleApiError } from '@/lib/apiError';
 
-export const useEvent = () => {
+export const useEvents = () => {
+  return useQuery({
+    queryKey: ['events'],
+    queryFn: eventApi.getEvents,
+  });
+};
+
+export const usePublicEvents = () => {
+  return useQuery({
+    queryKey: ['events', 'public'],
+    queryFn: eventApi.getPublicEvents,
+  });
+};
+
+export const useEvent = (id: string) => {
+  return useQuery({
+    queryKey: ['event', id],
+    queryFn: () => eventApi.getEventById(id),
+    enabled: !!id,
+  });
+};
+
+export const useEventsByYear = (year: number) => {
+  return useQuery({
+    queryKey: ['events', 'year', year],
+    queryFn: () => eventApi.getEventsByYear(year),
+    enabled: !!year,
+  });
+};
+
+export const useCreateEvent = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const useEvents = () => {
-    return useQuery({
-      queryKey: ['events'],
-      queryFn: eventApi.getEvents,
-    });
-  };
+  return useMutation({
+    mutationFn: (data: IEventCreate) => eventApi.createEvent(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast({
+        title: '성공',
+        description: '행사가 생성되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: '오류',
+        description: handleApiError(error),
+        variant: 'destructive',
+      });
+    },
+  });
+};
 
-  const usePublicEvents = () => {
-    return useQuery({
-      queryKey: ['events', 'public'],
-      queryFn: eventApi.getPublicEvents,
-    });
-  };
+export const useUpdateEvent = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const useEvent = (id: string) => {
-    return useQuery({
-      queryKey: ['event', id],
-      queryFn: () => eventApi.getEventById(id),
-      enabled: !!id,
-    });
-  };
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<IEventCreate> }) =>
+      eventApi.updateEvent(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast({
+        title: '성공',
+        description: '행사 정보가 수정되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: '오류',
+        description: handleApiError(error),
+        variant: 'destructive',
+      });
+    },
+  });
+};
 
-  const useEventsByYear = (year: number) => {
-    return useQuery({
-      queryKey: ['events', 'year', year],
-      queryFn: () => eventApi.getEventsByYear(year),
-      enabled: !!year,
-    });
-  };
+export const useDeleteEvent = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const useCreateEvent = () => {
-    return useMutation({
-      mutationFn: (data: IEventCreate) => eventApi.createEvent(data),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['events'] });
-        toast({
-          title: '성공',
-          description: '행사가 생성되었습니다.',
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: '오류',
-          description: handleApiError(error),
-          variant: 'destructive',
-        });
-      },
-    });
-  };
+  return useMutation({
+    mutationFn: (id: string) => eventApi.deleteEvent(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast({
+        title: '성공',
+        description: '행사가 삭제되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: '오류',
+        description: handleApiError(error),
+        variant: 'destructive',
+      });
+    },
+  });
+};
 
-  const useUpdateEvent = () => {
-    return useMutation({
-      mutationFn: ({ id, data }: { id: string; data: Partial<IEventCreate> }) =>
-        eventApi.updateEvent(id, data),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['events'] });
-        toast({
-          title: '성공',
-          description: '행사 정보가 수정되었습니다.',
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: '오류',
-          description: handleApiError(error),
-          variant: 'destructive',
-        });
-      },
-    });
-  };
+export const useSampleEvents = () => {
+  return useQuery({
+    queryKey: ['sampleEvents'],
+    queryFn: eventApi.getSampleEvents,
+  });
+};
 
-  const useDeleteEvent = () => {
-    return useMutation({
-      mutationFn: (id: string) => eventApi.deleteEvent(id),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['events'] });
-        toast({
-          title: '성공',
-          description: '행사가 삭제되었습니다.',
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: '오류',
-          description: handleApiError(error),
-          variant: 'destructive',
-        });
-      },
-    });
-  };
+export const useEventGroups = () => {
+  return useQuery({
+    queryKey: ['eventGroups'],
+    queryFn: eventApi.getEventGroups,
+  });
+};
 
-  const useSampleEvents = () => {
-    return useQuery({
-      queryKey: ['sampleEvents'],
-      queryFn: eventApi.getSampleEvents,
-    });
-  };
+export const useEventGroup = (id: string) => {
+  return useQuery({
+    queryKey: ['eventGroup', id],
+    queryFn: () => eventApi.getEventGroupById(id),
+    enabled: !!id,
+  });
+};
 
-  const useEventGroups = () => {
-    return useQuery({
-      queryKey: ['eventGroups'],
-      queryFn: eventApi.getEventGroups,
-    });
-  };
+export const useCreateEventGroup = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const useEventGroup = (id: string) => {
-    return useQuery({
-      queryKey: ['eventGroup', id],
-      queryFn: () => eventApi.getEventGroupById(id),
-      enabled: !!id,
-    });
-  };
+  return useMutation({
+    mutationFn: (data: Omit<IEventGroup, '_id' | 'createdAt' | 'updatedAt'>) =>
+      eventApi.createEventGroup(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['eventGroups'] });
+      toast({
+        title: '성공',
+        description: '행사 그룹이 생성되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: '오류',
+        description: handleApiError(error),
+        variant: 'destructive',
+      });
+    },
+  });
+};
 
-  const useCreateEventGroup = () => {
-    return useMutation({
-      mutationFn: (data: Omit<IEventGroup, '_id' | 'createdAt' | 'updatedAt'>) =>
-        eventApi.createEventGroup(data),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['eventGroups'] });
-        toast({
-          title: '성공',
-          description: '행사 그룹이 생성되었습니다.',
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: '오류',
-          description: handleApiError(error),
-          variant: 'destructive',
-        });
-      },
-    });
-  };
+export const useUpdateEventGroup = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const useUpdateEventGroup = () => {
-    return useMutation({
-      mutationFn: ({
-        id,
-        data,
-      }: {
-        id: string;
-        data: Partial<Omit<IEventGroup, '_id' | 'createdAt' | 'updatedAt'>>;
-      }) => eventApi.updateEventGroup(id, data),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['eventGroups'] });
-        toast({
-          title: '성공',
-          description: '행사 그룹이 수정되었습니다.',
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: '오류',
-          description: handleApiError(error),
-          variant: 'destructive',
-        });
-      },
-    });
-  };
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<Omit<IEventGroup, '_id' | 'createdAt' | 'updatedAt'>>;
+    }) => eventApi.updateEventGroup(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['eventGroups'] });
+      toast({
+        title: '성공',
+        description: '행사 그룹이 수정되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: '오류',
+        description: handleApiError(error),
+        variant: 'destructive',
+      });
+    },
+  });
+};
 
-  const useDeleteEventGroup = () => {
-    return useMutation({
-      mutationFn: (id: string) => eventApi.deleteEventGroup(id),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['eventGroups'] });
-        toast({
-          title: '성공',
-          description: '행사 그룹이 삭제되었습니다.',
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: '오류',
-          description: handleApiError(error),
-          variant: 'destructive',
-        });
-      },
-    });
-  };
+export const useDeleteEventGroup = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  return {
-    useEvents,
-    usePublicEvents,
-    useEvent,
-    useEventsByYear,
-    useCreateEvent,
-    useUpdateEvent,
-    useDeleteEvent,
-    useSampleEvents,
-    useEventGroups,
-    useEventGroup,
-    useCreateEventGroup,
-    useUpdateEventGroup,
-    useDeleteEventGroup,
-  };
+  return useMutation({
+    mutationFn: (id: string) => eventApi.deleteEventGroup(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['eventGroups'] });
+      toast({
+        title: '성공',
+        description: '행사 그룹이 삭제되었습니다.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: '오류',
+        description: handleApiError(error),
+        variant: 'destructive',
+      });
+    },
+  });
 };
