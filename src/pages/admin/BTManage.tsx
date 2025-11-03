@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle, XCircle, Receipt, RefreshCw, ArrowLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Receipt, RefreshCw, ArrowLeft, BookOpen, Loader2 } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,7 @@ const BTManage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const { data: churchManagersData = { data: [] }, isLoading: loading } = useChurchManagers();
+  const { data: churchManagersData = { data: [] }, isLoading: loading, error } = useChurchManagers();
   const churchManagers = Array.isArray(churchManagersData) ? churchManagersData : churchManagersData.data || [];
   const updateStatusMutation = useUpdateChurchManagerStatus();
   
@@ -123,88 +124,99 @@ const BTManage = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>신청 목록</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>교회명</TableHead>
-                <TableHead>담당자</TableHead>
-                <TableHead>연락처</TableHead>
-                <TableHead>예상 참가자</TableHead>
-                <TableHead>신청일</TableHead>
-                <TableHead>상태</TableHead>
-                <TableHead>작업</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {churchManagers.map((manager) => (
-                <TableRow key={manager._id} className="hover:bg-muted/50 transition-colors">
-                  <TableCell>
-                    <div className="font-medium">{manager.churchName}</div>
-                    <div className="text-sm text-muted-foreground">{manager.churchAddress}</div>
-                  </TableCell>
-                  <TableCell>
-                    <div>{manager.managerName}</div>
-                    <div className="text-sm text-muted-foreground">{manager.managerEmail}</div>
-                  </TableCell>
-                  <TableCell>{manager.managerPhone}</TableCell>
-                  <TableCell>{manager.participants || '-'}</TableCell>
-                  <TableCell>
-                    {new Date(manager.registrationDate).toLocaleDateString('ko-KR')}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(manager.status)}>
-                      {getStatusText(manager.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      {manager.status === 'pending' && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openApprovalDialog(manager)}
-                          >
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleStatusUpdate(manager._id, 'rejected')}
-                          >
-                            <XCircle className="h-4 w-4 text-red-600" />
-                          </Button>
-                        </>
-                      )}
-                      {manager.status === 'approved' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewReceipt(manager._id)}
-                        >
-                          <Receipt className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {churchManagers.length === 0 && (
+{loading ? (
+        <div className="flex justify-center items-center py-12 animate-fade-in">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : error ? (
+        <EmptyState
+          icon={BookOpen}
+          title="데이터를 불러올 수 없습니다"
+          description="BT 신청 목록을 불러오는데 실패했습니다. 다시 시도해주세요."
+        />
+      ) : churchManagers.length === 0 ? (
+        <EmptyState
+          icon={BookOpen}
+          title="신청 내역이 없습니다"
+          description="아직 BT 교육 신청이 없습니다."
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>신청 목록</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    신청 내역이 없습니다
-                  </TableCell>
+                  <TableHead>교회명</TableHead>
+                  <TableHead>담당자</TableHead>
+                  <TableHead>연락처</TableHead>
+                  <TableHead>예상 참가자</TableHead>
+                  <TableHead>신청일</TableHead>
+                  <TableHead>상태</TableHead>
+                  <TableHead>작업</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {churchManagers.map((manager) => (
+                  <TableRow key={manager._id} className="hover:bg-muted/50 transition-colors">
+                    <TableCell>
+                      <div className="font-medium">{manager.churchName}</div>
+                      <div className="text-sm text-muted-foreground">{manager.churchAddress}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div>{manager.managerName}</div>
+                      <div className="text-sm text-muted-foreground">{manager.managerEmail}</div>
+                    </TableCell>
+                    <TableCell>{manager.managerPhone}</TableCell>
+                    <TableCell>{manager.participants || '-'}</TableCell>
+                    <TableCell>
+                      {new Date(manager.registrationDate).toLocaleDateString('ko-KR')}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusVariant(manager.status)}>
+                        {getStatusText(manager.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {manager.status === 'pending' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openApprovalDialog(manager)}
+                            >
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleStatusUpdate(manager._id, 'rejected')}
+                            >
+                              <XCircle className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </>
+                        )}
+                        {manager.status === 'approved' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewReceipt(manager._id)}
+                          >
+                            <Receipt className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={approvalDialog} onOpenChange={setApprovalDialog}>
         <DialogContent>

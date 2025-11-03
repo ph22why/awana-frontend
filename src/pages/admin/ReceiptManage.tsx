@@ -13,7 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Plus, Trash2, Edit, ArrowLeft } from 'lucide-react';
+import { Search, Plus, Trash2, Edit, ArrowLeft, Receipt as ReceiptIcon, Loader2 } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
@@ -176,72 +177,89 @@ const ReceiptManage = () => {
         </CardContent>
       </Card>
 
-      {selectedEvent && (
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>영수증 목록</CardTitle>
-              <div className="flex gap-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="교회명, 담당자, 전화번호 검색..."
-                    className="pl-10 w-80"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Button onClick={() => setShowDialog(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  영수증 추가
-                </Button>
-              </div>
+{selectedEvent && (
+        <>
+          {receiptsLoading ? (
+            <div className="flex justify-center items-center py-12 animate-fade-in">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>교회명</TableHead>
-                  <TableHead>교회코드</TableHead>
-                  <TableHead>담당자</TableHead>
-                  <TableHead>연락처</TableHead>
-                  <TableHead>총인원</TableHead>
-                  <TableHead>비용</TableHead>
-                  <TableHead>작업</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredReceipts.map((receipt) => (
-                  <TableRow key={receipt.id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell className="font-medium">{receipt.churchName}</TableCell>
-                    <TableCell>{receipt.churchId.mainId}-{receipt.churchId.subId}</TableCell>
-                    <TableCell>{receipt.managerName}</TableCell>
-                    <TableCell>{receipt.managerPhone}</TableCell>
-                    <TableCell>{receipt.partTotal}</TableCell>
-                    <TableCell>{receipt.costs.toLocaleString()}원</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteReceipt(receipt.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredReceipts.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      영수증이 없습니다
-                    </TableCell>
-                  </TableRow>
+          ) : filteredReceipts.length === 0 && searchTerm === '' ? (
+            <EmptyState
+              icon={ReceiptIcon}
+              title="영수증이 없습니다"
+              description="선택한 이벤트에 대한 영수증을 추가하세요."
+              action={{
+                label: '영수증 추가',
+                onClick: () => setShowDialog(true)
+              }}
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle>영수증 목록</CardTitle>
+                  <div className="flex gap-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="교회명, 담당자, 전화번호 검색..."
+                        className="pl-10 w-80"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <Button onClick={() => setShowDialog(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      영수증 추가
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {filteredReceipts.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    검색 결과가 없습니다
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>교회명</TableHead>
+                        <TableHead>교회코드</TableHead>
+                        <TableHead>담당자</TableHead>
+                        <TableHead>연락처</TableHead>
+                        <TableHead>총인원</TableHead>
+                        <TableHead>비용</TableHead>
+                        <TableHead>작업</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredReceipts.map((receipt) => (
+                        <TableRow key={receipt.id} className="hover:bg-muted/50 transition-colors">
+                          <TableCell className="font-medium">{receipt.churchName}</TableCell>
+                          <TableCell>{receipt.churchId.mainId}-{receipt.churchId.subId}</TableCell>
+                          <TableCell>{receipt.managerName}</TableCell>
+                          <TableCell>{receipt.managerPhone}</TableCell>
+                          <TableCell>{receipt.partTotal}</TableCell>
+                          <TableCell>{receipt.costs.toLocaleString()}원</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteReceipt(receipt.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

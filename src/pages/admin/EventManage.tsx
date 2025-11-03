@@ -23,8 +23,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader2, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const EventManage = () => {
   const navigate = useNavigate();
@@ -98,6 +99,16 @@ const EventManage = () => {
         <div className="flex justify-center items-center py-12 animate-fade-in">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
+      ) : filteredEvents.length === 0 ? (
+        <EmptyState
+          icon={Calendar}
+          title="이벤트가 없습니다"
+          description="새 이벤트를 생성하여 관리를 시작하세요."
+          action={{
+            label: '새 이벤트 만들기',
+            onClick: () => navigate('/admin/events/create')
+          }}
+        />
       ) : (
         <div className="border rounded-lg animate-fade-in">
           <Table>
@@ -113,42 +124,34 @@ const EventManage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredEvents.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    이벤트가 없습니다.
+              {filteredEvents.map((event) => (
+                <TableRow key={event._id} className="hover:bg-muted/50 transition-colors">
+                  <TableCell className="font-medium">{event.event_Name}</TableCell>
+                  <TableCell>{event.event_Location}</TableCell>
+                  <TableCell>{event.event_Year}</TableCell>
+                  <TableCell>{new Date(event.event_Start_Date).toLocaleDateString()}</TableCell>
+                  <TableCell>{new Date(event.event_End_Date).toLocaleDateString()}</TableCell>
+                  <TableCell>{event.event_Open_Available}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate(`/admin/events/edit/${event._id}`)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDeleteDialog(event._id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filteredEvents.map((event) => (
-                  <TableRow key={event._id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell className="font-medium">{event.event_Name}</TableCell>
-                    <TableCell>{event.event_Location}</TableCell>
-                    <TableCell>{event.event_Year}</TableCell>
-                    <TableCell>{new Date(event.event_Start_Date).toLocaleDateString()}</TableCell>
-                    <TableCell>{new Date(event.event_End_Date).toLocaleDateString()}</TableCell>
-                    <TableCell>{event.event_Open_Available}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/admin/events/edit/${event._id}`)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openDeleteDialog(event._id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
         </div>

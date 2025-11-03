@@ -32,8 +32,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, Edit, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader2, School } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const ChurchManage = () => {
   const navigate = useNavigate();
@@ -140,6 +141,16 @@ const ChurchManage = () => {
         <div className="flex justify-center items-center py-12 animate-fade-in">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
+      ) : filteredChurches.length === 0 ? (
+        <EmptyState
+          icon={School}
+          title="교회가 없습니다"
+          description="새 교회를 등록하여 관리를 시작하세요."
+          action={{
+            label: '새 교회 등록',
+            onClick: () => navigate('/admin/churches/create')
+          }}
+        />
       ) : (
         <div className="border rounded-lg animate-fade-in">
           <Table>
@@ -153,40 +164,32 @@ const ChurchManage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredChurches.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    교회가 없습니다.
+              {filteredChurches.map((church) => (
+                <TableRow key={church._id || church.id} className="hover:bg-muted/50 transition-colors">
+                  <TableCell className="font-medium">{church.name}</TableCell>
+                  <TableCell>{church.mainId}-{church.subId}</TableCell>
+                  <TableCell>{church.location}</TableCell>
+                  <TableCell>{church.phone || '-'}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditDialog(church)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openDeleteDialog(church)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filteredChurches.map((church) => (
-                  <TableRow key={church._id || church.id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell className="font-medium">{church.name}</TableCell>
-                    <TableCell>{church.mainId}-{church.subId}</TableCell>
-                    <TableCell>{church.location}</TableCell>
-                    <TableCell>{church.phone || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditDialog(church)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openDeleteDialog(church)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
         </div>

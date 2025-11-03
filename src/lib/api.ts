@@ -1,6 +1,7 @@
 import { ApiError } from './apiError';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://awanaevent.com';
+// 개발 환경: localhost, 프로덕션 환경: awanaevent.com
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
