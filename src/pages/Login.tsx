@@ -1,29 +1,31 @@
-import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema, type LoginFormData } from '@/schemas/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 const Login = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      username: '',
+      password: '',
+    },
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
     try {
-      await login(username, password);
+      await login(data.username, data.password);
       navigate('/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -36,43 +38,49 @@ const Login = () => {
             계정에 로그인하세요
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">아이디</Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="아이디를 입력하세요"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>아이디</FormLabel>
+                    <FormControl>
+                      <Input placeholder="아이디를 입력하세요" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">비밀번호</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="비밀번호를 입력하세요"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>비밀번호</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="비밀번호를 입력하세요" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? '로그인 중...' : '로그인'}
-            </Button>
-            <div className="text-sm text-center text-muted-foreground">
-              계정이 없으신가요?{' '}
-              <Link to="/register" className="text-primary hover:underline">
-                회원가입
-              </Link>
-            </div>
-          </CardFooter>
-        </form>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? '로그인 중...' : '로그인'}
+              </Button>
+              <div className="text-sm text-center text-muted-foreground">
+                계정이 없으신가요?{' '}
+                <Link to="/register" className="text-primary hover:underline">
+                  회원가입
+                </Link>
+              </div>
+            </CardFooter>
+          </form>
+        </Form>
       </Card>
     </div>
   );

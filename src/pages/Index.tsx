@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarDays, School, Receipt, BookOpen } from 'lucide-react';
+import { CalendarDays, School, Receipt, BookOpen, Calendar } from 'lucide-react';
 import { eventApi } from '@/services/api/eventApi';
 import type { IEvent } from '@/types/event';
 import { useEffect, useState } from 'react';
+import { CardSkeleton } from '@/components/ui/loading-skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -106,13 +108,23 @@ const Index = () => {
           </div>
 
           {loading ? (
-            <p className="text-center">불러오는 중...</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
           ) : error ? (
-            <p className="text-center text-destructive">{error}</p>
+            <EmptyState
+              icon={Calendar}
+              title="이벤트를 불러올 수 없습니다"
+              description={error}
+            />
           ) : events.length === 0 ? (
-            <p className="text-center text-muted-foreground py-16 text-xl">
-              접수 중인 이벤트가 없습니다.
-            </p>
+            <EmptyState
+              icon={Calendar}
+              title="접수 중인 이벤트가 없습니다"
+              description="현재 진행 중인 이벤트가 없습니다. 나중에 다시 확인해주세요."
+            />
           ) : (
             <div className="max-h-[600px] overflow-y-auto scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-2">
