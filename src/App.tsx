@@ -15,7 +15,10 @@ import Receipts from "./pages/Receipts";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import EventManage from "./pages/admin/EventManage";
+import EventCreate from "./pages/admin/EventCreate";
+import EventEdit from "./pages/admin/EventEdit";
 import ChurchManage from "./pages/admin/ChurchManage";
+import ChurchCreate from "./pages/admin/ChurchCreate";
 import ReceiptManage from "./pages/admin/ReceiptManage";
 import BTManage from "./pages/admin/BTManage";
 
@@ -79,10 +82,34 @@ const App = () => (
                 }
               />
               <Route
+                path="/admin/events/create"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <EventCreate />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/events/edit/:id"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <EventEdit />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/admin/churches/manage"
                 element={
                   <ProtectedRoute requireAdmin>
                     <ChurchManage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/churches/create"
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <ChurchCreate />
                   </ProtectedRoute>
                 }
               />
