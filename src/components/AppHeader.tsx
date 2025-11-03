@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function AppHeader() {
   const { user } = useAuth();
@@ -22,7 +23,9 @@ export function AppHeader() {
           <h1 className="text-lg font-semibold">교회 관리 시스템</h1>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          
           {user ? (
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
