@@ -24,7 +24,30 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/bt-ser
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // origin이 없으면 (예: 모바일 앱, Postman) 허용
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = process.env.NODE_ENV === 'development' 
+      ? ['http://localhost:3000']
+      : ['http://localhost:3000', 'https://awanaevent.com'];
+    
+    // lovable.app 서브도메인 허용
+    if (origin.endsWith('.lovable.app') || origin === 'https://lovable.dev') {
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -53,7 +76,7 @@ mongoose.connect(MONGODB_URI)
       console.log(`BT Service running on port ${PORT}`);
     });
   })
-  .catch((error) => {
+  .catch((error: Error) => {
     console.error('Database connection error:', error);
     process.exit(1);
   });

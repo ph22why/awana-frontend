@@ -17,8 +17,22 @@ const allowedOrigins = process.env.NODE_ENV === 'development'
   : ['http://112.145.65.29:3000', 'http://localhost:3000', 'http://awanaevent.com', 'https://awanaevent.com'];
 
 app.use(cors({
-  origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: function (origin, callback) {
+    // origin이 없으면 (예: 모바일 앱, Postman) 허용
+    if (!origin) return callback(null, true);
+    
+    // lovable.app 서브도메인 허용
+    if (origin.endsWith('.lovable.app') || origin === 'https://lovable.dev') {
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));

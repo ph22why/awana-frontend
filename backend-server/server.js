@@ -12,8 +12,31 @@ const PORT = process.env.PORT || 8080;
 
 // CORS 설정
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3100', 'http://localhost:3101', 'https://awanaevent.com'],
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  origin: function (origin, callback) {
+    // origin이 없으면 (예: 모바일 앱, Postman) 허용
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3100',
+      'http://localhost:3101',
+      'https://awanaevent.com',
+      'https://lovable.dev'
+    ];
+    
+    // lovable.app 서브도메인 허용
+    if (origin.endsWith('.lovable.app') || origin === 'https://lovable.dev') {
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
   credentials: true,
   preflightContinue: true,
   optionsSuccessStatus: 204
