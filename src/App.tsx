@@ -2,141 +2,26 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { Layout } from "@/components/Layout";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import ChurchList from "./pages/ChurchList";
-import Receipts from "./pages/Receipts";
 import NotFound from "./pages/NotFound";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import EventManage from "./pages/admin/EventManage";
-import EventCreate from "./pages/admin/EventCreate";
-import EventEdit from "./pages/admin/EventEdit";
-import ChurchManage from "./pages/admin/ChurchManage";
-import ChurchCreate from "./pages/admin/ChurchCreate";
-import ReceiptManage from "./pages/admin/ReceiptManage";
-import BTManage from "./pages/admin/BTManage";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) => {
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center">로딩 중...</div>;
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (requireAdmin && user.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-};
-
 const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <Layout>
-              <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/churches" element={<ChurchList />} />
-              <Route path="/receipts" element={<Receipts />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/events/manage"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <EventManage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/events/create"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <EventCreate />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/events/edit/:id"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <EventEdit />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/churches/manage"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <ChurchManage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/churches/create"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <ChurchCreate />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/receipts/manage"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <ReceiptManage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/bt/manage"
-                element={
-                  <ProtectedRoute requireAdmin>
-                    <BTManage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Layout>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
 );
 
 export default App;
